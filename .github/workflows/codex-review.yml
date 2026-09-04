@@ -1,0 +1,63 @@
+# Example consumer workflow for this action.
+#
+# Model selection has two paths, both feeding the same `model` input:
+#   1. Automatic PR runs use the CODEX_MODEL repository/organization Actions
+#      variable if you've set one (Settings → Secrets and variables →
+#      Actions → Variables), otherwise the action's built-in default.
+#   2. Manual runs (Actions tab → "Run workflow") let you pick the model
+#      from a dropdown via the workflow_dispatch `model` input below —
+#      handy for A/B-testing a model on a specific PR without touching
+#      any repo settings.
+name: Codex PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+      model:
+        description: 'Codex model to use for this run'
+        required: false
+        type: choice
+        default: 'gpt-5.1-codex'
+        options:
+          - 'gpt-5.1-codex'
+          - 'gpt-5.1-codex-mini'
+          - 'gpt-5.1'
+          - 'gpt-5-mini'
+          - 'o4-mini'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      # workflow_dispatch has no pull_request context, so check out the PR
+      # explicitly when triggered manually.
+      - name: Resolve PR ref (manual trigger)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.inputs.pr_number }}/head
+
+      - name: Checkout (automatic trigger)
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: actions/checkout@v4
+
+      - uses: ./
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ github.token }}
+          # workflow_dispatch input wins when present; otherwise empty and
+          # the action falls back to vars.CODEX_MODEL, then its own default.
+          model: ${{ github.event.inputs.model || vars.CODEX_MODEL }}
+          reasoning_effort: 'medium'
+          post_mode: 'review'

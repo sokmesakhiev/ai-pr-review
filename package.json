@@ -1,0 +1,39 @@
+{
+  "name": "codex-pr-review",
+  "version": "1.0.0",
+  "description": "Bring-your-own-key GitHub Action that reviews pull requests with OpenAI Codex models — with selectable model per run.",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.json && ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "clean": "rm -rf dist lib",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify-dist": "npm run build && git diff --exit-code --stat dist"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^9.1.1",
+    "openai": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vercel/ncc": "^0.38.3",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
