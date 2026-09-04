@@ -1,14 +1,25 @@
 # Example consumer workflow for this action.
 #
+# Supports three providers — OpenAI (Codex), Anthropic (Claude), and Google
+# (Gemini) — behind a single `model` input. The action infers which provider
+# to use from the model id's naming convention (gpt-*/o*-mini -> openai,
+# claude-* -> anthropic, gemini-* -> gemini), so picking a model is enough;
+# you don't also need to set `provider` unless you're using a custom model
+# id that doesn't follow those conventions.
+#
 # Model selection has two paths, both feeding the same `model` input:
 #   1. Automatic PR runs use the CODEX_MODEL repository/organization Actions
 #      variable if you've set one (Settings → Secrets and variables →
-#      Actions → Variables), otherwise the action's built-in default.
-#   2. Manual runs (Actions tab → "Run workflow") let you pick the model
-#      from a dropdown via the workflow_dispatch `model` input below —
-#      handy for A/B-testing a model on a specific PR without touching
-#      any repo settings.
-name: Codex PR Review
+#      Actions → Variables), otherwise the action's built-in default
+#      (gpt-5.1-codex).
+#   2. Manual runs (Actions tab → "Run workflow") let you pick the model —
+#      from any of the three providers — from a dropdown via the
+#      workflow_dispatch `model` input below. Handy for A/B-testing models
+#      across providers on the same PR without touching any repo settings.
+#
+# Only the API key secret matching the chosen provider needs to actually be
+# set — the other two are simply unused for that run.
+name: AI PR Review
 
 on:
   pull_request:
@@ -20,16 +31,26 @@ on:
         required: true
         type: number
       model:
-        description: 'Codex model to use for this run'
+        description: 'Model to use for this run (provider is inferred from the id)'
         required: false
         type: choice
         default: 'gpt-5.1-codex'
         options:
+          # OpenAI
           - 'gpt-5.1-codex'
           - 'gpt-5.1-codex-mini'
           - 'gpt-5.1'
           - 'gpt-5-mini'
           - 'o4-mini'
+          # Anthropic
+          - 'claude-opus-5'
+          - 'claude-fable-5-1'
+          - 'claude-sonnet-5'
+          - 'claude-haiku-4-5'
+          # Google
+          - 'gemini-3.8-flash'
+          - 'gemini-3-pro-preview'
+          - 'gemini-2.5-flash'
 
 permissions:
   contents: read
@@ -55,6 +76,8 @@ jobs:
       - uses: ./
         with:
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           github_token: ${{ github.token }}
           # workflow_dispatch input wins when present; otherwise empty and
           # the action falls back to vars.CODEX_MODEL, then its own default.

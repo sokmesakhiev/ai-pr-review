@@ -1,32 +1,52 @@
-name: 'Codex PR Review'
+name: 'AI PR Review'
 description: >-
-  Bring-your-own-key pull request review powered by OpenAI Codex models,
-  with the model selectable per run.
+  Bring-your-own-key pull request review powered by OpenAI Codex, Anthropic
+  Claude, or Google Gemini — provider and model both selectable per run.
 author: 'Sokmesa'
 branding:
   icon: 'eye'
   color: 'purple'
 
 inputs:
+  provider:
+    description: >-
+      Which provider to use: openai | anthropic | gemini. Leave empty to
+      infer it from the `model` input (e.g. a `claude-*` model implies
+      anthropic); if `model` is also empty, defaults to openai.
+    required: false
+    default: ''
   openai_api_key:
-    description: 'Your own OpenAI API key. Store this as a secret — never commit it.'
-    required: true
+    description: 'Your own OpenAI API key. Required when provider resolves to openai.'
+    required: false
+    default: ''
+  anthropic_api_key:
+    description: 'Your own Anthropic API key. Required when provider resolves to anthropic.'
+    required: false
+    default: ''
+  gemini_api_key:
+    description: 'Your own Google AI (Gemini) API key. Required when provider resolves to gemini.'
+    required: false
+    default: ''
   github_token:
     description: 'Token used to read the PR diff and post the review. Defaults to the job token.'
     required: false
     default: ${{ github.token }}
   model:
     description: >-
-      OpenAI/Codex model to use for this run (e.g. gpt-5.1-codex,
-      gpt-5.1-codex-mini, gpt-5.1, gpt-5-mini, o4-mini). Leave empty to use
-      the CODEX_MODEL repository/organization variable if set, otherwise the
-      action's built-in default (gpt-5.1-codex). Wire this to a
-      workflow_dispatch choice input to let a human pick the model per run —
-      see the example workflow in the README.
+      Model to use for this run, e.g. gpt-5.1-codex, claude-opus-5, or
+      gemini-3.8-flash. Leave empty to use the CODEX_MODEL
+      repository/organization variable if set, otherwise the resolved
+      provider's built-in default. Wire this (and `provider`) to
+      workflow_dispatch choice inputs to let a human pick per run — see the
+      example workflow in the README.
     required: false
     default: ''
   reasoning_effort:
-    description: 'Reasoning effort for models that support it: minimal | low | medium | high.'
+    description: >-
+      Reasoning/thinking effort for models that support it: minimal | low |
+      medium | high. Each provider maps this onto its own equivalent knob
+      (OpenAI reasoning effort, Claude output_config effort, Gemini thinking
+      level).
     required: false
     default: 'medium'
   max_files:
@@ -46,7 +66,7 @@ inputs:
     default: 'review'
   fail_on_error:
     description: >-
-      If "true", fail the workflow step when the OpenAI or GitHub API call
+      If "true", fail the workflow step when the provider or GitHub API call
       fails. If "false" (default), log a warning and exit successfully so a
       transient API issue never blocks a merge.
     required: false
@@ -59,6 +79,8 @@ outputs:
     description: 'One of approve | comment | request_changes.'
   comment_count:
     description: 'Number of inline comments posted.'
+  provider:
+    description: 'The provider that was actually used for this run (openai | anthropic | gemini).'
   model:
     description: 'The model that was actually used for this run.'
 

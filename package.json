@@ -1,7 +1,7 @@
 {
   "name": "codex-pr-review",
   "version": "1.0.0",
-  "description": "Bring-your-own-key GitHub Action that reviews pull requests with OpenAI Codex models — with selectable model per run.",
+  "description": "Bring-your-own-key GitHub Action that reviews pull requests with OpenAI Codex, Anthropic Claude, or Google Gemini — provider and model both selectable per run.",
   "private": true,
   "license": "MIT",
   "engines": {
@@ -23,6 +23,8 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^9.1.1",
+    "@anthropic-ai/sdk": "^0.123.0",
+    "@google/genai": "^2.21.0",
     "openai": "^7.10.0"
   },
   "devDependencies": {

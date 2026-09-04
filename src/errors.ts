@@ -5,13 +5,14 @@ export class ConfigError extends Error {
   }
 }
 
-export class OpenAIRequestError extends Error {
+/** Thrown by any provider client (OpenAI, Anthropic, Gemini) on API failure. */
+export class ProviderRequestError extends Error {
   constructor(
     message: string,
     public readonly cause?: unknown,
   ) {
     super(message);
-    this.name = 'OpenAIRequestError';
+    this.name = 'ProviderRequestError';
   }
 }
 

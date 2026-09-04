@@ -1,6 +1,9 @@
+export type Provider = 'openai' | 'anthropic' | 'gemini';
+
 export interface ActionConfig {
-  openaiApiKey: string;
+  apiKey: string;
   githubToken: string;
+  provider: Provider;
   model: string;
   reasoningEffort: string;
   maxFiles: number;
@@ -33,4 +36,16 @@ export interface ReviewResult {
   overallRecommendation: 'approve' | 'comment' | 'request_changes';
   comments: ReviewComment[];
   modelUsed: string;
+}
+
+export interface RequestReviewParams {
+  apiKey: string;
+  model: string;
+  reasoningEffort: string;
+  files: DiffFile[];
+  truncatedFileCount: number;
+}
+
+export interface ReviewProviderClient {
+  requestReview(params: RequestReviewParams): Promise<ReviewResult>;
 }
