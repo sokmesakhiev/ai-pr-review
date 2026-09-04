@@ -100,7 +100,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
         with:
@@ -131,7 +131,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
         with:
@@ -162,7 +162,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
         with:
