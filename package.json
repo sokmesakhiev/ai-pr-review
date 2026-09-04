@@ -21,7 +21,7 @@
     "verify-dist": "npm run build && git diff --exit-code --stat dist"
   },
   "dependencies": {
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^3.0.1",
     "@actions/github": "^9.1.1",
     "@anthropic-ai/sdk": "^0.123.0",
     "@google/genai": "^2.21.0",
