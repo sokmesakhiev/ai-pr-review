@@ -28,12 +28,18 @@ export const REVIEW_SCHEMA = {
           path: { type: 'string', description: 'File path exactly as shown in the diff header.' },
           line: {
             type: 'integer',
-            description: 'Line number on the new (RIGHT) side of the diff.',
+            description:
+              'Line number as it appears on the given "side" of the diff (RIGHT = new file, LEFT = old file).',
+          },
+          side: {
+            type: 'string',
+            enum: ['LEFT', 'RIGHT'],
+            description: 'RIGHT for an added/context line, LEFT for a removed line.',
           },
           severity: { type: 'string', enum: ['info', 'suggestion', 'warning', 'blocker'] },
           body: { type: 'string' },
         },
-        required: ['path', 'line', 'severity', 'body'],
+        required: ['path', 'line', 'side', 'severity', 'body'],
       },
     },
   },
@@ -43,7 +49,7 @@ export const REVIEW_SCHEMA = {
 export interface RawReview {
   summary: string;
   overall_recommendation: 'approve' | 'comment' | 'request_changes';
-  comments: Array<{ path: string; line: number; severity: string; body: string }>;
+  comments: Array<{ path: string; line: number; side?: string; severity: string; body: string }>;
 }
 
 function isValidSeverity(s: string): s is ReviewComment['severity'] {
@@ -69,7 +75,15 @@ export function parseReviewJson(rawJson: string, modelUsed: string): ReviewResul
 export function normalizeReview(parsed: unknown, modelUsed: string): ReviewResult {
   const raw = parsed as Partial<RawReview> | null | undefined;
 
-  const comments: ReviewComment[] = (raw?.comments ?? [])
+  // Structured-output support varies in strictness across providers (OpenAI's
+  // `strict: true` guarantees schema conformance; Anthropic's and Gemini's
+  // JSON-schema modes are best-effort), so treat every field as untrusted
+  // rather than assuming the shape matches `RawReview` — a malformed
+  // `comments` field here would otherwise throw inside this function and get
+  // misreported upstream as an API-key/model problem.
+  const rawComments = Array.isArray(raw?.comments) ? raw.comments : [];
+
+  const comments: ReviewComment[] = rawComments
     .filter(
       (c): c is RawReview['comments'][number] =>
         !!c && typeof c.path === 'string' && Number.isFinite(c.line) && c.line > 0,
@@ -77,8 +91,9 @@ export function normalizeReview(parsed: unknown, modelUsed: string): ReviewResul
     .map((c) => ({
       path: c.path,
       line: c.line,
+      ...(c.side === 'LEFT' || c.side === 'RIGHT' ? { side: c.side } : {}),
       severity: isValidSeverity(c.severity) ? c.severity : ('info' as const),
-      body: c.body,
+      body: typeof c.body === 'string' ? c.body : '',
     }));
 
   const recommendation = raw?.overall_recommendation;
@@ -90,7 +105,7 @@ export function normalizeReview(parsed: unknown, modelUsed: string): ReviewResul
       : 'comment';
 
   return {
-    summary: raw?.summary ?? 'No summary provided by the model.',
+    summary: typeof raw?.summary === 'string' ? raw.summary : 'No summary provided by the model.',
     overallRecommendation,
     comments,
     modelUsed,

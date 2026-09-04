@@ -19,6 +19,14 @@
 #
 # Only the API key secret matching the chosen provider needs to actually be
 # set — the other two are simply unused for that run.
+#
+# Security note: this checkout intentionally always uses the default ref
+# (this workflow's own trusted branch), never the PR's head — the action
+# never needs the PR's files locally, it reads the diff entirely through the
+# GitHub API. Checking out an untrusted PR head before an `if: secrets are
+# in scope` step is the classic "pwn request" pattern; don't add a `ref:`
+# override here to "fix" workflow_dispatch, and don't switch the automatic
+# trigger to `pull_request_target` without understanding that risk first.
 name: AI PR Review
 
 on:
@@ -61,17 +69,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      # workflow_dispatch has no pull_request context, so check out the PR
-      # explicitly when triggered manually.
-      - name: Resolve PR ref (manual trigger)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: actions/checkout@v4
-        with:
-          ref: refs/pull/${{ github.event.inputs.pr_number }}/head
-
-      - name: Checkout (automatic trigger)
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - uses: ./
         with:
@@ -79,6 +77,9 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           github_token: ${{ github.token }}
+          # Only set (and only needed) on workflow_dispatch — pull_request
+          # events carry the PR number in their own payload already.
+          pr_number: ${{ github.event.inputs.pr_number }}
           # workflow_dispatch input wins when present; otherwise empty and
           # the action falls back to vars.CODEX_MODEL, then its own default.
           model: ${{ github.event.inputs.model || vars.CODEX_MODEL }}

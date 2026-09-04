@@ -59,7 +59,11 @@ follow those conventions.
    - `GEMINI_API_KEY` for `gemini-*` models
      (**Settings → Secrets and variables → Actions → Secrets**)
 2. Copy [`.github/workflows/codex-review.yml`](.github/workflows/codex-review.yml) into your
-   repository (or reuse this one if you're running the action from its own repo).
+   repository. If you're copying it into a **different** repository than this action's own (the
+   normal case), change the `uses: ./` step to point at a published reference instead, e.g.
+   `uses: <your-org>/codex-pr-review@v1` (a tag/release) or `@main` — `uses: ./` only resolves
+   when the workflow runs inside this action's own repo, since it looks for `action.yml` at the
+   checkout root.
 3. (Optional) Set a `CODEX_MODEL` repository variable if you want a default other than
    `gpt-5.1-codex`.
 4. Open a pull request — the action reviews it automatically. Or trigger it manually from the

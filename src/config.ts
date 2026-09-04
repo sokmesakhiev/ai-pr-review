@@ -128,13 +128,7 @@ export function loadConfig(): ActionConfig {
 
   const failOnError = (core.getInput('fail_on_error') || 'false').toLowerCase() === 'true';
 
-  const pullRequest = github.context.payload.pull_request;
-  if (!pullRequest) {
-    throw new ConfigError(
-      'This action must run on a `pull_request` (or `pull_request_target`) event — ' +
-        `got event "${github.context.eventName}" with no pull_request payload.`,
-    );
-  }
+  const pullNumber = resolvePullNumber(core.getInput('pr_number'));
 
   return {
     apiKey,
@@ -148,6 +142,37 @@ export function loadConfig(): ActionConfig {
     failOnError,
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
-    pullNumber: pullRequest.number,
+    pullNumber,
   };
+}
+
+/**
+ * Resolves the PR number to review, in priority order:
+ *   1. The triggering event's own `pull_request` payload (set for
+ *      `pull_request` / `pull_request_target` events — the common case).
+ *   2. The `pr_number` input, for events with no such payload (chiefly
+ *      `workflow_dispatch` — wire it to `${{ github.event.inputs.pr_number }}`
+ *      in the consumer workflow).
+ */
+function resolvePullNumber(prNumberInput: string): number {
+  const pullRequest = github.context.payload.pull_request;
+  if (pullRequest) {
+    return pullRequest.number;
+  }
+
+  const trimmed = prNumberInput.trim();
+  if (trimmed !== '') {
+    const parsed = Number.parseInt(trimmed, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      throw new ConfigError(`Input "pr_number" must be a positive integer, got "${trimmed}".`);
+    }
+    return parsed;
+  }
+
+  throw new ConfigError(
+    'Could not determine which pull request to review: the triggering event ' +
+      `("${github.context.eventName}") has no \`pull_request\` payload, and no "pr_number" ` +
+      'input was given. Run this action on a `pull_request`/`pull_request_target` event, or ' +
+      'pass `pr_number` explicitly (e.g. from a `workflow_dispatch` input).',
+  );
 }

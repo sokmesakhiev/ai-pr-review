@@ -31,6 +31,14 @@ inputs:
     description: 'Token used to read the PR diff and post the review. Defaults to the job token.'
     required: false
     default: ${{ github.token }}
+  pr_number:
+    description: >-
+      Pull request number to review. Only needed when the triggering event
+      has no `pull_request` payload (e.g. `workflow_dispatch`) — wire it to
+      `${{ github.event.inputs.pr_number }}` in that case. Ignored (the
+      event payload is used instead) on `pull_request`/`pull_request_target`.
+    required: false
+    default: ''
   model:
     description: >-
       Model to use for this run, e.g. gpt-5.1-codex, claude-opus-5, or

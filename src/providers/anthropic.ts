@@ -14,7 +14,11 @@ function toClaudeEffort(effort: string): 'low' | 'medium' | 'high' {
   return 'medium';
 }
 
-const MAX_TOKENS = 8_000;
+// Generous headroom for the review JSON itself plus Claude's internal
+// reasoning at higher effort levels — both count against this budget, and a
+// cutoff here produces truncated (unparseable) JSON rather than a clean
+// error. Still finite so a single request can't run away unbounded.
+const MAX_TOKENS = 16_000;
 
 export class AnthropicProvider implements ReviewProviderClient {
   async requestReview({
