@@ -518,7 +518,7 @@ function localstorage() {
 	}
 }
 
-module.exports = __webpack_require__(3278)(exports);
+module.exports = __webpack_require__(897)(exports);
 
 const {formatters} = module.exports;
 
@@ -537,7 +537,7 @@ formatters.j = function (v) {
 
 /***/ }),
 
-/***/ 3278:
+/***/ 897:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 
@@ -1095,7 +1095,7 @@ function init(debug) {
 	}
 }
 
-module.exports = __webpack_require__(3278)(exports);
+module.exports = __webpack_require__(897)(exports);
 
 const {formatters} = module.exports;
 

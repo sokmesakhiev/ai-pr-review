@@ -449,7 +449,7 @@ function fsErrorMessage(err, file) {
 }
 //# sourceMappingURL=fs-util.mjs.map
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/log.mjs
-var utils_log = __webpack_require__(5031);
+var utils_log = __webpack_require__(7412);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/tools/agent-toolset/skills.mjs
 /**
  * Node-only skill plumbing for the agent toolset: downloading a session

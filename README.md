@@ -212,8 +212,15 @@ npm run build       # bundles src/ into dist/ via @vercel/ncc
 ```
 
 `dist/` is committed to the repository (standard practice for JavaScript/TypeScript GitHub
-Actions) so consumers don't need to run `npm install` at execution time. CI verifies it stays in
-sync with `src/` via `npm run verify-dist`.
+Actions) so consumers don't need to run `npm install` at execution time. `npm run verify-dist`
+rebuilds it and diffs the result — CI runs this on every push to `main` and self-heals: if `dist/`
+drifted, the workflow rebuilds it and commits the fix itself, using its own `ubuntu-latest` runner
+as the single source of truth. On a pull request it fails instead, with a message to rebuild
+locally. Note that `@vercel/ncc`'s bundler output isn't guaranteed byte-identical across different
+build machines (CPU architecture and filesystem traversal order can both affect its internal
+module-id assignment, even with identical source and dependency versions) — so don't be surprised
+if `npm run verify-dist` reports a diff on your own machine even when `src/` hasn't changed; trust
+CI's own rebuild over a local one.
 
 ### Adding a provider
 

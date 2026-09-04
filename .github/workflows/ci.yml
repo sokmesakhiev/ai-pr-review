@@ -11,6 +11,10 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # Only the push-to-main path ever needs to write (to auto-commit a rebuilt
+    # dist/); pull_request runs stay read-only.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -29,5 +33,46 @@ jobs:
 
       - run: npm test
 
-      - name: Verify dist/ is up to date with src/
-        run: npm run verify-dist
+      - name: Build
+        run: npm run build
+
+      # @vercel/ncc's bundler output isn't guaranteed byte-identical across
+      # different build machines (CPU architecture and filesystem traversal
+      # order can both affect its internal module-id assignment, even with
+      # identical source and dependency versions) — so "is dist/ in sync"
+      # can only be answered reliably by rebuilding it right here, on this
+      # runner, rather than trusting whatever a contributor's own machine
+      # produced.
+      - name: Check whether dist/ changed
+        id: dist-check
+        run: |
+          if git diff --quiet -- dist; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Self-heal on main: this runner's own build is the single source of
+      # truth, so if dist/ drifted, commit the fix here instead of asking a
+      # human to reproduce this exact environment locally.
+      - name: Auto-commit rebuilt dist/ (push to main only)
+        if: |
+          steps.dist-check.outputs.changed == 'true' &&
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git commit -m "chore: rebuild dist/ [skip ci]"
+          git push
+
+      # On a PR, don't push to someone else's branch — just fail with a
+      # clear, actionable message instead of the old bare git-diff dump.
+      - name: Fail if dist/ is out of sync (pull_request)
+        if: |
+          steps.dist-check.outputs.changed == 'true' &&
+          github.event_name == 'pull_request'
+        run: |
+          echo "::error::dist/ is out of sync with src/. Run 'npm run build' locally and commit the result — or merge to main and let CI rebuild and commit it automatically."
+          exit 1
