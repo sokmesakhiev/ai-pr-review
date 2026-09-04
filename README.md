@@ -61,13 +61,123 @@ follow those conventions.
 2. Copy [`.github/workflows/codex-review.yml`](.github/workflows/codex-review.yml) into your
    repository. If you're copying it into a **different** repository than this action's own (the
    normal case), change the `uses: ./` step to point at a published reference instead, e.g.
-   `uses: <your-org>/codex-pr-review@v1` (a tag/release) or `@main` — `uses: ./` only resolves
+   `uses: sokmesakhiev/ai-pr-review@v1` (a tag/release) or `@main` — `uses: ./` only resolves
    when the workflow runs inside this action's own repo, since it looks for `action.yml` at the
    checkout root.
 3. (Optional) Set a `CODEX_MODEL` repository variable if you want a default other than
    `gpt-5.1-codex`.
 4. Open a pull request — the action reviews it automatically. Or trigger it manually from the
    Actions tab with a chosen model/provider.
+
+## CI examples by provider
+
+Each block below is a complete, minimal workflow that reviews every non-draft pull request
+automatically, using a single provider. To use one: add the matching secret
+(**Settings → Secrets and variables → Actions → Secrets**), save the block as
+`.github/workflows/codex-review.yml` in your repository, and open a PR.
+
+If you're running this from the action's own repository (dogfooding), replace
+`uses: sokmesakhiev/ai-pr-review@v1` with `uses: ./`. Otherwise point it at a published tag of
+wherever you've pushed this action, e.g. `@v1` or `@main`.
+
+### 1. OpenAI Codex
+
+Secret required: `OPENAI_API_KEY`.
+
+```yaml
+name: AI PR Review (OpenAI Codex)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
+        with:
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github_token: ${{ github.token }}
+          model: 'gpt-5.1-codex' # provider is inferred from the model id
+          reasoning_effort: 'medium'
+          post_mode: 'review'
+```
+
+### 2. Anthropic Claude
+
+Secret required: `ANTHROPIC_API_KEY`.
+
+```yaml
+name: AI PR Review (Anthropic Claude)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          model: 'claude-opus-5' # provider is inferred from the model id
+          reasoning_effort: 'medium'
+          post_mode: 'review'
+```
+
+### 3. Google Gemini
+
+Secret required: `GEMINI_API_KEY`.
+
+```yaml
+name: AI PR Review (Google Gemini)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: sokmesakhiev/ai-pr-review@v1 # or ./ if dogfooding in this repo
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ github.token }}
+          model: 'gemini-3.8-flash' # provider is inferred from the model id
+          reasoning_effort: 'medium'
+          post_mode: 'review'
+```
+
+Want to A/B-test models — even across all three providers — on the same PR without maintaining
+separate workflow files? Use the single
+[`.github/workflows/codex-review.yml`](.github/workflows/codex-review.yml) included in this repo
+instead: its `workflow_dispatch` dropdown lets you pick any of the models above per manual run.
+See [How provider and model selection works](#how-provider-and-model-selection-works).
 
 ## Inputs
 
