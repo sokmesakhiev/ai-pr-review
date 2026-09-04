@@ -108,10 +108,16 @@ function resolveApiKey(provider: Provider): string {
 }
 
 export function loadConfig(): ActionConfig {
-  const githubToken =
-    core.getInput('github_token', { required: true }) || process.env.GITHUB_TOKEN || '';
+  // `{ required: true }` would make core.getInput() itself throw on an empty
+  // value, which short-circuits before the `|| process.env.GITHUB_TOKEN`
+  // fallback below ever runs — so this must NOT pass `required: true`, or
+  // the documented env-var fallback becomes dead code.
+  const githubToken = core.getInput('github_token') || process.env.GITHUB_TOKEN || '';
   if (!githubToken) {
-    throw new ConfigError('Input "github_token" is required (falls back to GITHUB_TOKEN env var).');
+    throw new ConfigError(
+      'Input "github_token" is required (or set the GITHUB_TOKEN environment variable). ' +
+        "Typically: github_token: the github.token expression in your workflow's `with:` block.",
+    );
   }
 
   const provider = resolveProvider(core.getInput('provider'), core.getInput('model'));

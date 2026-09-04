@@ -66211,6 +66211,9 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"google-auth-library","version
 /******/ __nccwpck_require__.m = __webpack_modules__;
 /******/ 
 /************************************************************************/
+/******/ /* webpack/runtime/asset-relocator-loader */
+/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = decodeURIComponent(new URL('.', import.meta.url).pathname).slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
+/******/ 
 /******/ /* webpack/runtime/create fake namespace object */
 /******/ (() => {
 /******/ 	var getProto = Object.getPrototypeOf ? (obj) => (Object.getPrototypeOf(obj)) : (obj) => (obj.__proto__);
@@ -66299,10 +66302,6 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"google-auth-library","version
 /******/ 		return module;
 /******/ 	};
 /******/ })();
-/******/ 
-/******/ /* webpack/runtime/compat */
-/******/ 
-/******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
 /******/ 
 /******/ /* webpack/runtime/import chunk loading */
 /******/ (() => {
@@ -74435,9 +74434,14 @@ function resolveApiKey(provider) {
     return apiKey;
 }
 function loadConfig() {
-    const githubToken = getInput('github_token', { required: true }) || process.env.GITHUB_TOKEN || '';
+    // `{ required: true }` would make core.getInput() itself throw on an empty
+    // value, which short-circuits before the `|| process.env.GITHUB_TOKEN`
+    // fallback below ever runs — so this must NOT pass `required: true`, or
+    // the documented env-var fallback becomes dead code.
+    const githubToken = getInput('github_token') || process.env.GITHUB_TOKEN || '';
     if (!githubToken) {
-        throw new ConfigError('Input "github_token" is required (falls back to GITHUB_TOKEN env var).');
+        throw new ConfigError('Input "github_token" is required (or set the GITHUB_TOKEN environment variable). ' +
+            "Typically: github_token: the github.token expression in your workflow's `with:` block.");
     }
     const provider = resolveProvider(getInput('provider'), getInput('model'));
     const model = resolveModel(getInput('model'), provider);

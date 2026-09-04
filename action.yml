@@ -28,15 +28,21 @@ inputs:
     required: false
     default: ''
   github_token:
-    description: 'Token used to read the PR diff and post the review. Defaults to the job token.'
+    description: >-
+      Token used to read the PR diff and post the review. action.yml can't
+      auto-default this to the job token (GitHub Actions doesn't evaluate
+      expressions there), so pass it explicitly in your workflow, e.g.
+      github_token: the github.token expression. Falls back to the
+      GITHUB_TOKEN environment variable if left empty.
     required: false
-    default: ${{ github.token }}
+    default: ''
   pr_number:
     description: >-
       Pull request number to review. Only needed when the triggering event
       has no `pull_request` payload (e.g. `workflow_dispatch`) — wire it to
-      `${{ github.event.inputs.pr_number }}` in that case. Ignored (the
-      event payload is used instead) on `pull_request`/`pull_request_target`.
+      the github.event.inputs.pr_number value from your workflow_dispatch
+      input in that case. Ignored (the event payload is used instead) on
+      `pull_request`/`pull_request_target`.
     required: false
     default: ''
   model:
