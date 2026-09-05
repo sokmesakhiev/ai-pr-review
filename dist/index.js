@@ -74610,7 +74610,7 @@ function formatSummaryBody(result) {
             ? '🔴 Changes requested'
             : '💬 Comments';
     return [
-        `### Codex PR Review — ${badge}`,
+        `### AI PR Review — ${badge}`,
         '',
         result.summary,
         '',

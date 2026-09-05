@@ -148,7 +148,7 @@ function formatSummaryBody(result: ReviewResult): string {
         : '💬 Comments';
 
   return [
-    `### Codex PR Review — ${badge}`,
+    `### AI PR Review — ${badge}`,
     '',
     result.summary,
     '',
