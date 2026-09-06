@@ -1,4 +1,4 @@
-# codex-pr-review
+# ai-pr-review
 
 A bring-your-own-key GitHub Action that reviews pull requests with **OpenAI Codex, Anthropic
 Claude, or Google Gemini** — posting inline comments and a summary directly on the PR, using
