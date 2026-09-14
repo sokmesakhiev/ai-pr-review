@@ -50821,7 +50821,6 @@ exports.USER_AGENT = USER_AGENT;
 /* harmony export */   xX: () => (/* binding */ APIConnectionError)
 /* harmony export */ });
 /* harmony import */ var _internal_errors_mjs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(2533);
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 class AnthropicError extends Error {
 }
@@ -50953,22 +50952,6 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/tslib.mjs
 var tslib = __nccwpck_require__(3364);
-;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/uuid.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
-/**
- * https://stackoverflow.com/a/2117523
- */
-let uuid4 = function () {
-    const { crypto } = globalThis;
-    if (crypto?.randomUUID) {
-        uuid4 = crypto.randomUUID.bind(crypto);
-        return crypto.randomUUID();
-    }
-    const u8 = new Uint8Array(1);
-    const randomByte = crypto ? () => crypto.getRandomValues(u8)[0] : () => (Math.random() * 0xff) & 0xff;
-    return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (+c ^ (randomByte() & (15 >> (+c / 4)))).toString(16));
-};
-//# sourceMappingURL=uuid.mjs.map
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/values.mjs
 var utils_values = __nccwpck_require__(9296);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/sleep.mjs
@@ -50999,10 +50982,9 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/errors.mjs
 var errors = __nccwpck_require__(2533);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/version.mjs
-const VERSION = '0.124.0'; // x-release-please-version
+const VERSION = '0.125.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 const isRunningInBrowser = () => {
     return (
@@ -51206,7 +51188,12 @@ function releaseRequestSignal(controller) {
 }
 //# sourceMappingURL=request-signal.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/shims.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+/**
+ * This module provides internal shims and utility functions for environments where certain Node.js or global types may not be available.
+ *
+ * These are used to ensure we can provide a consistent behaviour between different JavaScript environments and good error
+ * messages in cases where an environment isn't fully supported.
+ */
 function getDefaultFetch() {
     if (typeof fetch !== 'undefined') {
         return fetch;
@@ -51292,7 +51279,6 @@ async function CancelReadableStream(stream) {
 }
 //# sourceMappingURL=shims.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/request-options.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 /**
  * Tracks which fallback a sequence of requests is pinned to.
  *
@@ -52811,7 +52797,6 @@ function partition(str, delimiter) {
 }
 //# sourceMappingURL=streaming.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/parse.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -53043,7 +53028,6 @@ function applyMiddleware(fetchFn, middleware, options, client) {
 }
 //# sourceMappingURL=middleware.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/core/api-promise.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 var _APIPromise_client;
 
 
@@ -53121,7 +53105,6 @@ class APIPromise extends Promise {
 _APIPromise_client = new WeakMap();
 //# sourceMappingURL=api-promise.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/core/pagination.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 var _AbstractPage_client;
 
 
@@ -53553,7 +53536,6 @@ function propsForError(value) {
 
 //# sourceMappingURL=uploads.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/core/resource.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 class APIResource {
     constructor(client) {
         this._client = client;
@@ -53561,7 +53543,6 @@ class APIResource {
 }
 //# sourceMappingURL=resource.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/headers.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 const brand_privateNullableHeaders = Symbol.for('brand.privateNullableHeaders');
 function* iterateHeaders(headers) {
@@ -53751,7 +53732,6 @@ const createPathTagFunction = (pathEncoder = encodeURIPath) => function path(sta
 const path = /* @__PURE__ */ createPathTagFunction(encodeURIPath);
 //# sourceMappingURL=path.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/deployment-runs.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -53809,7 +53789,6 @@ class DeploymentRuns extends APIResource {
 }
 //# sourceMappingURL=deployment-runs.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/deployments.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54026,7 +54005,6 @@ class Deployments extends APIResource {
 }
 //# sourceMappingURL=deployments.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/dreams.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54238,7 +54216,6 @@ function stainlessHelperHeaderFromFile(file) {
 }
 //# sourceMappingURL=stainless-helper-header.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/files.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54372,7 +54349,6 @@ class Files extends APIResource {
 }
 //# sourceMappingURL=files.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/models.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54435,7 +54411,6 @@ class Models extends APIResource {
 }
 //# sourceMappingURL=models.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/user-profiles.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54552,7 +54527,6 @@ class UserProfiles extends APIResource {
 // EXTERNAL MODULE: ./node_modules/standardwebhooks/dist/index.js
 var dist = __nccwpck_require__(5487);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/webhooks.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 class Webhooks extends APIResource {
@@ -54582,7 +54556,6 @@ class Webhooks extends APIResource {
 }
 //# sourceMappingURL=webhooks.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/agents/versions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54618,7 +54591,6 @@ class Versions extends APIResource {
 }
 //# sourceMappingURL=versions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/agents/agents.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -54759,6 +54731,21 @@ class Agents extends APIResource {
 }
 Agents.Versions = Versions;
 //# sourceMappingURL=agents.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/uuid.mjs
+/**
+ * https://stackoverflow.com/a/2117523
+ */
+let uuid4 = function () {
+    const { crypto } = globalThis;
+    if (crypto?.randomUUID) {
+        uuid4 = crypto.randomUUID.bind(crypto);
+        return crypto.randomUUID();
+    }
+    const u8 = new Uint8Array(1);
+    const randomByte = crypto ? () => crypto.getRandomValues(u8)[0] : () => (Math.random() * 0xff) & 0xff;
+    return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (+c ^ (randomByte() & (15 >> (+c / 4)))).toString(16));
+};
+//# sourceMappingURL=uuid.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/abort.mjs
 /**
  * Chain an external {@link AbortSignal} into a local {@link AbortController}:
@@ -56066,9 +56053,13 @@ class EnvironmentWorker {
      * `ANTHROPIC_ENVIRONMENT_ID` / `ANTHROPIC_SESSION_ID` (the env vars that
      * command sets) when not passed; the environment key resolves from this
      * option, then the worker's own `environmentKey`, then
-     * `ANTHROPIC_ENVIRONMENT_KEY`. With no arguments inside that command it just
-     * works. Throws a clear error naming the first of the four required values
-     * still missing after resolution. Throws `SessionMemoryError` when the
+     * `ANTHROPIC_ENVIRONMENT_KEY`, and is needed only when the work item's
+     * `secret` yields no sessions token — a host that receives only the
+     * per-item secret runs without ever holding the key. With no arguments
+     * inside that command it just works. Throws a clear error naming the first
+     * required value still missing after resolution, and — rather than ever
+     * running unauthenticated — when neither a sessions token nor an
+     * environment key resolved. Throws `SessionMemoryError` when the
      * session has memory stores attached but they cannot be mounted — the work
      * item carried no sessions token (unless `memorySyncIntervalMs` turned
      * memory off), or a store failed to download.
@@ -56083,9 +56074,9 @@ class EnvironmentWorker {
         const workId = opts?.workId ?? (0,env/* readEnv */.s)('ANTHROPIC_WORK_ID');
         const environmentId = opts?.environmentId ?? (0,env/* readEnv */.s)('ANTHROPIC_ENVIRONMENT_ID');
         const sessionId = opts?.sessionId ?? (0,env/* readEnv */.s)('ANTHROPIC_SESSION_ID');
-        const environmentKey = opts?.environmentKey ?? this.environmentKey ?? (0,env/* readEnv */.s)('ANTHROPIC_ENVIRONMENT_KEY');
-        // `||` rather than `??` so an empty option still falls through to the env
-        // var and then to null (matching how `readEnv` treats empty values).
+        // Trailing `|| undefined` / `||` between fallbacks so an empty value reads
+        // as absent (matching how `readEnv` treats empty values).
+        const environmentKey = (opts?.environmentKey ?? this.environmentKey ?? (0,env/* readEnv */.s)('ANTHROPIC_ENVIRONMENT_KEY')) || undefined;
         const workSecret = opts?.workSecret || (0,env/* readEnv */.s)('ANTHROPIC_WORK_SECRET') || null;
         if (!workId) {
             throw new core_error/* AnthropicError */.pJ('handleItem: workId is required — pass it or set ANTHROPIC_WORK_ID');
@@ -56096,8 +56087,8 @@ class EnvironmentWorker {
         if (!sessionId) {
             throw new core_error/* AnthropicError */.pJ('handleItem: sessionId is required — pass it or set ANTHROPIC_SESSION_ID');
         }
-        if (!environmentKey) {
-            throw new core_error/* AnthropicError */.pJ('handleItem: environmentKey is required — pass it, construct the worker with it, or set ANTHROPIC_ENVIRONMENT_KEY');
+        if (!environmentKey && !workSecret) {
+            throw new core_error/* AnthropicError */.pJ('handleItem: environmentKey is required when there is no work secret — pass it, construct the worker with it, or set ANTHROPIC_ENVIRONMENT_KEY');
         }
         const work = {
             id: workId,
@@ -56127,11 +56118,17 @@ async function _EnvironmentWorker_handleItem(work, environmentKey, externalSigna
     // item's secret payload when the server issued one, otherwise the
     // environment key. Never log this value.
     const sessionsToken = sessionsTokenFromSecret(work.secret);
+    const itemCredential = sessionsToken ?? environmentKey;
+    if (itemCredential === undefined) {
+        throw new core_error/* AnthropicError */.pJ('handleItem: the work item carried a secret payload but no sessions token could be extracted, ' +
+            'and there is no environment key to fall back to; the poller must issue a secret whose ' +
+            'payload carries `sessions_token`, or provide the environment key (pass it, construct the ' +
+            'worker with it, or set ANTHROPIC_ENVIRONMENT_KEY)');
+    }
     if (work.secret && sessionsToken === null) {
         log.warn('work item carried a secret payload but no sessions token could be extracted; ' +
             'falling back to the environment key', { work_id: work.id });
     }
-    const itemCredential = sessionsToken ?? environmentKey;
     // Every per-session call — the SessionToolRunner event stream/list/send, the
     // lease heartbeat, the skill download, and the work force-stop —
     // authenticates with the per-item credential. Scope a client to it once and
@@ -56455,7 +56452,6 @@ onLeaseTtl) {
 }
 //# sourceMappingURL=worker.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/environments/work.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -56719,7 +56715,6 @@ Work.WorkPoller = WorkPoller;
 Work.EnvironmentWorker = EnvironmentWorker;
 //# sourceMappingURL=work.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/environments/environments.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -56883,7 +56878,6 @@ class Environments extends APIResource {
 Environments.Work = Work;
 //# sourceMappingURL=environments.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/memory-stores/memories.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -57025,7 +57019,6 @@ class Memories extends APIResource {
 }
 //# sourceMappingURL=memories.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/memory-stores/memory-versions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -57112,7 +57105,6 @@ class MemoryVersions extends APIResource {
 }
 //# sourceMappingURL=memory-versions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/memory-stores/memory-stores.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -57311,7 +57303,6 @@ class JSONLDecoder {
 }
 //# sourceMappingURL=jsonl.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/messages/batches.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59069,7 +59060,6 @@ function determineNextStepFromStopReason(stopReason) {
 }
 //# sourceMappingURL=BetaToolRunner.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/messages/messages.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59222,7 +59212,6 @@ Messages.BetaToolRunner = BetaToolRunner;
 Messages.ToolError = ToolError/* ToolError */.v;
 //# sourceMappingURL=messages.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/api-keys.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59275,7 +59264,6 @@ class APIKeys extends APIResource {
 }
 //# sourceMappingURL=api-keys.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/compliance-settings.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 class ComplianceSettings extends APIResource {
     /**
@@ -59324,7 +59312,6 @@ class ComplianceSettings extends APIResource {
 }
 //# sourceMappingURL=compliance-settings.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/external-keys.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59440,7 +59427,6 @@ class ExternalKeys extends APIResource {
 }
 //# sourceMappingURL=external-keys.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/invites.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59513,7 +59499,6 @@ class Invites extends APIResource {
 }
 //# sourceMappingURL=invites.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rate-limits.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 class RateLimits extends APIResource {
@@ -59541,7 +59526,6 @@ class RateLimits extends APIResource {
 }
 //# sourceMappingURL=rate-limits.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/users.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59605,7 +59589,6 @@ class Users extends APIResource {
 }
 //# sourceMappingURL=users.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/federation/issuers.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59771,7 +59754,6 @@ class Issuers extends APIResource {
 }
 //# sourceMappingURL=issuers.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/federation/rules/workspaces.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -59882,7 +59864,6 @@ class Workspaces extends APIResource {
 }
 //# sourceMappingURL=workspaces.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/federation/rules/rules.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60076,7 +60057,6 @@ class Rules extends APIResource {
 Rules.Workspaces = Workspaces;
 //# sourceMappingURL=rules.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/federation/federation.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60093,7 +60073,6 @@ Federation.Issuers = Issuers;
 Federation.Rules = Rules;
 //# sourceMappingURL=federation.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/service-accounts/workspaces.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60215,7 +60194,6 @@ class workspaces_Workspaces extends APIResource {
 }
 //# sourceMappingURL=workspaces.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/service-accounts/service-accounts.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60385,7 +60363,6 @@ class ServiceAccounts extends APIResource {
 ServiceAccounts.Workspaces = workspaces_Workspaces;
 //# sourceMappingURL=service-accounts.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/workspaces/members.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60484,7 +60461,6 @@ class Members extends APIResource {
 }
 //# sourceMappingURL=members.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/workspaces/rate-limits.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60515,7 +60491,6 @@ class rate_limits_RateLimits extends APIResource {
 }
 //# sourceMappingURL=rate-limits.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/workspaces/service-accounts.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60701,7 +60676,6 @@ class service_accounts_ServiceAccounts extends APIResource {
 }
 //# sourceMappingURL=service-accounts.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/workspaces/workspaces.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60809,7 +60783,6 @@ workspaces_workspaces_Workspaces.Members = Members;
 workspaces_workspaces_Workspaces.ServiceAccounts = service_accounts_ServiceAccounts;
 //# sourceMappingURL=workspaces.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/organization.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60867,7 +60840,6 @@ Organization.RateLimits = RateLimits;
 Organization.ComplianceSettings = ComplianceSettings;
 //# sourceMappingURL=organization.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/sessions/events.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -60992,7 +60964,6 @@ class Events extends APIResource {
 Events.SessionToolRunner = SessionToolRunner;
 //# sourceMappingURL=events.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/sessions/resources.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61136,7 +61107,6 @@ class Resources extends APIResource {
 }
 //# sourceMappingURL=resources.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/sessions/threads/events.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61200,7 +61170,6 @@ class events_Events extends APIResource {
 }
 //# sourceMappingURL=events.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/sessions/threads/threads.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61293,7 +61262,6 @@ class Threads extends APIResource {
 Threads.Events = events_Events;
 //# sourceMappingURL=threads.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/sessions/sessions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61465,7 +61433,6 @@ Sessions.Resources = Resources;
 Sessions.Threads = Threads;
 //# sourceMappingURL=sessions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/skills/versions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61604,7 +61571,6 @@ class versions_Versions extends APIResource {
 }
 //# sourceMappingURL=versions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/skills/skills.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61716,7 +61682,6 @@ class Skills extends APIResource {
 Skills.Versions = versions_Versions;
 //# sourceMappingURL=skills.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/tunnels/certificates.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -61854,7 +61819,6 @@ class Certificates extends APIResource {
 }
 //# sourceMappingURL=certificates.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/tunnels/tunnels.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -62049,7 +62013,6 @@ class Tunnels extends APIResource {
 Tunnels.Certificates = Certificates;
 //# sourceMappingURL=tunnels.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/vaults/credentials.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -62244,7 +62207,6 @@ class Credentials extends APIResource {
 }
 //# sourceMappingURL=credentials.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/vaults/vaults.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -62407,7 +62369,6 @@ class Vaults extends APIResource {
 Vaults.Credentials = Credentials;
 //# sourceMappingURL=vaults.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/beta.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -62480,7 +62441,6 @@ Beta.Tunnels = Tunnels;
 Beta.Organization = Organization;
 //# sourceMappingURL=beta.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/completions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 class Completions extends APIResource {
@@ -62503,7 +62463,6 @@ class Completions extends APIResource {
 }
 //# sourceMappingURL=completions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/files.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63286,7 +63245,6 @@ class MessageStream {
 }
 //# sourceMappingURL=MessageStream.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/messages/batches.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63483,7 +63441,6 @@ class batches_Batches extends APIResource {
 }
 //# sourceMappingURL=batches.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/messages/messages.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63612,7 +63569,6 @@ const messages_MODELS_TO_WARN_WITH_THINKING_ENABLED = ['claude-mythos-preview', 
 messages_Messages.Batches = batches_Batches;
 //# sourceMappingURL=messages.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/models.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63673,7 +63629,6 @@ class models_Models extends APIResource {
 }
 //# sourceMappingURL=models.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/skills/versions.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63771,7 +63726,6 @@ class skills_versions_Versions extends APIResource {
 }
 //# sourceMappingURL=versions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/skills/skills.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63867,7 +63821,6 @@ class skills_Skills extends APIResource {
 skills_Skills.Versions = skills_versions_Versions;
 //# sourceMappingURL=skills.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/index.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -63877,9 +63830,7 @@ skills_Skills.Versions = skills_versions_Versions;
 
 //# sourceMappingURL=index.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/client.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 var _BaseAnthropic_instances, _a, _BaseAnthropic_encoder, _BaseAnthropic_baseURLOverridden;
-
 
 
 
@@ -63986,7 +63937,7 @@ class BaseAnthropic {
                 (0,utils_log/* parseLogLevel */.ML)((0,env/* readEnv */.s)('ANTHROPIC_LOG'), "process.env['ANTHROPIC_LOG']", (0,utils_log/* loggerFor */.WG)(this)) ??
                 utils_log/* defaultLogLevel */.Ic;
         this.fetchOptions = options.fetchOptions;
-        this.maxRetries = options.maxRetries ?? 2;
+        this.maxRetries = (0,utils_values/* validatePositiveInteger */.wQ)('maxRetries', options.maxRetries ?? 2);
         this.fetch = options.fetch ?? getDefaultFetch();
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BaseAnthropic_encoder, FallbackEncoder, "f");
         this.middleware = [...(options.middleware ?? [])];
@@ -64257,9 +64208,6 @@ class BaseAnthropic {
     getUserAgent() {
         return `Anthropic/JS ${VERSION}`;
     }
-    defaultIdempotencyKey() {
-        return `stainless-node-retry-${uuid4()}`;
-    }
     makeStatusError(status, error, message, headers) {
         return core_error/* APIError */.LG.generate(status, error, message, headers);
     }
@@ -64373,7 +64321,7 @@ class BaseAnthropic {
     }
     async makeRequest(optionsInput, retriesRemaining, retryOfRequestLogID) {
         const options = await optionsInput;
-        const maxRetries = options.maxRetries ?? this.maxRetries;
+        const maxRetries = (0,utils_values/* validatePositiveInteger */.wQ)('maxRetries', options.maxRetries ?? this.maxRetries);
         if (retriesRemaining == null) {
             retriesRemaining = maxRetries;
             // Top-level call: reset per-request auth flags so a reused options object
@@ -64638,9 +64586,10 @@ class BaseAnthropic {
                 timeoutMillis = Date.parse(retryAfterHeader) - Date.now();
             }
         }
-        // If the API asks us to wait a certain amount of time, just do what it
-        // says, but otherwise calculate a default
-        if (timeoutMillis === undefined) {
+        // If the API asks us to wait a certain amount of time, do what it says, as long as it's a positive delay that
+        // one timer can represent (setTimeout fires after 1ms for anything above 2^31 - 1). Otherwise (no header, an
+        // unparseable value, zero/negative, a date in the past) calculate a default.
+        if (timeoutMillis === undefined || !(timeoutMillis > 0 && timeoutMillis <= 2 ** 31 - 1)) {
             const maxRetries = options.maxRetries ?? this.maxRetries;
             timeoutMillis = this.calculateDefaultRetryTimeoutMillis(retriesRemaining, maxRetries);
         }
@@ -64698,14 +64647,7 @@ class BaseAnthropic {
         return { req, url, timeout: options.timeout };
     }
     async buildHeaders({ options, method, bodyHeaders, retryCount, }) {
-        let idempotencyHeaders = {};
-        if (this.idempotencyHeader && method !== 'get') {
-            if (!options.idempotencyKey)
-                options.idempotencyKey = this.defaultIdempotencyKey();
-            idempotencyHeaders[this.idempotencyHeader] = options.idempotencyKey;
-        }
         const headers = buildHeaders([
-            idempotencyHeaders,
             {
                 Accept: 'application/json',
                 'User-Agent': this.getUserAgent(),
@@ -65586,7 +65528,6 @@ function makeAbort(controller, signal) {
 }
 //# sourceMappingURL=middleware.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/index.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -65605,7 +65546,6 @@ function makeAbort(controller, signal) {
 /* harmony export */   r: () => (/* binding */ castToError),
 /* harmony export */   z: () => (/* binding */ isAbortError)
 /* harmony export */ });
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 function isAbortError(err) {
     return (typeof err === 'object' &&
         err !== null &&
@@ -65685,7 +65625,6 @@ function __classPrivateFieldGet(receiver, state, kind, f) {
 /* harmony import */ var _utils_env_mjs__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(111);
 /* harmony import */ var _utils_log_mjs__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7412);
 /* harmony import */ var _utils_query_mjs__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(626);
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 
@@ -65756,7 +65695,6 @@ function applyJitter(ms) {
 /* harmony export */ });
 /* unused harmony export toBase64 */
 /* harmony import */ var _core_error_mjs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(5064);
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 const toBase64 = (data) => {
@@ -65835,7 +65773,6 @@ function decodeUTF8(bytes) {
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
 /* harmony export */   s: () => (/* binding */ readEnv)
 /* harmony export */ });
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 /**
  * Read an environment variable.
  *
@@ -65868,7 +65805,6 @@ const readEnv = (env) => {
 /* harmony export */ });
 /* harmony import */ var _values_mjs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(9296);
 /* harmony import */ var _env_mjs__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(111);
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 
 const defaultLogLevel = 'warn';
@@ -66515,7 +66451,6 @@ function stringify(object, opts = {}) {
 }
 //# sourceMappingURL=stringify.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/query.mjs
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 function stringifyQuery(query) {
     return stringify(query, { arrayFormat: 'brackets' });
@@ -66541,7 +66476,6 @@ function stringifyQuery(query) {
 /* harmony export */ });
 /* unused harmony exports ensurePresent, coerceInteger, coerceFloat, coerceBoolean, maybeCoerceInteger, maybeCoerceFloat, maybeCoerceBoolean, pop */
 /* harmony import */ var _core_error_mjs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(5064);
-// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 // https://url.spec.whatwg.org/#url-scheme-string
 const startsWithSchemeRegexp = /^[a-z][a-z0-9+.-]*:/i;
