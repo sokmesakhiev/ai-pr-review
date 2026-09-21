@@ -88781,7 +88781,7 @@ const CONTENT_TYPE_HEADER = 'Content-Type';
 const SERVER_TIMEOUT_HEADER = 'X-Server-Timeout';
 const USER_AGENT_HEADER = 'User-Agent';
 const GOOGLE_API_CLIENT_HEADER = 'x-goog-api-client';
-const SDK_VERSION = '2.22.0'; // x-release-please-version
+const SDK_VERSION = '2.23.0'; // x-release-please-version
 const LIBRARY_LABEL = `google-genai-sdk/${SDK_VERSION}`;
 const VERTEX_AI_API_DEFAULT_VERSION = 'v1beta1';
 const GOOGLE_AI_API_DEFAULT_VERSION = 'v1beta';
@@ -88972,6 +88972,10 @@ class ApiClient {
             throw new Error('Headers are not set.');
         }
     }
+    getFetch() {
+        var _a;
+        return (_a = this.clientOptions.httpOptions) === null || _a === void 0 ? void 0 : _a.fetch;
+    }
     getRequestUrlInternal(httpOptions) {
         if (!httpOptions ||
             httpOptions.baseUrl === undefined ||
@@ -89065,10 +89069,13 @@ class ApiClient {
             requestInit.body = request.body;
         }
         requestInit = await this.includeExtraHttpOptionsToRequestInit(requestInit, patchedHttpOptions, url.toString());
-        return this.unaryApiCall(url, requestInit, request.httpMethod, patchedHttpOptions.retryOptions, patchedHttpOptions.timeout, request.abortSignal);
+        return this.unaryApiCall(url, requestInit, request.httpMethod, patchedHttpOptions.retryOptions, patchedHttpOptions.timeout, request.abortSignal, patchedHttpOptions.fetch);
     }
     patchHttpOptions(baseHttpOptions, requestHttpOptions) {
         const patchedHttpOptions = JSON.parse(JSON.stringify(baseHttpOptions));
+        if (baseHttpOptions.fetch) {
+            patchedHttpOptions.fetch = baseHttpOptions.fetch;
+        }
         for (const [key, value] of Object.entries(requestHttpOptions)) {
             // Records compile to objects.
             if (typeof value === 'object') {
@@ -89099,7 +89106,7 @@ class ApiClient {
         let requestInit = {};
         requestInit.body = request.body;
         requestInit = await this.includeExtraHttpOptionsToRequestInit(requestInit, patchedHttpOptions, url.toString());
-        return this.streamApiCall(url, requestInit, request.httpMethod, patchedHttpOptions.retryOptions, patchedHttpOptions.timeout, request.abortSignal);
+        return this.streamApiCall(url, requestInit, request.httpMethod, patchedHttpOptions.retryOptions, patchedHttpOptions.timeout, request.abortSignal, patchedHttpOptions.fetch);
     }
     async includeExtraHttpOptionsToRequestInit(requestInit, httpOptions, url) {
         if ((httpOptions === null || httpOptions === void 0 ? void 0 : httpOptions.timeout) && httpOptions.timeout > 0) {
@@ -89111,8 +89118,8 @@ class ApiClient {
         requestInit.headers = await this.getHeadersInternal(httpOptions, url);
         return requestInit;
     }
-    async unaryApiCall(url, requestInit, httpMethod, retryOptions, timeout, abortSignal) {
-        return this.apiCall(url.toString(), Object.assign(Object.assign({}, requestInit), { method: httpMethod }), retryOptions, timeout, abortSignal)
+    async unaryApiCall(url, requestInit, httpMethod, retryOptions, timeout, abortSignal, fetchFn) {
+        return this.apiCall(url.toString(), Object.assign(Object.assign({}, requestInit), { method: httpMethod }), retryOptions, timeout, abortSignal, fetchFn)
             .then(async (response) => {
             await throwErrorIfNotOK(response);
             return new HttpResponse(response);
@@ -89126,8 +89133,8 @@ class ApiClient {
             }
         });
     }
-    async streamApiCall(url, requestInit, httpMethod, retryOptions, timeout, abortSignal) {
-        return this.apiCall(url.toString(), Object.assign(Object.assign({}, requestInit), { method: httpMethod }), retryOptions, timeout, abortSignal)
+    async streamApiCall(url, requestInit, httpMethod, retryOptions, timeout, abortSignal, fetchFn) {
+        return this.apiCall(url.toString(), Object.assign(Object.assign({}, requestInit), { method: httpMethod }), retryOptions, timeout, abortSignal, fetchFn)
             .then(async (response) => {
             await throwErrorIfNotOK(response);
             return this.processStreamResponse(response);
@@ -89229,8 +89236,9 @@ class ApiClient {
             }
         });
     }
-    async apiCall(url, requestInit, retryOptions, timeout, abortSignal) {
+    async apiCall(url, requestInit, retryOptions, timeout, abortSignal, fetchFn) {
         var _a, _b, _c, _d, _e, _f;
+        const fetchFunc = fetchFn !== null && fetchFn !== void 0 ? fetchFn : fetch;
         const retryableStatusCodes = (_a = retryOptions === null || retryOptions === void 0 ? void 0 : retryOptions.httpStatusCodes) !== null && _a !== void 0 ? _a : DEFAULT_RETRY_HTTP_STATUS_CODES;
         const runFetch = async () => {
             // A fresh signal per attempt, so that `timeout` bounds this attempt
@@ -89238,7 +89246,7 @@ class ApiClient {
             const attempt = createAttemptSignal(timeout, abortSignal);
             let response;
             try {
-                response = await fetch(url, Object.assign(Object.assign({}, requestInit), { signal: attempt.signal }));
+                response = await fetchFunc(url, Object.assign(Object.assign({}, requestInit), { signal: attempt.signal }));
             }
             catch (e) {
                 attempt.dispose();
@@ -94003,6 +94011,218 @@ function defineReadonly(target, key, value) {
  *
  * g3-prettier-ignore-file
  */
+const DEFAULT_FETCHER = (input, init) => {
+    // If input is a Request and init is undefined, Bun will discard the method,
+    // headers, body and other options that were set on the request object.
+    // Node.js and browers would ignore an undefined init value. This check is
+    // therefore needed for interop with Bun.
+    if (init == null) {
+        return fetch(input);
+    }
+    else {
+        return fetch(input, init);
+    }
+};
+class HTTPClient {
+    constructor(options = {}) {
+        this.requestHooks = [];
+        this.requestErrorHooks = [];
+        this.responseHooks = [];
+        this.options = options;
+        this.fetcher = options.fetcher || DEFAULT_FETCHER;
+    }
+    async request(request) {
+        let req = request;
+        for (const hook of this.requestHooks) {
+            const nextRequest = await hook(req);
+            if (nextRequest) {
+                req = nextRequest;
+            }
+        }
+        try {
+            const res = await this.fetcher(req);
+            for (const hook of this.responseHooks) {
+                await hook(res, req);
+            }
+            return res;
+        }
+        catch (err) {
+            for (const hook of this.requestErrorHooks) {
+                await hook(err, req);
+            }
+            throw err;
+        }
+    }
+    addHook(...args) {
+        if (args[0] === "beforeRequest") {
+            this.requestHooks.push(args[1]);
+        }
+        else if (args[0] === "requestError") {
+            this.requestErrorHooks.push(args[1]);
+        }
+        else if (args[0] === "response") {
+            this.responseHooks.push(args[1]);
+        }
+        else {
+            throw new Error(`Invalid hook type: ${args[0]}`);
+        }
+        return this;
+    }
+    removeHook(...args) {
+        let target;
+        if (args[0] === "beforeRequest") {
+            target = this.requestHooks;
+        }
+        else if (args[0] === "requestError") {
+            target = this.requestErrorHooks;
+        }
+        else if (args[0] === "response") {
+            target = this.responseHooks;
+        }
+        else {
+            throw new Error(`Invalid hook type: ${args[0]}`);
+        }
+        const index = target.findIndex((v) => v === args[1]);
+        if (index >= 0) {
+            target.splice(index, 1);
+        }
+        return this;
+    }
+    clone() {
+        const child = new HTTPClient(this.options);
+        child.requestHooks = this.requestHooks.slice();
+        child.requestErrorHooks = this.requestErrorHooks.slice();
+        child.responseHooks = this.responseHooks.slice();
+        return child;
+    }
+}
+// A semicolon surrounded by optional whitespace characters is used to separate
+// segments in a media type string.
+const mediaParamSeparator = /\s*;\s*/g;
+function matchContentType(response, pattern) {
+    var _a;
+    // `*` is a special case which means anything is acceptable.
+    if (pattern === "*") {
+        return true;
+    }
+    let contentType = ((_a = response.headers.get("content-type")) === null || _a === void 0 ? void 0 : _a.trim()) || "application/octet-stream";
+    contentType = contentType.toLowerCase();
+    const wantParts = pattern.toLowerCase().trim().split(mediaParamSeparator);
+    const [wantType = "", ...wantParams] = wantParts;
+    if (wantType.split("/").length !== 2) {
+        return false;
+    }
+    const gotParts = contentType.split(mediaParamSeparator);
+    const [gotType = "", ...gotParams] = gotParts;
+    const [type = "", subtype = ""] = gotType.split("/");
+    if (!type || !subtype) {
+        return false;
+    }
+    if (wantType !== "*/*" &&
+        gotType !== wantType &&
+        `${type}/*` !== wantType &&
+        `*/${subtype}` !== wantType) {
+        return false;
+    }
+    if (gotParams.length < wantParams.length) {
+        return false;
+    }
+    const params = new Set(gotParams);
+    for (const wantParam of wantParams) {
+        if (!params.has(wantParam)) {
+            return false;
+        }
+    }
+    return true;
+}
+const codeRangeRE$1 = new RegExp("^[0-9]xx$", "i");
+function matchStatusCode(response, codes) {
+    const actual = `${response.status}`;
+    const expectedCodes = Array.isArray(codes) ? codes : [codes];
+    if (!expectedCodes.length) {
+        return false;
+    }
+    return expectedCodes.some((ec) => {
+        const code = `${ec}`;
+        if (code === "default") {
+            return true;
+        }
+        if (!codeRangeRE$1.test(`${code}`)) {
+            return code === actual;
+        }
+        const expectFamily = code.charAt(0);
+        if (!expectFamily) {
+            throw new Error("Invalid status code range");
+        }
+        const actualFamily = actual.charAt(0);
+        if (!actualFamily) {
+            throw new Error(`Invalid response status code: ${actual}`);
+        }
+        return actualFamily === expectFamily;
+    });
+}
+function matchResponse(response, code, contentTypePattern) {
+    return (matchStatusCode(response, code) &&
+        matchContentType(response, contentTypePattern));
+}
+/**
+ * Uses various heurisitics to determine if an error is a connection error.
+ */
+function isConnectionError(err) {
+    if (typeof err !== "object" || err == null) {
+        return false;
+    }
+    // Covers fetch in Deno as well
+    const isBrowserErr = err instanceof TypeError &&
+        err.message.toLowerCase().startsWith("failed to fetch");
+    const isNodeErr = err instanceof TypeError &&
+        err.message.toLowerCase().startsWith("fetch failed");
+    const isBunErr = "name" in err && err.name === "ConnectionError";
+    const isGenericErr = "code" in err &&
+        typeof err.code === "string" &&
+        err.code.toLowerCase() === "econnreset";
+    return isBrowserErr || isNodeErr || isGenericErr || isBunErr;
+}
+/**
+ * Uses various heurisitics to determine if an error is a timeout error.
+ */
+function isTimeoutError(err) {
+    if (typeof err !== "object" || err == null) {
+        return false;
+    }
+    // Fetch in browser, Node.js, Bun, Deno
+    const isNative = "name" in err && err.name === "TimeoutError";
+    const isLegacyNative = "code" in err && err.code === 23;
+    // Node.js HTTP client and Axios
+    const isGenericErr = "code" in err &&
+        typeof err.code === "string" &&
+        err.code.toLowerCase() === "econnaborted";
+    return isNative || isLegacyNative || isGenericErr;
+}
+/**
+ * Uses various heurisitics to determine if an error is a abort error.
+ */
+function src_isAbortError(err) {
+    if (typeof err !== "object" || err == null) {
+        return false;
+    }
+    // Fetch in browser, Node.js, Bun, Deno
+    const isNative = "name" in err && err.name === "AbortError";
+    const isLegacyNative = "code" in err && err.code === 20;
+    // Node.js HTTP client and Axios
+    const isGenericErr = "code" in err &&
+        typeof err.code === "string" &&
+        err.code.toLowerCase() === "econnaborted";
+    return isNative || isLegacyNative || isGenericErr;
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
 /*
  * This file is only ever generated once on the first generation and then is free to be modified.
  * Any hooks you wish to add should be registered in the initHooks function. Feel free to define them
@@ -94297,6 +94517,20 @@ function isPlainObject$1(value) {
 /*
  * Code generated by Speakeasy (https://speakeasy.com). DO NOT EDIT.
  */
+const reservedEscapes = /%(2[346bcf]|3[abdf]|40|5[bd])/gi;
+function encodeKeyChars(v, charEncoding) {
+    return encodeChars(v, charEncoding === "percentExceptReserved" ? "percent" : charEncoding);
+}
+function encodeChars(v, charEncoding) {
+    switch (charEncoding) {
+        case "percent":
+            return encodeURIComponent(v);
+        case "percentExceptReserved":
+            return encodeURIComponent(v).replace(reservedEscapes, (m) => decodeURIComponent(m));
+        default:
+            return v;
+    }
+}
 function formEncoder(sep) {
     return (key, value, options) => {
         let out = "";
@@ -94307,7 +94541,7 @@ function formEncoder(sep) {
             return;
         }
         const encodeString = (v) => {
-            return (options === null || options === void 0 ? void 0 : options.charEncoding) === "percent" ? encodeURIComponent(v) : v;
+            return encodeChars(v, options === null || options === void 0 ? void 0 : options.charEncoding);
         };
         const encodeValue = (v) => encodeString(serializeValue(v));
         const encodedSep = encodeString(sep);
@@ -94332,7 +94566,7 @@ function formEncoder(sep) {
             if (encValue == null) {
                 return;
             }
-            tmp = `${encodeString(pk)}=${encValue}`;
+            tmp = `${encodeKeyChars(pk, options === null || options === void 0 ? void 0 : options.charEncoding)}=${encValue}`;
             // If we end up with the nothing then skip forward
             if (!tmp || tmp === "=") {
                 return;
@@ -94348,10 +94582,12 @@ function encodeJSON(key, value, options) {
         return;
     }
     const encodeString = (v) => {
-        return (options === null || options === void 0 ? void 0 : options.charEncoding) === "percent" ? encodeURIComponent(v) : v;
+        return encodeChars(v, options === null || options === void 0 ? void 0 : options.charEncoding);
     };
     const encVal = encodeString(JSON.stringify(value, jsonReplacer));
-    return (options === null || options === void 0 ? void 0 : options.explode) ? encVal : `${encodeString(key)}=${encVal}`;
+    return (options === null || options === void 0 ? void 0 : options.explode)
+        ? encVal
+        : `${encodeKeyChars(key, options === null || options === void 0 ? void 0 : options.charEncoding)}=${encVal}`;
 }
 const encodeSimple = (key, value, options) => {
     let out = "";
@@ -94362,7 +94598,7 @@ const encodeSimple = (key, value, options) => {
         return;
     }
     const encodeString = (v) => {
-        return (options === null || options === void 0 ? void 0 : options.charEncoding) === "percent" ? encodeURIComponent(v) : v;
+        return encodeChars(v, options === null || options === void 0 ? void 0 : options.charEncoding);
     };
     const encodeValue = (v) => encodeString(serializeValue(v));
     pairs.forEach(([pk, pv]) => {
@@ -94475,218 +94711,6 @@ function queryEncoder(f) {
     return bulkEncode;
 }
 const encodeFormQuery = queryEncoder(encodeForm);
-
-/**
- * @license
- * Copyright 2026 Google LLC
- * SPDX-License-Identifier: Apache-2.0
- *
- * g3-prettier-ignore-file
- */
-const DEFAULT_FETCHER = (input, init) => {
-    // If input is a Request and init is undefined, Bun will discard the method,
-    // headers, body and other options that were set on the request object.
-    // Node.js and browers would ignore an undefined init value. This check is
-    // therefore needed for interop with Bun.
-    if (init == null) {
-        return fetch(input);
-    }
-    else {
-        return fetch(input, init);
-    }
-};
-class HTTPClient {
-    constructor(options = {}) {
-        this.requestHooks = [];
-        this.requestErrorHooks = [];
-        this.responseHooks = [];
-        this.options = options;
-        this.fetcher = options.fetcher || DEFAULT_FETCHER;
-    }
-    async request(request) {
-        let req = request;
-        for (const hook of this.requestHooks) {
-            const nextRequest = await hook(req);
-            if (nextRequest) {
-                req = nextRequest;
-            }
-        }
-        try {
-            const res = await this.fetcher(req);
-            for (const hook of this.responseHooks) {
-                await hook(res, req);
-            }
-            return res;
-        }
-        catch (err) {
-            for (const hook of this.requestErrorHooks) {
-                await hook(err, req);
-            }
-            throw err;
-        }
-    }
-    addHook(...args) {
-        if (args[0] === "beforeRequest") {
-            this.requestHooks.push(args[1]);
-        }
-        else if (args[0] === "requestError") {
-            this.requestErrorHooks.push(args[1]);
-        }
-        else if (args[0] === "response") {
-            this.responseHooks.push(args[1]);
-        }
-        else {
-            throw new Error(`Invalid hook type: ${args[0]}`);
-        }
-        return this;
-    }
-    removeHook(...args) {
-        let target;
-        if (args[0] === "beforeRequest") {
-            target = this.requestHooks;
-        }
-        else if (args[0] === "requestError") {
-            target = this.requestErrorHooks;
-        }
-        else if (args[0] === "response") {
-            target = this.responseHooks;
-        }
-        else {
-            throw new Error(`Invalid hook type: ${args[0]}`);
-        }
-        const index = target.findIndex((v) => v === args[1]);
-        if (index >= 0) {
-            target.splice(index, 1);
-        }
-        return this;
-    }
-    clone() {
-        const child = new HTTPClient(this.options);
-        child.requestHooks = this.requestHooks.slice();
-        child.requestErrorHooks = this.requestErrorHooks.slice();
-        child.responseHooks = this.responseHooks.slice();
-        return child;
-    }
-}
-// A semicolon surrounded by optional whitespace characters is used to separate
-// segments in a media type string.
-const mediaParamSeparator = /\s*;\s*/g;
-function matchContentType(response, pattern) {
-    var _a;
-    // `*` is a special case which means anything is acceptable.
-    if (pattern === "*") {
-        return true;
-    }
-    let contentType = ((_a = response.headers.get("content-type")) === null || _a === void 0 ? void 0 : _a.trim()) || "application/octet-stream";
-    contentType = contentType.toLowerCase();
-    const wantParts = pattern.toLowerCase().trim().split(mediaParamSeparator);
-    const [wantType = "", ...wantParams] = wantParts;
-    if (wantType.split("/").length !== 2) {
-        return false;
-    }
-    const gotParts = contentType.split(mediaParamSeparator);
-    const [gotType = "", ...gotParams] = gotParts;
-    const [type = "", subtype = ""] = gotType.split("/");
-    if (!type || !subtype) {
-        return false;
-    }
-    if (wantType !== "*/*" &&
-        gotType !== wantType &&
-        `${type}/*` !== wantType &&
-        `*/${subtype}` !== wantType) {
-        return false;
-    }
-    if (gotParams.length < wantParams.length) {
-        return false;
-    }
-    const params = new Set(gotParams);
-    for (const wantParam of wantParams) {
-        if (!params.has(wantParam)) {
-            return false;
-        }
-    }
-    return true;
-}
-const codeRangeRE$1 = new RegExp("^[0-9]xx$", "i");
-function matchStatusCode(response, codes) {
-    const actual = `${response.status}`;
-    const expectedCodes = Array.isArray(codes) ? codes : [codes];
-    if (!expectedCodes.length) {
-        return false;
-    }
-    return expectedCodes.some((ec) => {
-        const code = `${ec}`;
-        if (code === "default") {
-            return true;
-        }
-        if (!codeRangeRE$1.test(`${code}`)) {
-            return code === actual;
-        }
-        const expectFamily = code.charAt(0);
-        if (!expectFamily) {
-            throw new Error("Invalid status code range");
-        }
-        const actualFamily = actual.charAt(0);
-        if (!actualFamily) {
-            throw new Error(`Invalid response status code: ${actual}`);
-        }
-        return actualFamily === expectFamily;
-    });
-}
-function matchResponse(response, code, contentTypePattern) {
-    return (matchStatusCode(response, code) &&
-        matchContentType(response, contentTypePattern));
-}
-/**
- * Uses various heurisitics to determine if an error is a connection error.
- */
-function isConnectionError(err) {
-    if (typeof err !== "object" || err == null) {
-        return false;
-    }
-    // Covers fetch in Deno as well
-    const isBrowserErr = err instanceof TypeError &&
-        err.message.toLowerCase().startsWith("failed to fetch");
-    const isNodeErr = err instanceof TypeError &&
-        err.message.toLowerCase().startsWith("fetch failed");
-    const isBunErr = "name" in err && err.name === "ConnectionError";
-    const isGenericErr = "code" in err &&
-        typeof err.code === "string" &&
-        err.code.toLowerCase() === "econnreset";
-    return isBrowserErr || isNodeErr || isGenericErr || isBunErr;
-}
-/**
- * Uses various heurisitics to determine if an error is a timeout error.
- */
-function isTimeoutError(err) {
-    if (typeof err !== "object" || err == null) {
-        return false;
-    }
-    // Fetch in browser, Node.js, Bun, Deno
-    const isNative = "name" in err && err.name === "TimeoutError";
-    const isLegacyNative = "code" in err && err.code === 23;
-    // Node.js HTTP client and Axios
-    const isGenericErr = "code" in err &&
-        typeof err.code === "string" &&
-        err.code.toLowerCase() === "econnaborted";
-    return isNative || isLegacyNative || isGenericErr;
-}
-/**
- * Uses various heurisitics to determine if an error is a abort error.
- */
-function src_isAbortError(err) {
-    if (typeof err !== "object" || err == null) {
-        return false;
-    }
-    // Fetch in browser, Node.js, Bun, Deno
-    const isNative = "name" in err && err.name === "AbortError";
-    const isLegacyNative = "code" in err && err.code === 20;
-    // Node.js HTTP client and Axios
-    const isGenericErr = "code" in err &&
-        typeof err.code === "string" &&
-        err.code.toLowerCase() === "econnaborted";
-    return isNative || isLegacyNative || isGenericErr;
-}
 
 /**
  * @license
@@ -95836,9 +95860,9 @@ function unwrapAsAPIPromise(p) {
  * Creates a new Agent (Typed version for SDK).
  */
 function agentsCreate(client, body, api_version, options) {
-    return new APIPromise($do$q(client, body, api_version, options));
+    return new APIPromise($do$w(client, body, api_version, options));
 }
-async function $do$q(client, body, api_version, options) {
+async function $do$w(client, body, api_version, options) {
     var _a, _b, _c;
     const input = {
         body: body,
@@ -95921,9 +95945,9 @@ async function $do$q(client, body, api_version, options) {
  * Deletes an Agent.
  */
 function agentsDelete(client, id, api_version, options) {
-    return new APIPromise($do$p(client, id, api_version, options));
+    return new APIPromise($do$v(client, id, api_version, options));
 }
-async function $do$p(client, id, api_version, options) {
+async function $do$v(client, id, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
@@ -96009,9 +96033,9 @@ async function $do$p(client, id, api_version, options) {
  * Gets a specific Agent.
  */
 function agentsGet(client, id, api_version, options) {
-    return new APIPromise($do$o(client, id, api_version, options));
+    return new APIPromise($do$u(client, id, api_version, options));
 }
-async function $do$o(client, id, api_version, options) {
+async function $do$u(client, id, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
@@ -96097,9 +96121,9 @@ async function $do$o(client, id, api_version, options) {
  * Lists all Agents.
  */
 function agentsList(client, api_version, page_size, page_token, parent, options) {
-    return new APIPromise($do$n(client, api_version, page_size, page_token, parent, options));
+    return new APIPromise($do$t(client, api_version, page_size, page_token, parent, options));
 }
-async function $do$n(client, api_version, page_size, page_token, parent, options) {
+async function $do$t(client, api_version, page_size, page_token, parent, options) {
     var _a, _b, _c;
     const input = {
         api_version: api_version,
@@ -96221,12 +96245,500 @@ class Agents extends ClientSDK {
  * g3-prettier-ignore-file
  */
 /**
+ * Creates a credential.
+ */
+function credentialsCreate(client, body, api_version, options) {
+    return new APIPromise($do$s(client, body, api_version, options));
+}
+async function $do$s(client, body, api_version, options) {
+    var _a, _b, _c;
+    const input = {
+        body: body,
+        api_version: api_version,
+    };
+    const payload = input;
+    const body$ = encodeJSON("body", payload.body, { explode: true });
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+    };
+    const path = pathToFunc("/{api_version}/credentials")(pathParams);
+    const headers = new Headers(compactMap({
+        "Content-Type": "application/json",
+        Accept: "application/json",
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "CreateCredential",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "POST",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path,
+        headers: headers,
+        body: body$,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const [result] = await match(json(200), fail("4XX"), fail("5XX"))(response, req);
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/**
+ * Deletes a credential. Fails if referenced by active triggers.
+ */
+function credentialsDelete(client, id, api_version, options) {
+    return new APIPromise($do$r(client, id, api_version, options));
+}
+async function $do$r(client, id, api_version, options) {
+    var _a, _b, _c;
+    const input = {
+        id: id,
+        api_version: api_version,
+    };
+    const payload = input;
+    const body = null;
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+        id: encodeSimple("id", payload.id, {
+            explode: false,
+            charEncoding: "percent",
+        }),
+    };
+    const path = pathToFunc("/{api_version}/credentials/{id}")(pathParams);
+    const headers = new Headers(compactMap({
+        Accept: "application/json",
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "DeleteCredential",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "DELETE",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path,
+        headers: headers,
+        body: body,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const [result] = await match(json(200), fail("4XX"), fail("5XX"))(response, req);
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/**
+ * Gets metadata of a single credential (no secret fields).
+ */
+function credentialsGet(client, id, api_version, options) {
+    return new APIPromise($do$q(client, id, api_version, options));
+}
+async function $do$q(client, id, api_version, options) {
+    var _a, _b, _c;
+    const input = {
+        id: id,
+        api_version: api_version,
+    };
+    const payload = input;
+    const body = null;
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+        id: encodeSimple("id", payload.id, {
+            explode: false,
+            charEncoding: "percent",
+        }),
+    };
+    const path = pathToFunc("/{api_version}/credentials/{id}")(pathParams);
+    const headers = new Headers(compactMap({
+        Accept: "application/json",
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "GetCredential",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "GET",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path,
+        headers: headers,
+        body: body,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const [result] = await match(json(200), fail("4XX"), fail("5XX"))(response, req);
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/**
+ * Lists credentials for a project.
+ */
+function credentialsList(client, api_version, page_size, page_token, options) {
+    return new APIPromise($do$p(client, api_version, page_size, page_token, options));
+}
+async function $do$p(client, api_version, page_size, page_token, options) {
+    var _a, _b, _c;
+    const input = {
+        api_version: api_version,
+        page_size: page_size,
+        page_token: page_token,
+    };
+    const payload = input;
+    const body = null;
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload === null || payload === void 0 ? void 0 : payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+    };
+    const path = pathToFunc("/{api_version}/credentials")(pathParams);
+    const query = encodeFormQuery({
+        "page_size": payload === null || payload === void 0 ? void 0 : payload.page_size,
+        "page_token": payload === null || payload === void 0 ? void 0 : payload.page_token,
+    });
+    const headers = new Headers(compactMap({
+        Accept: "application/json",
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "ListCredentials",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "GET",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path,
+        headers: headers,
+        query: query,
+        body: body,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const [result] = await match(json(200), fail("4XX"), fail("5XX"))(response, req);
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/**
+ * Updates a credential.
+ */
+function credentialsUpdate(client, id, body, api_version, update_mask, options) {
+    return new APIPromise($do$o(client, id, body, api_version, update_mask, options));
+}
+async function $do$o(client, id, body, api_version, update_mask, options) {
+    var _a, _b, _c;
+    const input = {
+        id: id,
+        body: body,
+        api_version: api_version,
+        update_mask: update_mask,
+    };
+    const payload = input;
+    const body$ = encodeJSON("body", payload.body, { explode: true });
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+        id: encodeSimple("id", payload.id, {
+            explode: false,
+            charEncoding: "percent",
+        }),
+    };
+    const path = pathToFunc("/{api_version}/credentials/{id}")(pathParams);
+    const query = encodeFormQuery({
+        "update_mask": payload.update_mask,
+    });
+    const headers = new Headers(compactMap({
+        "Content-Type": "application/json",
+        Accept: "application/json",
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "UpdateCredential",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "PATCH",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path,
+        headers: headers,
+        query: query,
+        body: body$,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const [result] = await match(json(200), fail("4XX"), fail("5XX"))(response, req);
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+class Credentials extends ClientSDK {
+    /**
+     * Lists credentials for a project.
+     */
+    list(params, options) {
+        return unwrapAsAPIPromise(credentialsList(this, params === null || params === void 0 ? void 0 : params.api_version, params === null || params === void 0 ? void 0 : params.page_size, params === null || params === void 0 ? void 0 : params.page_token, options));
+    }
+    /**
+     * Creates a credential.
+     */
+    create(params, options) {
+        const { api_version } = params, body = __rest(params, ["api_version"]);
+        return unwrapAsAPIPromise(credentialsCreate(this, body, api_version, options));
+    }
+    /**
+     * Deletes a credential. Fails if referenced by active triggers.
+     */
+    delete(id, params, options) {
+        return unwrapAsAPIPromise(credentialsDelete(this, id, params === null || params === void 0 ? void 0 : params.api_version, options));
+    }
+    /**
+     * Gets metadata of a single credential (no secret fields).
+     */
+    get(id, params, options) {
+        return unwrapAsAPIPromise(credentialsGet(this, id, params === null || params === void 0 ? void 0 : params.api_version, options));
+    }
+    /**
+     * Updates a credential.
+     */
+    update(id, params, options) {
+        const { api_version, update_mask } = params, body = __rest(params, ["api_version", "update_mask"]);
+        return unwrapAsAPIPromise(credentialsUpdate(this, id, body, api_version, update_mask, options));
+    }
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/**
  * Creates an environment.
  */
 function environmentsCreateEnvironment(client, body, api_version, options) {
-    return new APIPromise($do$m(client, body, api_version, options));
+    return new APIPromise($do$n(client, body, api_version, options));
 }
-async function $do$m(client, body, api_version, options) {
+async function $do$n(client, body, api_version, options) {
     var _a, _b, _c;
     const input = {
         body: body,
@@ -96309,9 +96821,9 @@ async function $do$m(client, body, api_version, options) {
  * Deletes an environment.
  */
 function environmentsDeleteEnvironment(client, id, api_version, options) {
-    return new APIPromise($do$l(client, id, api_version, options));
+    return new APIPromise($do$m(client, id, api_version, options));
 }
-async function $do$l(client, id, api_version, options) {
+async function $do$m(client, id, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
@@ -96397,9 +96909,9 @@ async function $do$l(client, id, api_version, options) {
  * Gets an environment.
  */
 function environmentsGetEnvironment(client, id, api_version, options) {
-    return new APIPromise($do$k(client, id, api_version, options));
+    return new APIPromise($do$l(client, id, api_version, options));
 }
-async function $do$k(client, id, api_version, options) {
+async function $do$l(client, id, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
@@ -96485,9 +96997,9 @@ async function $do$k(client, id, api_version, options) {
  * Lists environments.
  */
 function environmentsListEnvironments(client, api_version, page_size, page_token, options) {
-    return new APIPromise($do$j(client, api_version, page_size, page_token, options));
+    return new APIPromise($do$k(client, api_version, page_size, page_token, options));
 }
-async function $do$j(client, api_version, page_size, page_token, options) {
+async function $do$k(client, api_version, page_size, page_token, options) {
     var _a, _b, _c;
     const input = {
         api_version: api_version,
@@ -96575,9 +97087,9 @@ async function $do$j(client, api_version, page_size, page_token, options) {
  * Retrieves file metadata or directory contents from an environment's snapshot. To download file contents directly, pass ?alt=media or use the files.download helper.
  */
 function environmentsFilesList(client, environment, path, api_version, page_size, page_token, recursive, options) {
-    return new APIPromise($do$i(client, environment, path, api_version, page_size, page_token, recursive, options));
+    return new APIPromise($do$j(client, environment, path, api_version, page_size, page_token, recursive, options));
 }
-async function $do$i(client, environment, path, api_version, page_size, page_token, recursive, options) {
+async function $do$j(client, environment, path, api_version, page_size, page_token, recursive, options) {
     var _a, _b, _c;
     const input = {
         environment: environment,
@@ -96597,7 +97109,7 @@ async function $do$i(client, environment, path, api_version, page_size, page_tok
         }),
         path: encodeSimple("path", payload.path, {
             explode: false,
-            charEncoding: "percent",
+            charEncoding: "percentExceptReserved",
         }),
     };
     const path$ = pathToFunc("/{api_version}/environments/{environment}/files/{path}")(pathParams);
@@ -96692,10 +97204,156 @@ class Files extends ClientSDK {
  *
  * g3-prettier-ignore-file
  */
+/**
+ * Start an environment file upload
+ *
+ * @remarks
+ * Starts a resumable upload session for a file in an environment workspace.
+ * Upload the file bytes to the URL returned in the `X-Goog-Upload-URL`
+ * response header, using the resumable upload protocol.
+ */
+function environmentsInternalStartUpload(client, environment, path, x_goog_upload_command, x_goog_upload_header_content_length, x_goog_upload_header_content_type, x_goog_upload_protocol, api_version, extract, overwrite, options) {
+    return new APIPromise($do$i(client, environment, path, x_goog_upload_command, x_goog_upload_header_content_length, x_goog_upload_header_content_type, x_goog_upload_protocol, api_version, extract, overwrite, options));
+}
+async function $do$i(client, environment, path, x_goog_upload_command, x_goog_upload_header_content_length, x_goog_upload_header_content_type, x_goog_upload_protocol, api_version, extract, overwrite, options) {
+    var _a, _b, _c;
+    const input = {
+        environment: environment,
+        path: path,
+        "X-Goog-Upload-Command": x_goog_upload_command,
+        "X-Goog-Upload-Header-Content-Length": x_goog_upload_header_content_length,
+        "X-Goog-Upload-Header-Content-Type": x_goog_upload_header_content_type,
+        "X-Goog-Upload-Protocol": x_goog_upload_protocol,
+        api_version: api_version,
+        extract: extract,
+        overwrite: overwrite,
+    };
+    const payload = input;
+    const body = null;
+    const pathParams = {
+        api_version: encodeSimple("api_version", (_a = payload.api_version) !== null && _a !== void 0 ? _a : client._options.api_version, { explode: false, charEncoding: "percent" }),
+        environment: encodeSimple("environment", payload.environment, {
+            explode: false,
+            charEncoding: "percent",
+        }),
+        path: encodeSimple("path", payload.path, {
+            explode: false,
+            charEncoding: "percentExceptReserved",
+        }),
+    };
+    const path$ = pathToFunc("/upload/{api_version}/environments/{environment}/files/{path}")(pathParams);
+    const query = encodeFormQuery({
+        "extract": payload.extract,
+        "overwrite": payload.overwrite,
+    });
+    const headers = new Headers(compactMap({
+        Accept: "*/*",
+        "X-Goog-Upload-Command": encodeSimple("X-Goog-Upload-Command", payload["X-Goog-Upload-Command"], { explode: false, charEncoding: "none" }),
+        "X-Goog-Upload-Header-Content-Length": encodeSimple("X-Goog-Upload-Header-Content-Length", payload["X-Goog-Upload-Header-Content-Length"], { explode: false, charEncoding: "none" }),
+        "X-Goog-Upload-Header-Content-Type": encodeSimple("X-Goog-Upload-Header-Content-Type", payload["X-Goog-Upload-Header-Content-Type"], { explode: false, charEncoding: "none" }),
+        "X-Goog-Upload-Protocol": encodeSimple("X-Goog-Upload-Protocol", payload["X-Goog-Upload-Protocol"], { explode: false, charEncoding: "none" }),
+    }));
+    const securityInput = await extractSecurity(client._options.security);
+    const requestSecurity = resolveGlobalSecurity(securityInput);
+    const context = {
+        options: client._options,
+        base_url: (_c = (_b = options === null || options === void 0 ? void 0 : options.server_url) !== null && _b !== void 0 ? _b : client._baseURL) !== null && _c !== void 0 ? _c : "",
+        operation_id: "StartEnvironmentFileUpload",
+        o_auth2_scopes: null,
+        resolved_security: requestSecurity,
+        security_source: client._options.security,
+        retry_config: (options === null || options === void 0 ? void 0 : options.retries)
+            || client._options.retry_config
+            || {
+                strategy: "attempt-count-backoff",
+                backoff: {
+                    initialInterval: 500,
+                    maxInterval: 8000,
+                    exponent: 2,
+                    maxElapsedTime: 30000,
+                },
+                retryConnectionErrors: true,
+                maxRetries: 4,
+            }
+            || { strategy: "none" },
+        retry_codes: (options === null || options === void 0 ? void 0 : options.retry_codes) || ["408", "409", "429", "5XX"],
+    };
+    const requestRes = client._createRequest(context, {
+        security: requestSecurity,
+        method: "PUT",
+        baseURL: options === null || options === void 0 ? void 0 : options.server_url,
+        path: path$,
+        headers: headers,
+        query: query,
+        body: body,
+        userAgent: client._options.user_agent,
+        timeout_ms: (options === null || options === void 0 ? void 0 : options.timeout_ms) || client._options.timeout_ms || -1,
+    }, options);
+    if (!requestRes.ok) {
+        return [requestRes, { status: "invalid" }];
+    }
+    const req = requestRes.value;
+    const doResult = await client._do(req, {
+        context,
+        isErrorStatusCode: (statusCode) => matchStatusCode({ status: statusCode }, ["4XX", "5XX"]),
+        retryConfig: context.retry_config,
+        retryCodes: context.retry_codes,
+    });
+    if (!doResult.ok) {
+        return [doResult, { status: "request-error", request: req }];
+    }
+    const response = doResult.value;
+    const responseFields = {
+        httpMeta: { response: response, request: req },
+    };
+    const [result] = await match(nil(200, {
+        hdrs: true,
+    }), fail("4XX"), fail("5XX"))(response, req, { extraFields: responseFields });
+    if (!result.ok) {
+        return [result, { status: "complete", request: req, response }];
+    }
+    return [result, { status: "complete", request: req, response }];
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
+/*
+ * Code generated by Speakeasy (https://speakeasy.com). DO NOT EDIT.
+ */
+class Internal extends ClientSDK {
+    /**
+     * Start an environment file upload
+     *
+     * @remarks
+     * Starts a resumable upload session for a file in an environment workspace.
+     * Upload the file bytes to the URL returned in the `X-Goog-Upload-URL`
+     * response header, using the resumable upload protocol.
+     */
+    startUpload(environment, path, params, options) {
+        return unwrapAsAPIPromise(environmentsInternalStartUpload(this, environment, path, params["X-Goog-Upload-Command"], params["X-Goog-Upload-Header-Content-Length"], params["X-Goog-Upload-Header-Content-Type"], params["X-Goog-Upload-Protocol"], params.api_version, params.extract, params.overwrite, options));
+    }
+}
+
+/**
+ * @license
+ * Copyright 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * g3-prettier-ignore-file
+ */
 /*
  * Code generated by Speakeasy (https://speakeasy.com). DO NOT EDIT.
  */
 class Environments extends ClientSDK {
+    get internal() {
+        var _a;
+        return ((_a = this._internal) !== null && _a !== void 0 ? _a : (this._internal = new Internal(this._options)));
+    }
     get files() {
         var _a;
         return ((_a = this._files) !== null && _a !== void 0 ? _a : (this._files = new Files(this._options)));
@@ -98655,13 +99313,17 @@ class Webhooks extends ClientSDK {
  * Code generated by Speakeasy (https://speakeasy.com). DO NOT EDIT.
  */
 let GoogleGenAI$1 = class GoogleGenAI extends ClientSDK {
+    get environments() {
+        var _a;
+        return ((_a = this._environments) !== null && _a !== void 0 ? _a : (this._environments = new Environments(this._options)));
+    }
     get agents() {
         var _a;
         return ((_a = this._agents) !== null && _a !== void 0 ? _a : (this._agents = new Agents(this._options)));
     }
-    get environments() {
+    get credentials() {
         var _a;
-        return ((_a = this._environments) !== null && _a !== void 0 ? _a : (this._environments = new Environments(this._options)));
+        return ((_a = this._credentials) !== null && _a !== void 0 ? _a : (this._credentials = new Credentials(this._options)));
     }
     get interactions() {
         var _a;
@@ -98706,11 +99368,13 @@ function getGoogleGenAIAPIVersion(parentClient) {
     return apiVersion;
 }
 function buildGoogleGenAIClient(parentClient, options = {}) {
-    var _a, _b, _c, _d, _e;
-    const sdk = new GoogleGenAI$1(Object.assign(Object.assign({}, options), { api_version: (_a = options.api_version) !== null && _a !== void 0 ? _a : getGoogleGenAIAPIVersion(parentClient), security: (_b = options.security) !== null && _b !== void 0 ? _b : new GoogleGenAISecurityProvider({
-            defaultHeaders: Object.assign(Object.assign({}, (_c = parentClient.getDefaultHeaders) === null || _c === void 0 ? void 0 : _c.call(parentClient)), (_d = parentClient.getHeaders) === null || _d === void 0 ? void 0 : _d.call(parentClient)),
+    var _a, _b, _c, _d, _e, _f, _g;
+    const fetchFn = options.http_client ? undefined : (_a = parentClient.getFetch) === null || _a === void 0 ? void 0 : _a.call(parentClient);
+    const httpClient = (_b = options.http_client) !== null && _b !== void 0 ? _b : (fetchFn ? new HTTPClient({ fetcher: fetchFn }) : undefined);
+    const sdk = new GoogleGenAI$1(Object.assign(Object.assign({}, options), { http_client: httpClient, api_version: (_c = options.api_version) !== null && _c !== void 0 ? _c : getGoogleGenAIAPIVersion(parentClient), security: (_d = options.security) !== null && _d !== void 0 ? _d : new GoogleGenAISecurityProvider({
+            defaultHeaders: Object.assign(Object.assign({}, (_e = parentClient.getDefaultHeaders) === null || _e === void 0 ? void 0 : _e.call(parentClient)), (_f = parentClient.getHeaders) === null || _f === void 0 ? void 0 : _f.call(parentClient)),
             getAuthHeaders: (url) => parentClient.getAuthHeaders(url),
-        }), server_url: (_e = options.server_url) !== null && _e !== void 0 ? _e : getGoogleGenAIServerURL(parentClient) }));
+        }), server_url: (_g = options.server_url) !== null && _g !== void 0 ? _g : getGoogleGenAIServerURL(parentClient) }));
     return sdk;
 }
 class GeminiNextGenInteractions {
@@ -98761,8 +99425,8 @@ class GeminiNextGenAgents {
         return unwrapWithSdkHttpResponse(agentsCreate(this.getClient(api_version), body, api_version, toGoogleGenAIRequestOptions(options)));
     }
     async list(params = {}, options) {
-        const { api_version, pageSize, pageToken, parent } = params !== null && params !== void 0 ? params : {};
-        return unwrapWithSdkHttpResponse(agentsList(this.getClient(api_version), api_version, pageSize, pageToken, parent, toGoogleGenAIRequestOptions(options)));
+        const { api_version, page_size, page_token, parent } = params !== null && params !== void 0 ? params : {};
+        return unwrapWithSdkHttpResponse(agentsList(this.getClient(api_version), api_version, page_size, page_token, parent, toGoogleGenAIRequestOptions(options)));
     }
     async get(id, params = {}, options) {
         return unwrapWithSdkHttpResponse(agentsGet(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
@@ -98826,8 +99490,8 @@ class GeminiNextGenTriggers {
         return unwrapWithSdkHttpResponse(triggersCreate(this.getClient(api_version), body, api_version, toGoogleGenAIRequestOptions(options)));
     }
     async list(params = {}, options) {
-        const { api_version, filter, pageSize, pageToken } = params !== null && params !== void 0 ? params : {};
-        return unwrapWithSdkHttpResponse(triggersList(this.getClient(api_version), api_version, filter, pageSize, pageToken, toGoogleGenAIRequestOptions(options)));
+        const { api_version, filter, page_size, page_token } = params !== null && params !== void 0 ? params : {};
+        return unwrapWithSdkHttpResponse(triggersList(this.getClient(api_version), api_version, filter, page_size, page_token, toGoogleGenAIRequestOptions(options)));
     }
     async get(id, params = {}, options) {
         return unwrapWithSdkHttpResponse(triggersGet(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
@@ -98843,8 +99507,8 @@ class GeminiNextGenTriggers {
         return unwrapWithSdkHttpResponse(triggersRun(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), trigger_id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
     }
     async listExecutions(trigger_id, params = {}, options) {
-        const { api_version, pageSize, pageToken } = params !== null && params !== void 0 ? params : {};
-        return unwrapWithSdkHttpResponse(triggersListExecutions(this.getClient(api_version), trigger_id, api_version, pageSize, pageToken, toGoogleGenAIRequestOptions(options)));
+        const { api_version, page_size, page_token } = params !== null && params !== void 0 ? params : {};
+        return unwrapWithSdkHttpResponse(triggersListExecutions(this.getClient(api_version), trigger_id, api_version, page_size, page_token, toGoogleGenAIRequestOptions(options)));
     }
     getClient(apiVersion) {
         var _a;
@@ -99084,19 +99748,203 @@ function normalizeInteractionDates(interaction) {
 function normalizeDateLike(value) {
     return value instanceof Date ? value.toISOString() : value;
 }
+function inferMimeType(filePath) {
+    const ext = filePath.slice(filePath.lastIndexOf('.') + 1).toLowerCase();
+    const mimeTypes = {
+        txt: 'text/plain',
+        json: 'application/json',
+        js: 'text/javascript',
+        mjs: 'text/javascript',
+        ts: 'text/plain',
+        py: 'text/x-python',
+        html: 'text/html',
+        htm: 'text/html',
+        css: 'text/css',
+        csv: 'text/csv',
+        xml: 'application/xml',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        svg: 'image/svg+xml',
+        pdf: 'application/pdf',
+        zip: 'application/zip',
+        tar: 'application/x-tar',
+        gz: 'application/gzip',
+    };
+    return mimeTypes[ext];
+}
 class GeminiNextGenEnvironmentFiles {
-    constructor(resolveClient) {
+    constructor(resolveClient, parentClient) {
         this.resolveClient = resolveClient;
+        this.parentClient = parentClient;
     }
     async list(params, options) {
-        const { environment, path, page_size, page_token, recursive, api_version } = params;
-        return unwrapWithSdkHttpResponse(environmentsFilesList(this.resolveClient(api_version), environment, path, api_version, page_size, page_token, recursive, toGoogleGenAIRequestOptions(options)));
+        return unwrapWithSdkHttpResponse(environmentsFilesList(this.resolveClient(params.api_version), params.environment, params.path, params.api_version, params.page_size, params.page_token, params.recursive, toGoogleGenAIRequestOptions(options)));
+    }
+    async download(params, options) {
+        var _a, _b;
+        const targetEnv = params.environment;
+        if (!targetEnv) {
+            throw new Error('environment is required.');
+        }
+        const envName = targetEnv.startsWith('environments/')
+            ? targetEnv
+            : `environments/${targetEnv}`;
+        const cleanPath = params.path.replace(/^\/+/, '');
+        const downloadPath = `${envName}/files/${cleanPath}`;
+        const apiClient = this.parentClient;
+        if (!apiClient || typeof apiClient.request !== 'function') {
+            throw new Error('apiClient is required to download files.');
+        }
+        const response = await apiClient.request({
+            path: downloadPath,
+            httpMethod: 'GET',
+            queryParams: { alt: 'media' },
+            httpOptions: Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.httpOptions), { apiVersion: (_a = params.api_version) !== null && _a !== void 0 ? _a : (_b = options === null || options === void 0 ? void 0 : options.httpOptions) === null || _b === void 0 ? void 0 : _b.apiVersion }),
+        });
+        if (response &&
+            response.responseInternal &&
+            typeof response.responseInternal.arrayBuffer === 'function') {
+            const arrayBuffer = await response.responseInternal.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+        }
+        throw new Error('Unexpected response type from download');
+    }
+    async upload(params, options) {
+        var _a, _b, _c, _d, _e, _f, _g, _h;
+        const targetEnv = params.environment;
+        if (!targetEnv) {
+            throw new Error('environment is required.');
+        }
+        targetEnv.startsWith('environments/')
+            ? targetEnv
+            : `environments/${targetEnv}`;
+        const cleanPath = params.path.replace(/^\/+/, '');
+        const apiClient = this.parentClient;
+        if (!apiClient || typeof apiClient.request !== 'function') {
+            throw new Error('apiClient is required to upload files.');
+        }
+        let fileData;
+        let sizeBytes = 0;
+        let mimeType = params.mime_type;
+        if (typeof params.file === 'string') {
+            let buffer;
+            try {
+                const req = globalThis.require;
+                if (req) {
+                    const fs = req('fs');
+                    buffer = fs.readFileSync(params.file);
+                }
+            }
+            catch (_j) { }
+            if (!buffer && typeof globalThis.process !== 'undefined') {
+                try {
+                    const mod = (_b = (_a = globalThis.process.mainModule) === null || _a === void 0 ? void 0 : _a.require) !== null && _b !== void 0 ? _b : globalThis.require;
+                    if (mod) {
+                        const fs = mod('fs');
+                        buffer = fs.readFileSync(params.file);
+                    }
+                }
+                catch (_k) { }
+            }
+            if (buffer) {
+                fileData = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+                sizeBytes = fileData.byteLength;
+            }
+            else {
+                throw new Error(`Unable to read file from path "${params.file}". File path string inputs are only supported in Node.js environments.`);
+            }
+            if (!mimeType) {
+                mimeType = inferMimeType(params.file);
+            }
+        }
+        else if (typeof Blob !== 'undefined' && params.file instanceof Blob) {
+            fileData = params.file;
+            sizeBytes = params.file.size;
+            if (!mimeType && params.file.type) {
+                mimeType = params.file.type;
+            }
+        }
+        else if (params.file instanceof Uint8Array || params.file instanceof ArrayBuffer) {
+            fileData =
+                params.file instanceof ArrayBuffer ? new Uint8Array(params.file) : params.file;
+            sizeBytes = fileData.byteLength;
+        }
+        else if (typeof globalThis.Buffer !== 'undefined' &&
+            typeof globalThis.Buffer.isBuffer === 'function' &&
+            globalThis.Buffer.isBuffer(params.file)) {
+            const buf = params.file;
+            fileData = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+            sizeBytes = fileData.byteLength;
+        }
+        else {
+            throw new Error('Unsupported file type for upload.');
+        }
+        if (!mimeType) {
+            mimeType = 'application/octet-stream';
+        }
+        const cleanEnv = targetEnv.startsWith('environments/')
+            ? targetEnv.replace(/^environments\//, '')
+            : targetEnv;
+        const [result, call] = await environmentsInternalStartUpload(this.resolveClient(params.api_version), cleanEnv, cleanPath, 'start', sizeBytes, mimeType, 'resumable', params.api_version, params.extract, params.overwrite, toGoogleGenAIRequestOptions(options)).$inspect();
+        if (!result.ok) {
+            throw wrapSDKError(result.error);
+        }
+        const uploadUrl = call.status === 'complete'
+            ? (_e = (_d = (_c = call.response) === null || _c === void 0 ? void 0 : _c.headers) === null || _d === void 0 ? void 0 : _d.get('x-goog-upload-url')) !== null && _e !== void 0 ? _e : (_g = (_f = call.response) === null || _f === void 0 ? void 0 : _f.headers) === null || _g === void 0 ? void 0 : _g.get('X-Goog-Upload-URL')
+            : undefined;
+        if (!uploadUrl) {
+            throw new Error('Failed to get upload URL from upload handshake response.');
+        }
+        const CHUNK_SIZE = 8 * 1024 * 1024;
+        let offset = 0;
+        let uploadResponse;
+        const blob = fileData instanceof Blob ? fileData : new Blob([fileData]);
+        while (offset < sizeBytes || (sizeBytes === 0 && offset === 0)) {
+            const end = Math.min(offset + CHUNK_SIZE, sizeBytes);
+            const chunk = blob.slice(offset, end);
+            const isFinal = end >= sizeBytes;
+            const uploadCommand = isFinal ? 'upload, finalize' : 'upload';
+            uploadResponse = await apiClient.request({
+                path: '',
+                body: chunk,
+                httpMethod: 'POST',
+                httpOptions: Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.httpOptions), { apiVersion: '', baseUrl: uploadUrl, headers: Object.assign(Object.assign({}, (((_h = options === null || options === void 0 ? void 0 : options.httpOptions) === null || _h === void 0 ? void 0 : _h.headers) || {})), { 'X-Goog-Upload-Command': uploadCommand, 'X-Goog-Upload-Offset': `${offset}` }) }),
+            });
+            offset = end;
+            if (isFinal) {
+                break;
+            }
+        }
+        let resJson;
+        if (uploadResponse && typeof uploadResponse.json === 'function') {
+            resJson = await uploadResponse.json();
+        }
+        else if (uploadResponse &&
+            uploadResponse.responseInternal &&
+            typeof uploadResponse.responseInternal.json === 'function') {
+            resJson = await uploadResponse.responseInternal.json();
+        }
+        if (resJson && typeof resJson === 'object') {
+            if (Array.isArray(resJson.files)) {
+                return resJson;
+            }
+            if (resJson.name || resJson.path) {
+                return { files: [resJson] };
+            }
+            if (resJson.file && typeof resJson.file === 'object') {
+                return { files: [resJson.file] };
+            }
+        }
+        return resJson;
     }
 }
 class GeminiNextGenEnvironments {
     constructor(parentClient) {
         this.parentClient = parentClient;
-        this.files = new GeminiNextGenEnvironmentFiles((apiVersion) => this.getClient(apiVersion));
+        this.files = new GeminiNextGenEnvironmentFiles((apiVersion) => this.getClient(apiVersion), this.parentClient);
     }
     async create(params, options) {
         const { api_version } = params, body = __rest(params, ["api_version"]);
@@ -99111,6 +99959,39 @@ class GeminiNextGenEnvironments {
     }
     async delete(id, params = {}, options) {
         return unwrapWithSdkHttpResponse(environmentsDeleteEnvironment(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
+    }
+    getClient(apiVersion) {
+        var _a;
+        if (apiVersion) {
+            return buildGoogleGenAIClient(this.parentClient, {
+                api_version: apiVersion,
+            });
+        }
+        (_a = this.sdk) !== null && _a !== void 0 ? _a : (this.sdk = buildGoogleGenAIClient(this.parentClient));
+        return this.sdk;
+    }
+}
+class GeminiNextGenCredentials {
+    constructor(parentClient) {
+        this.parentClient = parentClient;
+    }
+    async create(params, options) {
+        const { api_version } = params, body = __rest(params, ["api_version"]);
+        return unwrapWithSdkHttpResponse(credentialsCreate(this.getClient(api_version), body, api_version, toGoogleGenAIRequestOptions(options)));
+    }
+    async list(params = {}, options) {
+        const { api_version, page_size, page_token } = params !== null && params !== void 0 ? params : {};
+        return unwrapWithSdkHttpResponse(credentialsList(this.getClient(api_version), api_version, page_size, page_token, toGoogleGenAIRequestOptions(options)));
+    }
+    async get(id, params = {}, options) {
+        return unwrapWithSdkHttpResponse(credentialsGet(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
+    }
+    async update(id, params, options) {
+        const { api_version, update_mask } = params, body = __rest(params, ["api_version", "update_mask"]);
+        return unwrapWithSdkHttpResponse(credentialsUpdate(this.getClient(api_version), id, body, api_version, update_mask, toGoogleGenAIRequestOptions(options)));
+    }
+    async delete(id, params = {}, options) {
+        return unwrapWithSdkHttpResponse(credentialsDelete(this.getClient(params === null || params === void 0 ? void 0 : params.api_version), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
     }
     getClient(apiVersion) {
         var _a;
@@ -101582,6 +102463,14 @@ class GoogleGenAI {
         console.warn('GoogleGenAI.environments: Environments usage is experimental and may change in future versions.');
         this._environments = new GeminiNextGenEnvironments(this.apiClient);
         return this._environments;
+    }
+    get credentials() {
+        if (this._credentials !== undefined) {
+            return this._credentials;
+        }
+        console.warn('GoogleGenAI.credentials: Credentials usage is experimental and may change in future versions.');
+        this._credentials = new GeminiNextGenCredentials(this.apiClient);
+        return this._credentials;
     }
     constructor(options = {}) {
         var _a, _b, _c, _d;
@@ -115048,7 +115937,7 @@ sessions_Sessions.Turns = Turns;
 
 
 
-class Credentials extends APIResource {
+class credentials_Credentials extends APIResource {
     /**
      * Creates a vault credential. Secret values are write-only and are never returned.
      * See
@@ -115182,7 +116071,7 @@ class Credentials extends APIResource {
 class Vaults extends APIResource {
     constructor() {
         super(...arguments);
-        this.credentials = new Credentials(this._client);
+        this.credentials = new credentials_Credentials(this._client);
     }
     /**
      * Creates a vault for the current project. See
@@ -115258,7 +116147,7 @@ class Vaults extends APIResource {
         });
     }
 }
-Vaults.Credentials = Credentials;
+Vaults.Credentials = credentials_Credentials;
 //# sourceMappingURL=vaults.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/agents.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
