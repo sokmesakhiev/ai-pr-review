@@ -102513,8 +102513,149 @@ const safeJSON = (text) => {
 };
 //# sourceMappingURL=values.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/utils/sleep.mjs
-const sleep_sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep_sleep = (ms, ...signals) => new Promise((resolve, reject) => {
+    const activeSignals = [...new Set(signals.filter((signal) => signal != null))];
+    let timeout;
+    let settled = false;
+    const cleanup = () => {
+        for (const signal of activeSignals) {
+            try {
+                signal.removeEventListener('abort', abort);
+            }
+            catch {
+                // Structural signal cleanup must not prevent the promise from settling.
+            }
+        }
+    };
+    const settle = (callback) => {
+        if (settled) {
+            return;
+        }
+        settled = true;
+        if (timeout !== undefined) {
+            clearTimeout(timeout);
+            timeout = undefined;
+        }
+        cleanup();
+        callback();
+    };
+    const abort = () => {
+        settle(() => reject());
+    };
+    if (activeSignals.some((signal) => signal.aborted)) {
+        abort();
+        return;
+    }
+    timeout = setTimeout(() => {
+        settle(resolve);
+    }, ms);
+    for (const signal of activeSignals) {
+        if (settled) {
+            break;
+        }
+        try {
+            signal.addEventListener('abort', abort, { once: true });
+        }
+        catch (error) {
+            settle(() => reject(error));
+        }
+    }
+    if (activeSignals.some((signal) => signal.aborted)) {
+        abort();
+    }
+});
 //# sourceMappingURL=sleep.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/utils/abort.mjs
+// Keep these optional runtime features out of the SDK's ES2020 type requirements.
+// SAFETY: These host features are optional and checked before use; the structural view avoids requiring newer ambient library declarations.
+const weakGlobals = globalThis;
+const finalizer = 
+// oxlint-disable-next-line anti-slop/no-runtime-typeof -- Weak references and finalizers are optional host capabilities, so probe them before constructing either.
+typeof weakGlobals.FinalizationRegistry === 'function'
+    ? new weakGlobals.FinalizationRegistry((cleanup) => {
+        try {
+            cleanup();
+        }
+        catch {
+            // Caller-provided signal methods must not throw out of a GC callback.
+        }
+    })
+    : undefined;
+const callbackOwners = new WeakMap();
+const subscriptions = new WeakMap();
+// This scope receives only a weak reference, so its closures cannot retain the callback.
+function subscribeWeakly(signal, reference, registry) {
+    let subscription = subscriptions.get(signal);
+    if (!subscription) {
+        const callbacks = new Set();
+        const abort = () => {
+            subscriptions.delete(signal);
+            for (const callback of callbacks) {
+                registry.unregister(callback);
+                callback.deref()?.();
+            }
+            callbacks.clear();
+        };
+        subscription = { callbacks, abort };
+        signal.addEventListener('abort', abort, { once: true });
+        subscriptions.set(signal, subscription);
+    }
+    const owner = subscription;
+    owner.callbacks.add(reference);
+    return () => {
+        owner.callbacks.delete(reference);
+        registry.unregister(reference);
+        if (owner.callbacks.size === 0) {
+            if (subscriptions.get(signal) === owner) {
+                subscriptions.delete(signal);
+            }
+            signal.removeEventListener('abort', owner.abort);
+        }
+    };
+}
+// The listener must not retain the shared owner or its other request callbacks.
+function releaseOnAbort(signal, callbacks, abort) {
+    signal.addEventListener('abort', () => callbacks.deref()?.delete(abort), { once: true });
+}
+/** Keep cancellation alive until abort or collection of the response body or bodyless custom response. */
+function retainRequestAbortCallback(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Abort callbacks are retained by any response-body or custom-response owner identity.
+owner, abort, requestSignal) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Weak references and finalizers are optional host capabilities, so probe them before constructing either.
+    if (typeof weakGlobals.WeakRef === 'function' && finalizer && !requestSignal.aborted) {
+        let callbacks = callbackOwners.get(owner);
+        if (!callbacks) {
+            callbacks = new Set();
+            callbackOwners.set(owner, callbacks);
+        }
+        callbacks.add(abort);
+        releaseOnAbort(requestSignal, new weakGlobals.WeakRef(callbacks), abort);
+    }
+}
+/**
+ * Share one caller listener without it retaining completed requests. Collection removes
+ * weak subscriptions eventually; a live response body or custom response retains its callback.
+ * Runtimes without weak references keep the existing listener-based behavior.
+ */
+function addRequestAbortListener(signal, abort, requestSignal) {
+    if (signal.aborted) {
+        abort();
+        return () => {
+            // No listener was installed for an already aborted signal.
+        };
+    }
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Weak references and finalizers are optional host capabilities, so probe them before constructing either.
+    if (typeof weakGlobals.WeakRef !== 'function' || !finalizer) {
+        signal.addEventListener('abort', abort, { once: true });
+        return () => signal.removeEventListener('abort', abort);
+    }
+    const reference = new weakGlobals.WeakRef(abort);
+    const cleanup = subscribeWeakly(signal, reference, finalizer);
+    finalizer.register(abort, cleanup, reference);
+    retainRequestAbortCallback(requestSignal, abort, requestSignal);
+    return cleanup;
+}
+//# sourceMappingURL=abort.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/shims.mjs
 /**
  * This module provides internal shims and utility functions for environments where certain Node.js or global types may not be available.
@@ -102625,6 +102766,7 @@ let encodeUTF8_;
 /** Encodes text as UTF-8 bytes, reusing the platform encoder after its first call. */
 function bytes_encodeUTF8(str) {
     let encoder;
+    // SAFETY: Supported runtimes provide the standard TextEncoder/TextDecoder globals; the cast keeps their ambient DOM declarations optional.
     return (encodeUTF8_ ??
         ((encoder = new globalThis.TextEncoder()), (encodeUTF8_ = encoder.encode.bind(encoder))))(str);
 }
@@ -102632,6 +102774,7 @@ let decodeUTF8_;
 /** Decodes UTF-8 bytes as text, reusing the platform decoder after its first call. */
 function decodeUTF8(bytes) {
     let decoder;
+    // SAFETY: Supported runtimes provide the standard TextEncoder/TextDecoder globals; the cast keeps their ambient DOM declarations optional.
     return (decodeUTF8_ ??
         ((decoder = new globalThis.TextDecoder()), (decodeUTF8_ = decoder.decode.bind(decoder))))(bytes);
 }
@@ -102682,6 +102825,7 @@ class line_LineDecoder {
         let binaryChunk;
         if (chunk instanceof ArrayBuffer) {
             binaryChunk = new Uint8Array(chunk);
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- The line decoder accepts both text and binary chunks and must select the matching decoding path.
         }
         else if (typeof chunk === 'string') {
             binaryChunk = bytes_encodeUTF8(chunk);
@@ -102897,6 +103041,7 @@ const sensitiveQueryNames = new Set([
     'token',
     'password',
     'clientsecret',
+    'signingsecret',
     'xamzsecuritytoken',
     'xamzsignature',
     'xamzcredential',
@@ -103099,6 +103244,7 @@ class streaming_Stream {
                             logger.error(`From chunk:`);
                             throw new SyntaxError('Error reading response: malformed server-sent event JSON.');
                         }
+                        // SAFETY: Named SSE events use the public stream's event/data envelope; Item is the caller-selected API event contract.
                         yield { event: sse.event, data };
                     }
                 }
@@ -103188,6 +103334,7 @@ class streaming_Stream {
                     if (line) {
                         let data;
                         try {
+                            // SAFETY: Item is the caller's NDJSON response contract; JSON syntax is parsed here without a per-resource runtime schema.
                             data = JSON.parse(line);
                         }
                         catch (error) {
@@ -103271,10 +103418,13 @@ class streaming_Stream {
      * which can be turned back into a Stream with `Stream.fromReadableStream()`.
      * Canceling a response-backed readable aborts its request. Canceling a tee
      * branch discards its buffered events and leaves sibling consumers running.
+     * Read or serialization failures also release the iterator without replacing the original error.
      */
     toReadableStream() {
         const { controller } = this;
         let iter;
+        let cancellation;
+        const cancel = () => (cancellation ?? (cancellation = __classPrivateFieldGet(this, _Stream_instances, "m", _Stream_cancelIterator).call(this, iter, controller)));
         return shims_makeReadableStream({
             start: async () => {
                 iter = this[Symbol.asyncIterator]();
@@ -103290,9 +103440,12 @@ class streaming_Stream {
                 }
                 catch (err) {
                     ctrl.error(err);
+                    // An errored readable never invokes its cancel hook. Release the source ourselves,
+                    // without letting failed or stalled cleanup replace the read/serialization error.
+                    void cancel().catch(() => undefined);
                 }
             },
-            cancel: () => __classPrivateFieldGet(this, _Stream_instances, "m", _Stream_cancelIterator).call(this, iter, controller),
+            cancel,
         });
     }
 }
@@ -103302,6 +103455,7 @@ _Stream_cancelIterator = async function _Stream_cancelIterator(iterator, control
         if (!__classPrivateFieldGet(this, _Stream_isTeeBranch, "f")) {
             controller.abort();
         }
+        // oxlint-disable-next-line anti-slop/no-reflect-apply -- Invoke the captured iterator method with its receiver even if a caller-supplied function shadows call.
         await Reflect.apply(returnMethod, iterator, []);
     }
 };
@@ -103439,6 +103593,7 @@ function createAbortableSSESource(body, signal) {
 async function* streaming_iterSSEMessages(response, controller) {
     if (!response.body) {
         controller.abort();
+        // SAFETY: navigator is optional across SDK runtimes; this compatibility branch checks its presence before identifying React Native.
         if (globalThis.navigator !== undefined &&
             globalThis.navigator.product === 'ReactNative') {
             throw new error_OpenAIError(`The default react-native fetch implementation does not support streaming. Please use expo/fetch: https://docs.expo.dev/versions/latest/sdk/expo/#expofetch-api`);
@@ -103477,6 +103632,15 @@ async function* streaming_iterSSEMessages(response, controller) {
             if (sse) {
                 yield sse;
             }
+        }
+        // Servers sometimes omit the trailing blank line that normally
+        // terminates the last event. Flush any in-progress event exactly once.
+        if (signal.aborted) {
+            return;
+        }
+        const pending = sseDecoder.flush();
+        if (pending) {
+            yield pending;
         }
     }
     catch (error) {
@@ -103588,6 +103752,14 @@ class streaming_SSEDecoder {
         }
         return null;
     }
+    /**
+     * Emits a pending event at EOF when the stream omitted the trailing blank
+     * line. Returns `null` when no event is in progress so a record that already
+     * ended with a blank line is not delivered twice.
+     */
+    flush() {
+        return this.decode('');
+    }
 }
 function streaming_partition(str, delimiter) {
     const index = str.indexOf(delimiter);
@@ -103603,6 +103775,7 @@ function streaming_partition(str, delimiter) {
 
 async function parse_defaultParseResponse(client, props) {
     const { response, requestLogID, retryOfRequestLogID, startTime } = props;
+    let jsonBodyLength;
     const body = await (async () => {
         if (props.options.stream) {
             loggerFor(client).debug('response', response.status, response.url, response.headers, response.body);
@@ -103638,6 +103811,7 @@ async function parse_defaultParseResponse(client, props) {
                 return undefined;
             }
             const json = JSON.parse(bodyText);
+            jsonBodyLength = bodyText.length;
             return addRequestID(json, response);
         }
         const text = await response.text();
@@ -103645,13 +103819,15 @@ async function parse_defaultParseResponse(client, props) {
     })().catch((error) => {
         throw asAbortError(error, props.controller.signal);
     });
-    loggerFor(client).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
-        retryOfRequestLogID,
-        url: response.url,
-        status: response.status,
-        body,
-        durationMs: Date.now() - startTime,
-    }));
+    if (client.logLevel === 'debug') {
+        loggerFor(client).debug(`[${requestLogID}] response parsed`, formatRequestDetails({
+            retryOfRequestLogID,
+            url: response.url,
+            status: response.status,
+            body: jsonBodyLength === undefined ? body : { type: 'json', length: jsonBodyLength },
+            durationMs: Date.now() - startTime,
+        }));
+    }
     return body;
 }
 function asAbortError(error, signal) {
@@ -103676,7 +103852,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.15.0'; // x-release-please-version
+const openai_version_VERSION = '7.19.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -103899,8 +104075,12 @@ const formats_RFC3986 = 'RFC3986';
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/qs/utils.mjs
 
 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The cached own-property predicate accepts arrays, callable objects, and records.
 let cachedHas;
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Own-property lookup is a generic object primitive and must preserve array and callable inputs.
 const utils_has = (obj, key) => {
+    // SAFETY: Object.hasOwn is an optional native capability; older runtimes use the bound hasOwnProperty fallback with the same own-key semantics.
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- The native or compatibility own-property predicate has the same generic object contract.
     const resolvedHas = cachedHas ?? Object.hasOwn ?? Function.prototype.call.bind(Object.prototype.hasOwnProperty);
     cachedHas = resolvedHas;
     return resolvedHas(obj, key);
@@ -103909,12 +104089,15 @@ function isUnsafePropertyKey(key) {
     return key === '__proto__' || key === 'constructor' || key === 'prototype';
 }
 const maxAdoptedRecords = 10000;
-function isIntrinsicFunctionPrototype(value, key, descriptor) {
+function isIntrinsicFunctionPrototype(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Prototype descriptors are inspected before deciding whether an arbitrary adopted value is callable.
+value, key, descriptor) {
     return (typeof value === 'function' && key === 'prototype' && !descriptor.enumerable && !descriptor.configurable);
 }
 function isObjectLike(value) {
     return value !== null && (typeof value === 'object' || typeof value === 'function');
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Adoption records retain arbitrary merge-target identities for later descriptor validation.
 function rememberAdoption(state, target, key, value) {
     if (!isObjectLike(value)) {
         return;
@@ -103932,6 +104115,7 @@ function sanitizeAdoptions(state) {
     const visited = [];
     const locations = [];
     let inspectedProperties = 0;
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- Adoption validation inspects arbitrary objects, including arrays and functions, before trusting their structure.
     function inspect(value) {
         const known = records.get(value);
         if (known) {
@@ -103982,7 +104166,7 @@ function sanitizeAdoptions(state) {
     const detached = [];
     for (const record of visited) {
         for (const key of record.keys) {
-            const descriptor = Reflect.get(record.descriptors, key);
+            const descriptor = record.descriptors[key];
             if (!descriptor) {
                 continue;
             }
@@ -104052,7 +104236,7 @@ function sanitizeAdoptions(state) {
             if (isUnsafePropertyKey(key)) {
                 continue;
             }
-            const descriptor = Reflect.get(record.descriptors, key);
+            const descriptor = record.descriptors[key];
             if (!descriptor) {
                 continue;
             }
@@ -104083,11 +104267,13 @@ function readPreparedTarget(state, target, key) {
     }
     return target[key];
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Merge targets may contain accessors or custom prototypes, so the preview preserves the generic object boundary.
 function previewTarget(state, target, key) {
     const descriptor = Object.getOwnPropertyDescriptor(target, key);
     if (descriptor && 'value' in descriptor) {
         return descriptor.value;
     }
+    // oxlint-disable-next-line anti-slop/no-reflect-get -- Generic query merging snapshots arbitrary inherited/accessor keys before mutation.
     const value = Reflect.get(target, key, target);
     let prepared = state.preparedTargets.get(target);
     if (!prepared) {
@@ -104120,10 +104306,12 @@ function prepareMergeSource(target, source, state, assign = false) {
     }
     state.inspectedSourceProperties += sourceKeys.length;
     const sourceIsArray = isArray(source);
+    // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The query merge graph preserves heterogeneous scalar, array, and object values under its existing merge contract.
     const prepared = sourceIsArray ? [] : Object.create(null);
     preparedTargets.set(target, prepared);
     if (isArray(target) && sourceIsArray && !assign) {
         const sourceLength = source.length;
+        // SAFETY: prepared was constructed as an array when sourceIsArray is true, which this branch requires.
         prepared.length = sourceLength;
         for (let index = 0; index < sourceLength; index += 1) {
             if (!(index in source)) {
@@ -104440,6 +104628,7 @@ const stringify_push_to_array = function push_to_array(arr, value_or_array) {
     Array.prototype.push.apply(arr, values_isArray(value_or_array) ? value_or_array : [value_or_array]);
 };
 let stringify_toISOString;
+// SAFETY: The defaults object supplies the serializer's established non-null option values and RFC formatter; callers still merge their overrides separately.
 const qs_stringify_defaults = {
     addQueryPrefix: false,
     allowDots: false,
@@ -104558,12 +104747,14 @@ function stringify_inner_stringify(object, prefix, generateArrayPrefix, commaRou
         return adjusted_prefix + '[]';
     }
     for (const key of obj_keys) {
+        // SAFETY: The serializer supports its existing encoded-key wrapper or property key; the branch selects the wrapper value before indexing the object.
         const value = 
         // @ts-ignore
         typeof key === 'object' && key.value !== undefined ? key.value : obj[key];
         if (skipNulls && value === null) {
             continue;
         }
+        // SAFETY: Dot encoding applies the serializer's existing string-key protocol; this cast preserves its legacy mixed key representation.
         // @ts-ignore
         const encoded_key = allowDots && encodeDotInKeys ? key.replace(/\./g, '%2E') : key;
         let key_prefix;
@@ -105051,6 +105242,7 @@ function calculateRefreshAt(expiresAt, lifetimeSeconds, refreshBufferSeconds) {
 }
 const NATIVE_RESPONSE_PROTOTYPE = Response.prototype;
 const READ_NATIVE_RESPONSE_BODY = NATIVE_RESPONSE_PROTOTYPE.arrayBuffer;
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Custom fetch response prototypes are verified through descriptors before trusting their native contract.
 function isResponsePrototype(response, prototype) {
     const constructor = Object.getOwnPropertyDescriptor(prototype, 'constructor')?.value;
     if (prototype === response ||
@@ -105065,6 +105257,7 @@ function isResponsePrototype(response, prototype) {
         typeof Object.getOwnPropertyDescriptor(prototype, 'ok')?.get === 'function' &&
         typeof Object.getOwnPropertyDescriptor(prototype, 'status')?.get === 'function');
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The prototype walk compares untrusted cross-realm objects by identity and descriptor metadata.
 function isResponseBodyPrototype(prototype, responsePrototype) {
     if (prototype === responsePrototype) {
         return true;
@@ -105077,9 +105270,11 @@ function isResponseBodyPrototype(prototype, responsePrototype) {
         Object.getOwnPropertyDescriptor(constructor, 'prototype')?.value === prototype);
 }
 function decodeNativeResponseBody(body) {
+    // SAFETY: Bun is an optional runtime global; its version is checked before selecting Bun-specific decoding behavior.
     const scope = globalThis;
     return new TextDecoder('utf-8', { ignoreBOM: typeof scope.Bun?.version === 'string' }).decode(body);
 }
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- Decoded token JSON remains untrusted until the caller validates its fields.
 async function parseOAuthTokenResponse(response) {
     let readText;
     let responsePrototype = null;
@@ -105116,6 +105311,7 @@ async function parseOAuthTokenResponse(response) {
     }
 }
 function isUnsafeAccessToken(accessToken) {
+    // SAFETY: Bun is an optional runtime global; its version is checked before selecting Bun-specific decoding behavior.
     const scope = globalThis;
     if (typeof scope.Bun?.version === 'string') {
         return /[^\t\u0020-\u007E]|^[\t ]|[\t ]$/u.test(accessToken);
@@ -105145,7 +105341,9 @@ class WorkloadIdentityAuth {
         this.config = {
             identityProviderId,
             serviceAccountId,
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(clientId === undefined ? {} : { clientId }),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(refreshBufferSeconds === undefined ? {} : { refreshBufferSeconds }),
             provider: {
                 tokenType: provider.tokenType,
@@ -105193,6 +105391,7 @@ class WorkloadIdentityAuth {
     }
     async refreshToken(generation) {
         const subjectToken = await this.config.provider.getToken();
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- The token-exchange field dictionary gains an optional client_id after its required fields are initialized.
         const body = {
             grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
             subject_token: subjectToken,
@@ -105236,6 +105435,7 @@ class WorkloadIdentityAuth {
             isUnsafeAccessToken(accessToken)) {
             throw new error_OpenAIError("Token exchange response missing 'access_token' field");
         }
+        // SAFETY: The token response was checked as an object with a valid access token; expires_in is still validated by calculateExpiresAt.
         const expiresIn = tokenResponse.expires_in ?? 3600;
         const expiresAt = calculateExpiresAt(expiresIn, exchangeStartedAt);
         if (this.tokenGeneration === generation) {
@@ -105403,6 +105603,7 @@ var x509_transport_state_namespaceObject = /*#__PURE__*/__nccwpck_require__.t(x5
 
 
 
+// oxlint-disable-next-line anti-slop/no-runtime-typeof -- The package adapter probes the Node-only registry export before selecting the browser fallback.
 const state = typeof x509_transport_state.findRegisteredX509Transport === 'function' ? x509_transport_state_namespaceObject : x509_transport_state_browser_namespaceObject;
 
 const {
@@ -105558,6 +105759,7 @@ function isX509WorkloadIdentity(identity) {
             }
             break;
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; the traversal checks descriptors rather than assuming a credential-provider subtype.
         providerOwner = Object.getPrototypeOf(providerOwner);
     }
     let current = identity;
@@ -105569,6 +105771,7 @@ function isX509WorkloadIdentity(identity) {
             }
             return discriminator.value === 'x509';
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; the traversal checks descriptors rather than assuming a credential-provider subtype.
         current = Object.getPrototypeOf(current);
     }
     return false;
@@ -105657,9 +105860,11 @@ class X509WorkloadIdentityAuth {
             type: 'x509',
             identityProviderId: __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_identityProviderId, "f"),
             serviceAccountId: __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_serviceAccountId, "f"),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(__classPrivateFieldGet(this, _X509WorkloadIdentityAuth_configuredRefreshBufferMs, "f") === undefined
                 ? {}
                 : { refreshBufferMs: __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_configuredRefreshBufferMs, "f") }),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(__classPrivateFieldGet(this, _X509WorkloadIdentityAuth_configuredRefreshBufferSeconds, "f") === undefined
                 ? {}
                 : { refreshBufferSeconds: __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_configuredRefreshBufferSeconds, "f") }),
@@ -105682,6 +105887,7 @@ class X509WorkloadIdentityAuth {
         if (!defaultHeaders || !requestHeaders) {
             throw new error_OpenAIError('X.509 workload identity requires snapshotted request headers.');
         }
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- The exposed snapshot contract deliberately hides the private request-scope representation.
         return { defaultHeaders, requestHeaders };
     }
     /** Captures enrolled public tenant selectors once before certificate presentation. */
@@ -105839,6 +106045,7 @@ class X509WorkloadIdentityAuth {
         return scope.effectiveSignal ?? scope.request?.signal;
     }
     /** Establishes an independent scope even when concurrent requests share caller options. */
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- Logical request owners are opaque identity tokens; their properties are never read.
     runRequest(operation, requestOwner) {
         return __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_transport, "f").run(async () => {
             const scope = __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_transport, "f").current();
@@ -105859,6 +106066,7 @@ class X509WorkloadIdentityAuth {
         });
     }
     /** Reports whether a public request-building call already belongs to an active logical operation. */
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- Request scope membership compares the opaque caller token by identity only.
     inRequest(requestOwner) {
         const scope = __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_transport, "f").current();
         return scope?.owner === this && scope.requestOwner === requestOwner && scope.phase !== 'authorizing';
@@ -105879,9 +106087,13 @@ class X509WorkloadIdentityAuth {
             wallStartedAt,
             monotonicStartedAt,
             owner: this,
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(deadlineArmed ? { deadlineArmed } : {}),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(request ? { request } : {}),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(effectiveSignal ? { effectiveSignal } : {}),
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(requestOwner ? { requestOwner } : {}),
         };
         return (operation) => __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_transport, "f").resume(scope, async () => {
@@ -106246,6 +106458,7 @@ x509_workload_identity_auth_a = X509WorkloadIdentityAuth, _X509WorkloadIdentityA
 function normalizeX509CredentialOptions(options) {
     const { credential } = options;
     if (credential === undefined) {
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Preserve the exported normalization contract when no X.509 credential is configured.
         return { credential, options };
     }
     const registered = x509_transport_state_findX509Credential(credential);
@@ -106259,6 +106472,7 @@ function normalizeX509CredentialOptions(options) {
     if (conflicting.length > 0) {
         throw new error_OpenAIError(`The \`credential\` option cannot be combined with ${conflicting.map((name) => `\`${name}\``).join(', ')}.`);
     }
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared ClientOptions return contract supports both normalized and unchanged client options.
     return {
         credential,
         options: {
@@ -106353,6 +106567,7 @@ function prepareX509ClientClone(inherited, overrides, credential, currentlyX509)
             delete inherited.fetchOptions;
         }
     }
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- Preserve the exported clone contract across inherited and replaced credentials and providers.
     return { credential: nextCredential, provider: prepareProviderClone(inherited, overrides) };
 }
 //# sourceMappingURL=x509-credential-options.mjs.map
@@ -106397,6 +106612,7 @@ function toStreamingFile(data, name, options) {
  */
 const uploads_checkFileSupport = () => {
     if (typeof File === 'undefined') {
+        // SAFETY: This optional Node global is inspected only to improve the missing-File diagnostic in runtimes without process.
         const { process } = globalThis;
         const isOldNode = typeof process?.versions?.node === 'string' &&
             Number.parseInt(process.versions.node.split('.'), 10) < 20;
@@ -106414,6 +106630,7 @@ const uploads_checkFileSupport = () => {
  */
 function uploads_makeFile(fileBits, fileName, options) {
     uploads_checkFileSupport();
+    // SAFETY: The SDK BlobPart union supports Node and web binary inputs; the native File constructor handles those parts across their differing ambient types.
     return new File(fileBits, fileName ?? 'unknown_file', options);
 }
 /**
@@ -106504,6 +106721,7 @@ const uploads_supportsFormDataMap = /* @__PURE__ */ new WeakMap();
  * confusing error messages later on.
  */
 function uploads_supportsFormData(fetchObject) {
+    // SAFETY: The union has already excluded callable fetch values; the remaining OpenAI client owns the fetch implementation used by this probe.
     const fetch = typeof fetchObject === 'function' ? fetchObject : fetchObject.fetch;
     const cached = uploads_supportsFormDataMap.get(fetch);
     if (cached) {
@@ -106513,11 +106731,13 @@ function uploads_supportsFormData(fetchObject) {
         try {
             let FetchResponse;
             if ('Response' in fetch) {
+                // SAFETY: Custom fetch implementations may expose their matching Response constructor; the enclosing probe catches incompatible constructors.
                 FetchResponse = fetch.Response;
             }
             else {
                 const response = await fetch('data:,');
                 await response.arrayBuffer();
+                // SAFETY: The successful fetch response supplies the constructor used to test its own FormData support; failures remain inside the probe's catch.
                 FetchResponse = response.constructor;
             }
             const data = new FormData();
@@ -106566,6 +106786,7 @@ const uploads_isUploadable = (value) => typeof value === 'object' &&
         isReadableStream(value) ||
         isStreamingFile(value) ||
         isBlob(value));
+// SAFETY: The enclosing object guard and own-key enumeration allow reading these property values without assigning them a trusted value type.
 const hasStreamingUploadableValue = (value) => {
     if (isStreamingFile(value) || uploads_isAsyncIterable(value) || isReadableStream(value)) {
         return true;
@@ -106583,6 +106804,7 @@ const hasStreamingUploadableValue = (value) => {
     }
     return false;
 };
+// SAFETY: The enclosing object guard and own-key enumeration allow reading these property values without assigning them a trusted value type.
 const uploads_hasUploadableValue = (value) => {
     if (uploads_isUploadable(value)) {
         return true;
@@ -106677,6 +106899,7 @@ function* iterateFormValue(key, value) {
     }
 }
 function getStreamingFileName(value, options) {
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The runtime guard validates JavaScript and custom upload values before trusting the StreamingFile brand.
     if (isStreamingFile(value)) {
         const { name } = value;
         if (typeof name !== 'string' || !name) {
@@ -106690,6 +106913,7 @@ function getStreamingFileName(value, options) {
 }
 function getStreamingFileType(value) {
     let type;
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- Runtime upload-brand checks intentionally accept unknown inputs despite the static Uploadable annotation.
     if (isStreamingFile(value) || isBlob(value)) {
         ({ type } = value);
     }
@@ -106711,6 +106935,7 @@ function validateStreamingFileType(type) {
     return type;
 }
 function getStreamingFileData(value) {
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The runtime guard validates the streaming wrapper before accessing its potentially custom data.
     if (isStreamingFile(value)) {
         return value.data;
     }
@@ -106957,6 +107182,7 @@ const path_EMPTY = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.create(n
  * `encodeURIComponent`. Nullish values, ordinary objects, and literal or
  * percent-encoded `.`/`..` path segments are rejected with an SDK error.
  */
+// SAFETY: This branch compares prototype methods to recognize cross-realm plain values; it does not call the optional hasOwnProperty member.
 const path_createPathTagFunction = (pathEncoder = path_encodeURIPath) => function path(statics, ...params) {
     // If there are no params, no processing is needed.
     if (statics.length === 1) {
@@ -106975,6 +107201,7 @@ const path_createPathTagFunction = (pathEncoder = path_encodeURIPath) => functio
             let encoded = (postPath ? encodeURIComponent : pathEncoder)('' + value);
             if (index !== params.length &&
                 (value == null ||
+                    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Path parameters may arrive from JavaScript callers and require runtime validation before URL encoding.
                     (typeof value === 'object' &&
                         // handle values from other realms
                         value.toString ===
@@ -107068,7 +107295,9 @@ function isChatCompletionFunctionTool(tool) {
 function makeParseableResponseFormat(response_format, parser) {
     const obj = { ...response_format, type: 'json_schema' };
     obj.json_schema = { ...obj.json_schema };
+    // SAFETY: The fresh copy may retain a caller-provided toJSON property; deleting it prevents serialization from replacing the validated schema.
     delete obj.toJSON;
+    // SAFETY: The fresh copy may retain a caller-provided toJSON property; deleting it prevents serialization from replacing the validated schema.
     delete obj.json_schema.toJSON;
     Object.defineProperties(obj, {
         $brand: {
@@ -107080,11 +107309,13 @@ function makeParseableResponseFormat(response_format, parser) {
             enumerable: false,
         },
     });
+    // SAFETY: Object.defineProperties installed the parser brand and callbacks required by the returned helper type.
     return obj;
 }
 /** Copies a Responses API text format and attaches a non-enumerable structured-output parser. */
 function makeParseableTextFormat(response_format, parser) {
     const obj = { ...response_format, type: 'json_schema' };
+    // SAFETY: The fresh copy may retain a caller-provided toJSON property; deleting it prevents serialization from replacing the validated schema.
     delete obj.toJSON;
     Object.defineProperties(obj, {
         $brand: {
@@ -107096,6 +107327,7 @@ function makeParseableTextFormat(response_format, parser) {
             enumerable: false,
         },
     });
+    // SAFETY: Object.defineProperties installed the parser brand and callbacks required by the returned helper type.
     return obj;
 }
 /**
@@ -107118,6 +107350,7 @@ function isAutoParsableResponseFormat(response_format) {
  * {@link ExtractParsedContentFromParams} cannot drift apart.
  */
 function isParseableResponseFormat(format) {
+    // SAFETY: Only the optional discriminator is read; arbitrary input is not treated as a validated response-format schema.
     return isAutoParsableResponseFormat(format) || format?.type === 'json_schema';
 }
 /**
@@ -107134,9 +107367,11 @@ function parseResponseFormatContent(format, content) {
         format !== null &&
         '$parseRaw' in format &&
         typeof format.$parseRaw === 'function') {
+        // SAFETY: The format's captured parser owns the ParsedT output contract; this function forwards its result without coercion.
         return format.$parseRaw(content);
     }
     try {
+        // SAFETY: ParsedT represents the caller's response schema; JSON syntax is checked here and schema validation remains with the configured format.
         return JSON.parse(content);
     }
     catch (error) {
@@ -107163,6 +107398,7 @@ function makeParseableTool(tool, { parser, callback }) {
             enumerable: false,
         },
     });
+    // SAFETY: Object.defineProperties installed the parser brand and callbacks required by the returned helper type.
     return obj;
 }
 /** Returns whether a Chat Completions tool carries the SDK's argument-parser marker. */
@@ -107237,10 +107473,13 @@ function parseToolCall(params, toolCall) {
         return toolCall;
     }
     if (toolCall.type !== 'function') {
+        // SAFETY: This branch handles unsupported JavaScript discriminators that the current TypeScript union excludes; the value is only used in the error.
         const unsupportedType = toolCall.type;
         throw new error_OpenAIError(`Currently only \`function\` and \`custom\` tool calls are supported; Received \`${unsupportedType}\``);
     }
+    // SAFETY: The find predicate checks the function-tool discriminator before matching its name; the cast retains that narrowing through find.
     const inputTool = params.tools?.find((inputTool) => isChatCompletionFunctionTool(inputTool) && inputTool.function?.name === toolCall.function.name); // TS doesn't narrow based on isChatCompletionTool
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The parser callback may return any value; null only represents an unparsed tool call.
     let parsedArguments = null;
     if (isAutoParsableTool(inputTool)) {
         parsedArguments = inputTool.$parseRaw(toolCall.function.arguments);
@@ -107297,6 +107536,7 @@ function validateInputTools(tools) {
             continue;
         }
         if (tool.type !== 'function') {
+            // SAFETY: This branch handles unsupported JavaScript discriminators that the current TypeScript union excludes; the value is only used in the error.
             const unsupportedType = tool.type;
             throw new error_OpenAIError(`Currently only \`function\` and \`custom\` tool types are supported; Received \`${unsupportedType}\``);
         }
@@ -107317,7 +107557,7 @@ function isPresent(obj) {
 }
 //# sourceMappingURL=chatCompletionUtils.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/EventStream.mjs
-var _EventStream_instances, _EventStream_connectedPromise, _EventStream_resolveConnectedPromise, _EventStream_rejectConnectedPromise, _EventStream_endPromise, _EventStream_resolveEndPromise, _EventStream_rejectEndPromise, _EventStream_listeners, _EventStream_abortListeners, _EventStream_emittedListenerRegistrations, _EventStream_pendingListenerCleanup, _EventStream_pendingBufferedEventChecks, _EventStream_listenerDispatchDepth, _EventStream_ended, _EventStream_errored, _EventStream_aborted, _EventStream_catchingPromiseCreated, _EventStream_terminalFailure, _EventStream_removeAbortListeners, _EventStream_onceForEmitted, _EventStream_removeEmittedListener, _EventStream_cleanupEmittedListeners, _EventStream_handleError, _EventStream_settleTerminalEvent;
+var _EventStream_instances, _EventStream_connectedPromise, _EventStream_resolveConnectedPromise, _EventStream_rejectConnectedPromise, _EventStream_endPromise, _EventStream_resolveEndPromise, _EventStream_rejectEndPromise, _EventStream_listeners, _EventStream_abortListeners, _EventStream_emittedListenerRegistrations, _EventStream_pendingListenerCleanup, _EventStream_pendingBufferedEventChecks, _EventStream_listenerDispatchDepth, _EventStream_ended, _EventStream_errored, _EventStream_aborted, _EventStream_catchingPromiseCreated, _EventStream_terminalFailure, _EventStream_abortFromSignal, _EventStream_removeAbortListeners, _EventStream_onceForEmitted, _EventStream_removeEmittedListener, _EventStream_cleanupEmittedListeners, _EventStream_handleError, _EventStream_settleTerminalEvent;
 
 
 const MAX_BUFFERED_ITERATOR_EVENTS = 4096;
@@ -107329,7 +107569,9 @@ const MAX_BUFFERED_EVENT_DEPTH = 256;
 const bufferedJSONStringify = JSON.stringify;
 const bufferedJSONParse = JSON.parse;
 const sdkOwnedBufferedEventArguments = new WeakSet();
+// SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
 const typedArrayBufferGetter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'buffer')?.get;
+// SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
 const typedArrayLengthGetter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'length')?.get;
 const dataViewBufferGetter = Object.getOwnPropertyDescriptor(DataView.prototype, 'buffer')?.get;
 const symbolDescriptionGetter = Object.getOwnPropertyDescriptor(Symbol.prototype, 'description')?.get;
@@ -107343,6 +107585,8 @@ const errorStackDescriptor = Object.getOwnPropertyDescriptor(new Error('native s
 const functionToString = Function.prototype.toString;
 const objectToString = Object.prototype.toString;
 const errorBrandDescriptor = Object.getOwnPropertyDescriptor(Error, 'isError');
+// The native Error.isError predicate brands arbitrary values before an Error contract can be assumed.
+// SAFETY: The captured native Error.isError property was checked to be a function before it is used as a brand predicate.
 const nativeErrorBrand = errorBrandDescriptor && 'value' in errorBrandDescriptor && typeof errorBrandDescriptor.value === 'function'
     ? errorBrandDescriptor.value
     : undefined;
@@ -107372,6 +107616,7 @@ const trustedIntrinsicPrototypes = new Set([
 const trustedNativeConstructorSources = new Set();
 const canonicalIntrinsicDescriptors = new Map();
 const foreignErrorStackDescriptors = new WeakMap();
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The native proxy predicate accepts arbitrary object identities without invoking their handlers.
 function captureNativeProxyDetector() {
     if (typeof process === 'undefined') {
         return undefined;
@@ -107381,6 +107626,7 @@ function captureNativeProxyDetector() {
         if (!loader || !('value' in loader) || typeof loader.value !== 'function') {
             return undefined;
         }
+        // oxlint-disable-next-line anti-slop/no-reflect-apply -- Invoke the descriptor value without reading a potentially overridden call property.
         const util = Reflect.apply(loader.value, process, ['node:util']);
         if (typeof util !== 'object' || util === null) {
             return undefined;
@@ -107393,6 +107639,8 @@ function captureNativeProxyDetector() {
         if (!detector || !('value' in detector) || typeof detector.value !== 'function') {
             return undefined;
         }
+        // SAFETY: The native detector data property was checked to be callable; it is invoked only to test the corresponding intrinsic object brand.
+        // oxlint-disable-next-line anti-slop/no-object-parameters -- The captured native predicate is called only for objects, before their properties are inspected.
         return detector.value;
     }
     catch {
@@ -107412,6 +107660,7 @@ function rememberTrustedIntrinsic(constructor) {
         (typeof prototypeDescriptor.value !== 'object' && typeof prototypeDescriptor.value !== 'function')) {
         return;
     }
+    // SAFETY: The prototype data descriptor was checked as a non-null object before adding its identity to the trusted-intrinsic set.
     trustedIntrinsicPrototypes.add(prototypeDescriptor.value);
     const source = functionToString.call(constructor);
     if (/^function [A-Za-z_$][\w$]*\(\) \{ \[native code\] \}$/u.test(source) &&
@@ -107471,6 +107720,7 @@ for (const name of [
         rememberTrustedIntrinsic(descriptor.value);
     }
 }
+// SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
 const typedArrayConstructorDescriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'constructor');
 if (typedArrayConstructorDescriptor && 'value' in typedArrayConstructorDescriptor) {
     rememberTrustedIntrinsic(typedArrayConstructorDescriptor.value);
@@ -107487,6 +107737,7 @@ const blobInternalHandlePrototype = (() => {
         for (const key of Object.getOwnPropertySymbols(blob)) {
             const descriptor = Object.getOwnPropertyDescriptor(blob, key);
             if (descriptor && 'value' in descriptor && typeof descriptor.value === 'object' && descriptor.value) {
+                // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
                 return Object.getPrototypeOf(descriptor.value);
             }
         }
@@ -107499,6 +107750,7 @@ const blobInternalHandlePrototype = (() => {
 const mapEntries = Map.prototype.entries;
 const setValues = Set.prototype.values;
 const headersEntriesDescriptor = typeof Headers === 'function' ? Object.getOwnPropertyDescriptor(Headers.prototype, 'entries') : undefined;
+// SAFETY: The own Headers entries data property was checked to be callable and retains the native method signature.
 const headersEntries = headersEntriesDescriptor &&
     'value' in headersEntriesDescriptor &&
     typeof headersEntriesDescriptor.value === 'function'
@@ -107514,11 +107766,13 @@ const retainedStorageBrands = new Set([
     'Set',
     'Headers',
 ]);
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Foreign prototypes are untrusted objects until their constructor descriptors are verified.
 function getTrustedForeignIntrinsic(prototype) {
     const descriptor = Object.getOwnPropertyDescriptor(prototype, 'constructor');
     if (!descriptor || !('value' in descriptor) || typeof descriptor.value !== 'function') {
         return undefined;
     }
+    // SAFETY: The descriptor contains a function; the following native-source and prototype checks verify the Error constructor before use.
     const constructor = descriptor.value;
     const source = functionToString.call(constructor);
     const descriptors = canonicalIntrinsicDescriptors.get(source);
@@ -107533,12 +107787,16 @@ function getTrustedForeignIntrinsic(prototype) {
         constructorPrototype.writable !== false) {
         return undefined;
     }
+    // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
     return { constructor, descriptors, functionPrototype: Object.getPrototypeOf(constructor) };
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Intrinsic trust is established by object identity or verified cross-realm descriptors.
 function isTrustedIntrinsicPrototype(prototype) {
     return trustedIntrinsicPrototypes.has(prototype) || getTrustedForeignIntrinsic(prototype) !== undefined;
 }
-function isCanonicalIntrinsicFunction(value, canonical, functionPrototype) {
+function isCanonicalIntrinsicFunction(value, canonical, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Cross-realm function prototypes are compared by identity without trusting a callable signature.
+functionPrototype) {
     if (canonical === undefined) {
         return value === undefined;
     }
@@ -107549,6 +107807,7 @@ function isCanonicalIntrinsicFunction(value, canonical, functionPrototype) {
     if (functionToString.call(value) !== source) {
         return false;
     }
+    // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
     const actualFunctionPrototype = Object.getPrototypeOf(value);
     if (actualFunctionPrototype === functionPrototype) {
         return true;
@@ -107560,7 +107819,9 @@ function isCanonicalIntrinsicFunction(value, canonical, functionPrototype) {
     return (intrinsic !== undefined &&
         functionToString.call(intrinsic.constructor) === nativeFunctionConstructorSource);
 }
-function isCanonicalIntrinsicDescriptor(descriptor, canonical, functionPrototype) {
+function isCanonicalIntrinsicDescriptor(descriptor, canonical, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Descriptor validation compares the verified function-prototype identity without reading its fields.
+functionPrototype) {
     if (!canonical ||
         descriptor.configurable !== canonical.configurable ||
         descriptor.enumerable !== canonical.enumerable ||
@@ -107582,6 +107843,7 @@ function isCanonicalIntrinsicDescriptor(descriptor, canonical, functionPrototype
     return (isCanonicalIntrinsicFunction(descriptor.get, canonical.get, functionPrototype) &&
         isCanonicalIntrinsicFunction(descriptor.set, canonical.set, functionPrototype));
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Native error branding must inspect arbitrary objects before assuming an Error contract.
 function hasNativeErrorBrand(current) {
     if (nativeErrorBrand) {
         return nativeErrorBrand.call(Error, current);
@@ -107591,21 +107853,27 @@ function hasNativeErrorBrand(current) {
         if (Object.getOwnPropertyDescriptor(prototype, Symbol.toStringTag)) {
             return false;
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
         prototype = Object.getPrototypeOf(prototype);
     }
     return prototype === null && objectToString.call(current) === '[object Error]';
 }
-function getVerifiedForeignErrorConstructor(current, stackDescriptor) {
+function getVerifiedForeignErrorConstructor(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Foreign error constructors are verified from descriptors of an otherwise untrusted object.
+current, stackDescriptor) {
     if (typeof stackDescriptor.get !== 'function' || typeof stackDescriptor.set !== 'function') {
         return undefined;
     }
+    // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
     let prototype = Object.getPrototypeOf(current);
     for (let depth = 0; prototype !== null && depth < MAX_BUFFERED_EVENT_DEPTH; depth += 1) {
         const descriptor = Object.getOwnPropertyDescriptor(prototype, 'constructor');
         if (descriptor && 'value' in descriptor && typeof descriptor.value === 'function') {
+            // SAFETY: The descriptor contains a function; the following intrinsic and constructor-prototype checks decide whether it is a trusted Error constructor.
             const constructor = descriptor.value;
             if (functionToString.call(constructor) === nativeErrorConstructorSource &&
                 isTrustedIntrinsicPrototype(prototype)) {
+                // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
                 const functionPrototype = Object.getPrototypeOf(constructor);
                 if (Object.getPrototypeOf(stackDescriptor.get) === functionPrototype &&
                     Object.getPrototypeOf(stackDescriptor.set) === functionPrototype) {
@@ -107614,10 +107882,12 @@ function getVerifiedForeignErrorConstructor(current, stackDescriptor) {
                 return undefined;
             }
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
         prototype = Object.getPrototypeOf(prototype);
     }
     return undefined;
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Stack accessors are trusted only after the object passes native error branding.
 function isTrustedNativeErrorStack(current, descriptor) {
     if (!hasNativeErrorBrand(current)) {
         return false;
@@ -107636,6 +107906,7 @@ function isTrustedNativeErrorStack(current, descriptor) {
     }
     let canonicalDescriptor = foreignErrorStackDescriptors.get(verified.prototype);
     if (!canonicalDescriptor) {
+        // SAFETY: Reflect.construct returns an untyped value; unknown preserves that uncertainty for the descriptor checks below.
         const canonical = Reflect.construct(verified.constructor, []);
         if (typeof canonical !== 'object' ||
             canonical === null ||
@@ -107687,7 +107958,9 @@ function createEventQueue() {
         },
     };
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Retained storage branding walks arbitrary object prototypes without assuming their native type.
 function getRetainedStorageBrand(current) {
+    // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
     let prototype = Object.getPrototypeOf(current);
     for (let depth = 0; prototype !== null && depth < MAX_BUFFERED_EVENT_DEPTH; depth += 1) {
         if (prototype === Date.prototype) {
@@ -107710,19 +107983,24 @@ function getRetainedStorageBrand(current) {
             retainedStorageBrands.has(descriptor.value)) {
             return descriptor.value;
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
         prototype = Object.getPrototypeOf(prototype);
     }
     return undefined;
 }
-function estimateRetainedBufferBytes(current, visit, depth) {
+function estimateRetainedBufferBytes(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Memory accounting inspects arbitrary retained objects and detects native backing storage at runtime.
+current, visit, depth) {
     if (ArrayBuffer.isView(current)) {
         let buffer;
         let kind = 'typed-array';
         try {
+            // SAFETY: The captured intrinsic getter performs its own receiver brand check; its result stays unknown until the ArrayBuffer validation below.
             buffer = typedArrayBufferGetter?.call(current);
         }
         catch {
             kind = 'data-view';
+            // SAFETY: The DataView intrinsic getter performs its receiver brand check; its result stays unknown until the ArrayBuffer validation below.
             buffer = dataViewBufferGetter?.call(current);
         }
         if (typeof buffer !== 'object' || buffer === null) {
@@ -107736,6 +108014,7 @@ function estimateRetainedBufferBytes(current, visit, depth) {
     if (!brand) {
         return undefined;
     }
+    // oxlint-disable-next-line anti-slop/no-unknown-returns -- Captured native accessors are checked for a finite numeric result before retained-size accounting.
     let getter;
     const kind = 'buffer';
     switch (brand) {
@@ -107758,6 +108037,7 @@ function estimateRetainedBufferBytes(current, visit, depth) {
             return { bytes: 0, kind: 'map' };
         }
         case 'Date': {
+            // oxlint-disable-next-line anti-slop/no-reflect-apply -- Invoke the captured intrinsic without reading its mutable call property.
             Reflect.apply(dateTimestampGetter, current, []);
             return { bytes: 8, kind: 'date' };
         }
@@ -107779,7 +108059,9 @@ function estimateRetainedBufferBytes(current, visit, depth) {
         kind,
     };
 }
-function visitHiddenEventValues(current, kind, visit) {
+function visitHiddenEventValues(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Native collection contents are inspected only after storage branding, without trusting structural fields.
+current, kind, visit) {
     if (kind === 'map') {
         for (const [key, entry] of mapEntries.call(current)) {
             if (!visit(key, 8) || !visit(entry, 8)) {
@@ -107798,6 +108080,7 @@ function visitHiddenEventValues(current, kind, visit) {
         if (!headersEntries) {
             return false;
         }
+        // SAFETY: The captured native Headers.entries method performs its receiver brand check inside the enclosing try/catch.
         for (const [name, value] of headersEntries.call(current)) {
             if (!visit(name, 8) || !visit(value, 8)) {
                 return false;
@@ -107806,7 +108089,9 @@ function visitHiddenEventValues(current, kind, visit) {
     }
     return true;
 }
-function getInspectableEventKeys(current, kind, availableBytes) {
+function getInspectableEventKeys(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Event key inspection must accept arbitrary retained objects, arrays, and native storage views.
+current, kind, availableBytes) {
     if (Array.isArray(current)) {
         const descriptor = Object.getOwnPropertyDescriptor(current, 'length');
         const length = descriptor && 'value' in descriptor ? descriptor.value : undefined;
@@ -107835,7 +108120,9 @@ function getInspectableEventKeys(current, kind, availableBytes) {
         return !Number.isInteger(index) || index < 0 || index >= length || String(index) !== key;
     });
 }
-function visitInspectableEventProperties(current, kind, depth, availableBytes, charge, visit) {
+function visitInspectableEventProperties(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Retained event properties are inspected through descriptors on arbitrary object identities.
+current, kind, depth, availableBytes, charge, visit) {
     const keys = getInspectableEventKeys(current, kind, availableBytes());
     if (keys === undefined) {
         return false;
@@ -107861,7 +108148,12 @@ function visitInspectableEventProperties(current, kind, depth, availableBytes, c
     }
     return true;
 }
-function visitRetainedEventPrototypes(current, depth, isBlobInternalHandle, visited, availableBytes, charge, visit, retainPrototype) {
+function visitRetainedEventPrototypes(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Retention accounting follows arbitrary object prototypes without assuming their properties.
+current, depth, isBlobInternalHandle, visited, availableBytes, charge, visit, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The retention callback records prototype identity before inspecting its descriptors.
+retainPrototype) {
+    // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
     let prototype = Object.getPrototypeOf(current);
     for (let prototypeDepth = depth + 1; prototype !== null; prototypeDepth += 1) {
         if (prototypeDepth >= MAX_BUFFERED_EVENT_DEPTH) {
@@ -107906,6 +108198,7 @@ function visitRetainedEventPrototypes(current, depth, isBlobInternalHandle, visi
         if (!retained) {
             return false;
         }
+        // SAFETY: Object.getPrototypeOf returns an object or null; this native-prototype inspection does not assume an application-specific instance type.
         prototype = Object.getPrototypeOf(retainedPrototype);
     }
     return true;
@@ -107938,6 +108231,7 @@ function inspectBufferedEventGraph(value, remainingBytes) {
         }
         return bytes <= remainingBytes;
     };
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- The ledger records object and symbol identities, which have no shared structural contract.
     const addIdentity = (identity) => {
         if (activeNode) {
             activeNode.edges.add(identity);
@@ -107946,6 +108240,7 @@ function inspectBufferedEventGraph(value, remainingBytes) {
             roots.add(identity);
         }
     };
+    // oxlint-disable-next-line anti-slop/no-object-parameters -- Retained graph nodes are identified by object or symbol identity independently of their fields.
     const retainIdentity = (identity, inspect) => {
         addIdentity(identity);
         const node = { bytes: 0, edges: new Set() };
@@ -107970,6 +108265,8 @@ function inspectBufferedEventGraph(value, remainingBytes) {
             if (!symbolDescriptionGetter) {
                 return false;
             }
+            // SAFETY: The captured Symbol description getter is called after the symbol branch and returns a string or undefined by its native contract.
+            // oxlint-disable-next-line anti-slop/no-reflect-apply -- Invoke the captured intrinsic without reading its mutable call property.
             const description = Reflect.apply(symbolDescriptionGetter, current, []);
             return charge(8 + (description?.length ?? 0) * 2);
         })) {
@@ -108086,7 +108383,9 @@ function collectBufferedLedgerIdentities(roots, candidate, records, work) {
     }
     return identities;
 }
-function getBufferedLedgerChange(identity, graph, records, changes, node) {
+function getBufferedLedgerChange(
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Ledger changes are keyed by object or symbol identity, not a structural event type.
+identity, graph, records, changes, node) {
     const existing = changes.get(identity);
     if (existing) {
         if (node) {
@@ -108271,6 +108570,7 @@ function createBufferedEventLedger() {
         }
         entry.identities.clear();
     };
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The ledger contract contextually types its callbacks and keeps retained-identity internals private.
     return {
         retain(graph) {
             const entry = { scalarBytes: 0, roots: new Set(), identities: new Set() };
@@ -108382,18 +108682,28 @@ class EventStream {
     abort() {
         this.controller.abort();
     }
+    /** Creates a user-abort error retaining this runner's cancellation reason. */
+    _userAbortError() {
+        const error = new error_APIUserAbortError();
+        Object.defineProperty(error, 'cause', {
+            value: this.controller.signal.reason,
+            writable: true,
+            configurable: true,
+        });
+        return error;
+    }
     _listenForAbort(signal) {
         if (!signal || this.ended) {
             return;
         }
         if (signal.aborted) {
-            this.controller.abort();
+            __classPrivateFieldGet(this, _EventStream_instances, "m", _EventStream_abortFromSignal).call(this, signal);
             return;
         }
         if (__classPrivateFieldGet(this, _EventStream_abortListeners, "f").some((registration) => registration.signal === signal)) {
             return;
         }
-        const listener = () => this.controller.abort();
+        const listener = () => __classPrivateFieldGet(this, _EventStream_instances, "m", _EventStream_abortFromSignal).call(this, signal);
         signal.addEventListener('abort', listener, { once: true });
         __classPrivateFieldGet(this, _EventStream_abortListeners, "f").push({ signal, listener });
     }
@@ -108422,10 +108732,12 @@ class EventStream {
         if (!listeners) {
             return this;
         }
+        // SAFETY: Listener functions are object identities used as WeakMap keys; registration and removal use the same function instance.
         const emittedRegistration = __classPrivateFieldGet(this, _EventStream_emittedListenerRegistrations, "f").get(listener);
         if (emittedRegistration?.event === event &&
             !emittedRegistration.registration.removed &&
             !emittedRegistration.registration.detached) {
+            // SAFETY: The stored registration event was compared with this event above, preserving the event/listener type correlation.
             __classPrivateFieldGet(this, _EventStream_instances, "m", _EventStream_removeEmittedListener).call(this, event, emittedRegistration.registration);
             return this;
         }
@@ -108463,6 +108775,7 @@ class EventStream {
         return new Promise((resolve, reject) => {
             __classPrivateFieldSet(this, _EventStream_catchingPromiseCreated, true, "f");
             const onError = (error) => {
+                // SAFETY: This callback is paired with the same event when registered and removed; its variadic body forwards the event tuple or captured error.
                 this.off(event, onEvent);
                 reject(error);
             };
@@ -108470,11 +108783,14 @@ class EventStream {
                 if (event !== 'error') {
                     this.off('error', onError);
                 }
+                // SAFETY: The emitted API returns the sole argument or the full tuple according to its existing EventTypes-dependent result contract.
                 resolve((values.length > 1 ? values : values[0]));
             };
             if (event !== 'error') {
+                // SAFETY: This callback is paired with the same event when registered and removed; its variadic body forwards the event tuple or captured error.
                 __classPrivateFieldGet(this, _EventStream_instances, "m", _EventStream_onceForEmitted).call(this, 'error', onError);
             }
+            // SAFETY: This callback is paired with the same event when registered and removed; its variadic body forwards the event tuple or captured error.
             __classPrivateFieldGet(this, _EventStream_instances, "m", _EventStream_onceForEmitted).call(this, event, onEvent);
         });
     }
@@ -108501,7 +108817,9 @@ class EventStream {
                     sdkOwnedBufferedEventArguments.delete(args);
                 }
             };
+            // SAFETY: This callback is paired with the same event when registered and removed; its variadic body forwards the event tuple or captured error.
             this.on(event, onEvent);
+            // SAFETY: This callback is paired with the same event when registered and removed; its variadic body forwards the event tuple or captured error.
             return () => this.off(event, onEvent);
         }, {
             // When iterating the 'error' or 'abort' event itself, yield it as a
@@ -108532,6 +108850,7 @@ class EventStream {
         let failure;
         let failureDelivered = false;
         let detach = () => undefined;
+        // SAFETY: A completed iterator result has no yielded value; never preserves the iterator public result type for done: true.
         const doneResult = () => ({ value: undefined, done: true });
         const finishReaders = () => {
             while (readQueue.length) {
@@ -108608,10 +108927,12 @@ class EventStream {
                     return;
                 }
                 if (typeof value === 'object' && value !== null && sdkOwnedBufferedEventArguments.has(value)) {
+                    // SAFETY: Only SDK-created argument tuples are inserted into this private WeakSet, so membership establishes the array identity.
                     const argumentsTuple = value;
                     for (let index = 0; index < argumentsTuple.length; index += 1) {
                         const argument = argumentsTuple[index];
                         if (typeof argument === 'string') {
+                            // SAFETY: The branch checked argument is a string; JSON stringify/parse returns that same string value while detaching retained storage.
                             argumentsTuple[index] = bufferedJSONParse(bufferedJSONStringify(argument));
                         }
                     }
@@ -108748,6 +109069,7 @@ class EventStream {
         let dispatchThrew = false;
         try {
             if (listeners) {
+                // SAFETY: Filtering only removes registrations from the same event bucket and preserves the listener signatures for that event.
                 __classPrivateFieldGet(this, _EventStream_listeners, "f")[event] = listeners.filter((listener) => {
                     if (listener.once) {
                         listener.detached = true;
@@ -108756,9 +109078,11 @@ class EventStream {
                 });
                 __classPrivateFieldSet(this, _EventStream_listenerDispatchDepth, __classPrivateFieldGet(this, _EventStream_listenerDispatchDepth, "f") + 1, "f");
                 try {
+                    // SAFETY: The listener bucket and argument tuple come from the same EventTypes key; this bridges TypeScript generic indexed-access correlation.
                     for (const registration of listeners) {
                         if (!registration.removed) {
                             const { listener } = registration;
+                            // SAFETY: The listener bucket and argument tuple come from the same EventTypes key; this bridges TypeScript generic indexed-access correlation.
                             listener(...args);
                         }
                     }
@@ -108799,7 +109123,14 @@ class EventStream {
         // Hook for subclasses.
     }
 }
-_EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedPromise = new WeakMap(), _EventStream_rejectConnectedPromise = new WeakMap(), _EventStream_endPromise = new WeakMap(), _EventStream_resolveEndPromise = new WeakMap(), _EventStream_rejectEndPromise = new WeakMap(), _EventStream_listeners = new WeakMap(), _EventStream_abortListeners = new WeakMap(), _EventStream_emittedListenerRegistrations = new WeakMap(), _EventStream_pendingListenerCleanup = new WeakMap(), _EventStream_pendingBufferedEventChecks = new WeakMap(), _EventStream_listenerDispatchDepth = new WeakMap(), _EventStream_ended = new WeakMap(), _EventStream_errored = new WeakMap(), _EventStream_aborted = new WeakMap(), _EventStream_catchingPromiseCreated = new WeakMap(), _EventStream_terminalFailure = new WeakMap(), _EventStream_instances = new WeakSet(), _EventStream_removeAbortListeners = function _EventStream_removeAbortListeners() {
+_EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedPromise = new WeakMap(), _EventStream_rejectConnectedPromise = new WeakMap(), _EventStream_endPromise = new WeakMap(), _EventStream_resolveEndPromise = new WeakMap(), _EventStream_rejectEndPromise = new WeakMap(), _EventStream_listeners = new WeakMap(), _EventStream_abortListeners = new WeakMap(), _EventStream_emittedListenerRegistrations = new WeakMap(), _EventStream_pendingListenerCleanup = new WeakMap(), _EventStream_pendingBufferedEventChecks = new WeakMap(), _EventStream_listenerDispatchDepth = new WeakMap(), _EventStream_ended = new WeakMap(), _EventStream_errored = new WeakMap(), _EventStream_aborted = new WeakMap(), _EventStream_catchingPromiseCreated = new WeakMap(), _EventStream_terminalFailure = new WeakMap(), _EventStream_instances = new WeakSet(), _EventStream_abortFromSignal = function _EventStream_abortFromSignal(signal) {
+    try {
+        this.controller.abort(signal.reason);
+    }
+    catch {
+        this.controller.abort();
+    }
+}, _EventStream_removeAbortListeners = function _EventStream_removeAbortListeners() {
     for (const { signal, listener } of __classPrivateFieldGet(this, _EventStream_abortListeners, "f").splice(0)) {
         signal.removeEventListener('abort', listener);
     }
@@ -108813,6 +109144,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
         listeners?.length === previousLength + 1 &&
         registration?.listener === listener &&
         registration.once) {
+        // SAFETY: Listener functions are object identities used as WeakMap keys; registration and removal use the same function instance.
         __classPrivateFieldGet(this, _EventStream_emittedListenerRegistrations, "f").set(listener, { event, registration });
     }
 }, _EventStream_removeEmittedListener = function _EventStream_removeEmittedListener(event, registration) {
@@ -108820,6 +109152,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
         return;
     }
     registration.removed = true;
+    // SAFETY: Listener functions are object identities used as WeakMap keys; registration and removal use the same function instance.
     __classPrivateFieldGet(this, _EventStream_emittedListenerRegistrations, "f").delete(registration.listener);
     __classPrivateFieldGet(this, _EventStream_pendingListenerCleanup, "f").add(event);
     if (__classPrivateFieldGet(this, _EventStream_listenerDispatchDepth, "f") === 0) {
@@ -108827,9 +109160,11 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
     }
 }, _EventStream_cleanupEmittedListeners = function _EventStream_cleanupEmittedListeners() {
     for (const event of __classPrivateFieldGet(this, _EventStream_pendingListenerCleanup, "f")) {
+        // SAFETY: Pending cleanup keys are added only from registered EventTypes events; the key retains its event-map membership.
         const eventType = event;
         const listeners = __classPrivateFieldGet(this, _EventStream_listeners, "f")[eventType];
         if (listeners) {
+            // SAFETY: Filtering only removes registrations from the same event bucket and preserves the listener signatures for that event.
             __classPrivateFieldGet(this, _EventStream_listeners, "f")[eventType] = listeners.filter((listener) => !listener.removed);
         }
     }
@@ -108837,7 +109172,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
 }, _EventStream_handleError = function _EventStream_handleError(error) {
     __classPrivateFieldSet(this, _EventStream_errored, true, "f");
     if (error instanceof Error && error.name === 'AbortError') {
-        error = new error_APIUserAbortError();
+        error = this._userAbortError();
     }
     if (error instanceof error_APIUserAbortError) {
         __classPrivateFieldSet(this, _EventStream_aborted, true, "f");
@@ -108855,6 +109190,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
     return this._emit('error', new error_OpenAIError(String(error)));
 }, _EventStream_settleTerminalEvent = function _EventStream_settleTerminalEvent(event, args, hasListeners) {
     if (event === 'abort') {
+        // SAFETY: The abort event key selects the APIUserAbortError argument tuple established by the typed emit contract.
         const error = args[0];
         __classPrivateFieldSet(this, _EventStream_terminalFailure, __classPrivateFieldGet(this, _EventStream_terminalFailure, "f") ?? { kind: 'abort', error }, "f");
         if (!__classPrivateFieldGet(this, _EventStream_catchingPromiseCreated, "f") && !hasListeners) {
@@ -108867,6 +109203,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
     }
     if (event === 'error') {
         // NOTE: _emit('error', error) should only be called from #handleError().
+        // SAFETY: The error event is emitted by the error-normalization path, which supplies an OpenAIError as its first argument.
         const error = args[0];
         __classPrivateFieldSet(this, _EventStream_terminalFailure, __classPrivateFieldGet(this, _EventStream_terminalFailure, "f") ?? { kind: 'error', error }, "f");
         if (!__classPrivateFieldGet(this, _EventStream_catchingPromiseCreated, "f") && !hasListeners) {
@@ -108990,6 +109327,7 @@ class AbstractChatCompletionRunner extends EventStream {
         this._emit('chatCompletion', chatCompletion);
         const message = chatCompletion.choices[0]?.message;
         if (message) {
+            // SAFETY: An API assistant message is also accepted as a subsequent conversation message; this preserves that existing input/output bridge.
             this._addMessage(message);
         }
         return chatCompletion;
@@ -109003,6 +109341,7 @@ class AbstractChatCompletionRunner extends EventStream {
             this._emit('message', message);
             if (isToolMessage(message) && message.content) {
                 // Note, this assumes that {role: 'tool', content: …} is always the result of a call of tool of type=function.
+                // SAFETY: The legacy function-tool result event assumes textual tool output, as documented by the adjacent compatibility comment.
                 this._emit('functionToolCallResult', message.content);
             }
             else if (isAssistantMessage(message) && message.tool_calls) {
@@ -109108,8 +109447,11 @@ class AbstractChatCompletionRunner extends EventStream {
     async _runTools(client, params, runner, options) {
         const role = 'tool';
         const { tool_choice = 'auto', stream, toolContext: inputToolContext, ...restParams } = params;
+        // SAFETY: The generic runner parameters tie toolContext to ToolContext; undefined remains valid when the caller omits it under that contract.
         const toolContext = inputToolContext;
-        const singleFunctionToCall = typeof tool_choice !== 'string' && tool_choice.type === 'function' && tool_choice?.function?.name;
+        const singleFunctionToCall = 
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Chat history and tool-choice inputs can contain runtime variants that select different runner behavior.
+        typeof tool_choice !== 'string' && tool_choice.type === 'function' && tool_choice?.function?.name;
         const { maxChatCompletions = DEFAULT_MAX_CHAT_COMPLETIONS, afterCompletion } = options || {};
         const runAfterCompletion = async (completion) => {
             if (afterCompletion == null) {
@@ -109125,6 +109467,7 @@ class AbstractChatCompletionRunner extends EventStream {
                 if (!tool.$callback) {
                     throw new error_OpenAIError('Tool given to `.runTools()` that does not have an associated function');
                 }
+                // SAFETY: The auto-parseable tool supplies its own validated parameter schema and parser; this bridges the legacy runnable-tool parameter type.
                 return {
                     type: 'function',
                     function: {
@@ -109137,6 +109480,7 @@ class AbstractChatCompletionRunner extends EventStream {
                     },
                 };
             }
+            // SAFETY: Unbranded tools follow the existing runnable-tool contract; the function-tool branch below performs its normal dispatch.
             return tool;
         });
         const functionsByName = Object.create(null);
@@ -109145,18 +109489,23 @@ class AbstractChatCompletionRunner extends EventStream {
                 functionsByName[f.function.name || f.function.function.name] = f.function;
             }
         }
+        // SAFETY: The runnable function's parameter schema is forwarded as JSON keyword properties without changing or inspecting its values.
+        // SAFETY: This is the intentional non-function tool pass-through; the runnable and wire types differ in index signatures, not the forwarded value.
+        // SAFETY: Omitting the tools list preserves the optional wire field; the existing conditional result type is broader than the runnable helper's declaration.
         const tools = 'tools' in params
             ? inputTools.map((t) => t.type === 'function'
                 ? {
                     type: 'function',
                     function: {
                         name: t.function.name || t.function.function.name,
+                        // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Tool parameter schemas use the published open JSON Schema dictionary contract, including arbitrary extensions.
                         parameters: t.function.parameters,
                         description: t.function.description,
                         strict: t.function.strict,
                     },
                 }
-                : t)
+                : // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Preserve the existing non-function tool pass-through; runnable and wire schema interfaces have incompatible index signatures.
+                    t)
             : undefined;
         for (const message of params.messages) {
             this._addMessage(message, false, false);
@@ -109189,21 +109538,37 @@ class AbstractChatCompletionRunner extends EventStream {
                 }
                 catch (error) {
                     if (this.controller.signal.aborted) {
-                        throw new error_APIUserAbortError();
+                        throw this._userAbortError();
                     }
                     const content = error instanceof Error ? error.message : String(error);
                     return { message: { role, tool_call_id, content }, functionCalled: false };
                 }
                 if (this.controller.signal.aborted) {
-                    throw new error_APIUserAbortError();
+                    throw this._userAbortError();
                 }
-                rawContent = await fn.function(parsed, runner, toolContext);
+                try {
+                    rawContent = await fn.function(parsed, runner, toolContext);
+                }
+                catch (error) {
+                    if (this.controller.signal.aborted && Object.is(error, this.controller.signal.reason)) {
+                        throw this._userAbortError();
+                    }
+                    throw error;
+                }
             }
             else {
                 if (this.controller.signal.aborted && !bufferedToolCall) {
-                    throw new error_APIUserAbortError();
+                    throw this._userAbortError();
                 }
-                rawContent = await fn.function(args, runner, toolContext);
+                try {
+                    rawContent = await fn.function(args, runner, toolContext);
+                }
+                catch (error) {
+                    if (this.controller.signal.aborted && Object.is(error, this.controller.signal.reason)) {
+                        throw this._userAbortError();
+                    }
+                    throw error;
+                }
             }
             const content = __classPrivateFieldGet(AbstractChatCompletionRunner_a, AbstractChatCompletionRunner_a, "m", _AbstractChatCompletionRunner_stringifyFunctionCallResult).call(AbstractChatCompletionRunner_a, rawContent);
             return { message: { role, tool_call_id, content }, functionCalled: true };
@@ -109233,7 +109598,7 @@ class AbstractChatCompletionRunner extends EventStream {
                         this._addMessage(result.message);
                     }
                     if (this.controller.signal.aborted) {
-                        throw new error_APIUserAbortError();
+                        throw this._userAbortError();
                     }
                     if (singleFunctionToCall && result.functionCalled) {
                         await runAfterCompletion(chatCompletion);
@@ -109260,7 +109625,7 @@ class AbstractChatCompletionRunner extends EventStream {
                     }
                 }
                 if (this.controller.signal.aborted) {
-                    throw new error_APIUserAbortError();
+                    throw this._userAbortError();
                 }
             }
             await runAfterCompletion(chatCompletion);
@@ -109275,6 +109640,7 @@ AbstractChatCompletionRunner_a = AbstractChatCompletionRunner, _AbstractChatComp
         const message = this.messages[i];
         if (isAssistantMessage(message)) {
             // Audio is intentionally omitted from the final message snapshot.
+            // SAFETY: The assistant-message branch normalizes missing content and refusal to null when constructing the completed message.
             const ret = {
                 ...message,
                 content: message.content ?? null,
@@ -109302,6 +109668,7 @@ AbstractChatCompletionRunner_a = AbstractChatCompletionRunner, _AbstractChatComp
         const message = this.messages[i];
         if (isToolMessage(message) &&
             message.content != null &&
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Chat history and tool-choice inputs can contain runtime variants that select different runner behavior.
             typeof message.content === 'string' &&
             this.messages.some((x) => x.role === 'assistant' &&
                 x.tool_calls?.some((y) => y.type === 'function' && y.id === message.tool_call_id))) {
@@ -109325,19 +109692,14 @@ AbstractChatCompletionRunner_a = AbstractChatCompletionRunner, _AbstractChatComp
     return total;
 }, _AbstractChatCompletionRunner_throwIfAborted = function _AbstractChatCompletionRunner_throwIfAborted() {
     if (this.controller.signal.aborted) {
-        const error = new error_APIUserAbortError();
-        Object.defineProperty(error, 'cause', {
-            value: this.controller.signal.reason,
-            writable: true,
-            configurable: true,
-        });
-        throw error;
+        throw this._userAbortError();
     }
 }, _AbstractChatCompletionRunner_validateParams = function _AbstractChatCompletionRunner_validateParams(params) {
     if (params.n != null && params.n > 1) {
         throw new error_OpenAIError('ChatCompletion convenience helpers only support n=1 at this time. To use n>1, please use chat.completions.create() directly.');
     }
 }, _AbstractChatCompletionRunner_stringifyFunctionCallResult = function _AbstractChatCompletionRunner_stringifyFunctionCallResult(rawContent) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Chat history and tool-choice inputs can contain runtime variants that select different runner behavior.
     if (typeof rawContent === 'string') {
         return rawContent;
     }
@@ -109369,6 +109731,7 @@ class ChatCompletionRunner extends AbstractChatCompletionRunner {
     _addMessage(message, emit = true, normalizeContent = true) {
         super._addMessage(message, emit, normalizeContent);
         if (emit && isAssistantMessage(message) && message.content) {
+            // SAFETY: The runner's content event preserves the existing string-content contract for assistant messages supplied by the API or caller.
             this._emit('content', message.content);
         }
     }
@@ -109638,7 +110001,7 @@ const parser_partialParse = (input) => parseJSON(input, Allow.ALL ^ Allow.NUM);
 
 //# sourceMappingURL=streaming.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/ChatCompletionStream.mjs
-var _ChatCompletionStream_instances, _ChatCompletionStream_params, _ChatCompletionStream_audioDoneChoiceIndexes, _ChatCompletionStream_choiceEventStates, _ChatCompletionStream_currentChatCompletionSnapshot, _ChatCompletionStream_hasAutoParseableTool, _ChatCompletionStream_partialJSONParseBudget, _ChatCompletionStream_beginRequest, _ChatCompletionStream_getChoiceEventState, _ChatCompletionStream_addChunk, _ChatCompletionStream_emitToolCallDoneEvent, _ChatCompletionStream_emitContentDoneEvents, _ChatCompletionStream_validateStructuredSnapshots, _ChatCompletionStream_endRequest, _ChatCompletionStream_accumulateChatCompletion;
+var _ChatCompletionStream_instances, _ChatCompletionStream_params, _ChatCompletionStream_rejectsUnfinishedTurns, _ChatCompletionStream_audioDoneChoiceIndexes, _ChatCompletionStream_choiceEventStates, _ChatCompletionStream_currentChatCompletionSnapshot, _ChatCompletionStream_hasAutoParseableTool, _ChatCompletionStream_partialJSONParseBudget, _ChatCompletionStream_beginRequest, _ChatCompletionStream_getChoiceEventState, _ChatCompletionStream_addChunk, _ChatCompletionStream_emitToolCallDoneEvent, _ChatCompletionStream_emitContentDoneEvents, _ChatCompletionStream_validateStructuredSnapshots, _ChatCompletionStream_endRequest, _ChatCompletionStream_accumulateChatCompletion;
 
 
 
@@ -109648,6 +110011,7 @@ var _ChatCompletionStream_instances, _ChatCompletionStream_params, _ChatCompleti
 
 
 
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- Partial JSON may have any shape; callers validate or parse it against their response schema.
 function parseStructuredStreamingJSON(content) {
     try {
         return parser_partialParse(content);
@@ -109667,6 +110031,7 @@ function makeChatCompletionReadableStreamMessageChunk(chunk, message, toolCallId
     const payload = {
         type: 'message',
         message,
+        // Spread creates an own data property without invoking inherited setters or changing the object prototype.
         ...(toolCallIds ? { tool_call_ids: toolCallIds } : {}),
     };
     return {
@@ -109687,6 +110052,7 @@ function getChatCompletionReadableStreamMessage(item) {
     if ('type' in item) {
         return item;
     }
+    // SAFETY: This decoder reads the SDK's tagged readable-stream envelope; JSON parsing restores its serialized message fields for the stream accumulator.
     return JSON.parse(item.object.slice(CHAT_COMPLETION_READABLE_STREAM_MESSAGE_PREFIX.length));
 }
 // The Chat Completions schema limits n to 128. Replayed streams do not retain
@@ -109814,11 +110180,13 @@ function reservePartialJSONParse(state, budget) {
 function captureStructuredJSONSnapshot(snapshot, property) {
     const descriptor = Object.getOwnPropertyDescriptor(snapshot, property);
     if (!descriptor) {
+        // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
         let prototype = Object.getPrototypeOf(snapshot);
         for (let depth = 0; prototype !== null; depth += 1) {
             if (depth >= MAX_PARTIAL_JSON_DEPTH || Object.getOwnPropertyDescriptor(prototype, property)) {
                 throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
             }
+            // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
             prototype = Object.getPrototypeOf(prototype);
         }
         return undefined;
@@ -109827,6 +110195,7 @@ function captureStructuredJSONSnapshot(snapshot, property) {
         (typeof descriptor.value !== 'string' && descriptor.value !== null && descriptor.value !== undefined)) {
         throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
     }
+    // SAFETY: The own data descriptor was explicitly checked to contain only a string, null, or undefined.
     return descriptor.value;
 }
 function captureStructuredMessageSnapshot(choice) {
@@ -109837,16 +110206,19 @@ function captureStructuredMessageSnapshot(choice) {
         descriptor.value === null) {
         throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
     }
+    // SAFETY: The choice contract supplies a message; the own data descriptor check prevents getters from changing which object is captured.
     return descriptor.value;
 }
 function captureSnapshotArray(snapshot, property, maximum, kind) {
     const descriptor = Object.getOwnPropertyDescriptor(snapshot, property);
     if (!descriptor) {
+        // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
         let prototype = Object.getPrototypeOf(snapshot);
         for (let depth = 0; prototype !== null; depth += 1) {
             if (depth >= MAX_PARTIAL_JSON_DEPTH || Object.getOwnPropertyDescriptor(prototype, property)) {
                 throw new error_OpenAIError(`Chat completion stream contains an unsafe snapshot ${kind} collection`);
             }
+            // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
             prototype = Object.getPrototypeOf(prototype);
         }
         return undefined;
@@ -109858,6 +110230,7 @@ function captureSnapshotArray(snapshot, property, maximum, kind) {
     if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value > maximum) {
         throw new error_OpenAIError(`Chat completion stream exceeded its snapshot ${kind} limit`);
     }
+    // SAFETY: The captured data property is an array with a checked bounded length; Item comes from the owning snapshot collection's contract.
     return descriptor.value;
 }
 function captureSnapshotArrayItem(array, index) {
@@ -109868,6 +110241,7 @@ function captureSnapshotArrayItem(array, index) {
     if (!('value' in descriptor)) {
         throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
     }
+    // SAFETY: The descriptor is a data property of the typed Item array, so its value retains that array's element contract.
     return descriptor.value;
 }
 function mapCapturedSnapshotArray(array, maximum, kind, map) {
@@ -109886,6 +110260,7 @@ function mapCapturedSnapshotArray(array, maximum, kind, map) {
         if (!('value' in item)) {
             throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
         }
+        // SAFETY: The descriptor is a data property of the typed Item array, so its value retains that array's element contract.
         mapped[index] = map(item.value, index);
     }
     return mapped;
@@ -109920,6 +110295,7 @@ function assertBoundToolCallIdentity(toolCall, identity) {
         throw new error_OpenAIError('Chat completion stream contains a changed tool call identity');
     }
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- This assignment primitive copies own properties from heterogeneous snapshot and delta objects.
 function assignOwnProperties(target, source) {
     if (Object.prototype.propertyIsEnumerable.call(source, '__proto__') && !values_hasOwn(target, '__proto__')) {
         Object.defineProperty(target, '__proto__', {
@@ -109939,12 +110315,14 @@ function cloneParserConfigObject(value, stableFields = []) {
             continue;
         }
         descriptors[field] = {
+            // oxlint-disable-next-line anti-slop/no-reflect-get -- Generic config cloning must resolve inherited/accessor keys outside the declared config shape.
             value: descriptor && 'value' in descriptor ? descriptor.value : Reflect.get(value, field, value),
             enumerable: descriptor?.enumerable ?? false,
             configurable: descriptor?.configurable ?? true,
             writable: descriptor && 'writable' in descriptor ? descriptor.writable : false,
         };
     }
+    // SAFETY: The clone preserves the original prototype and descriptors, replacing only the parser metadata captured from that same value.
     return Object.create(Object.getPrototypeOf(value), descriptors);
 }
 function snapshotChatCompletionParserParams(params) {
@@ -109962,6 +110340,7 @@ function snapshotChatCompletionParserParams(params) {
                 stableTools.length = index + 1;
                 continue;
             }
+            // SAFETY: This own data descriptor comes from the request's typed tools array; the following code captures its parser metadata.
             const tool = item.value;
             const stableTool = cloneParserConfigObject(tool, [
                 'type',
@@ -109980,6 +110359,7 @@ function snapshotChatCompletionParserParams(params) {
                     value: cloneParserConfigObject(stableTool.function, ['name', 'strict']),
                 };
             }
+            // SAFETY: The cloned tool retains the original prototype and descriptors while substituting its captured parser configuration.
             stableTools[index] = Object.create(Object.getPrototypeOf(tool), descriptors);
         }
         snapshot.tools = stableTools;
@@ -110010,6 +110390,7 @@ function canonicalSerializedParserSchema(value, budget) {
         budget.bytes += bytes;
         return true;
     };
+    // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
     const visit = (current, depth) => {
         if (depth > MAX_SERIALIZED_PARSER_SCHEMA_DEPTH || budget.nodes >= MAX_SERIALIZED_PARSER_SCHEMA_NODES) {
             return UNSAFE_SERIALIZED_PARSER_VALUE;
@@ -110037,6 +110418,7 @@ function canonicalSerializedParserSchema(value, budget) {
             return UNSAFE_SERIALIZED_PARSER_VALUE;
         }
         const array = Array.isArray(current);
+        // SAFETY: Object.getPrototypeOf returns an object or null; the following traversal checks inherited properties without assuming a specific prototype type.
         const prototype = Object.getPrototypeOf(current);
         if ((array && prototype !== Array.prototype) ||
             (!array && prototype !== null && prototype !== Object.prototype)) {
@@ -110148,7 +110530,11 @@ function canonicalSerializedParserSchema(value, budget) {
         return undefined;
     }
 }
-function rememberSerializedParserSchema(signatures, source, holder, key) {
+function rememberSerializedParserSchema(signatures, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Parser owners are tracked by identity before their metadata descriptors are validated.
+source, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Serialized schema holders may be arbitrary objects with hostile accessors or prototypes.
+holder, key) {
     const parser = Object.getOwnPropertyDescriptor(source, '$parseRaw');
     const schema = Object.getOwnPropertyDescriptor(holder, key);
     if (!parser ||
@@ -110163,7 +110549,11 @@ function rememberSerializedParserSchema(signatures, source, holder, key) {
         signatures.set(source, normalized);
     }
 }
-function hasMatchingSerializedParserSchema(signatures, source, holder, key, value) {
+function hasMatchingSerializedParserSchema(signatures, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Parser signatures belong to the original object identity, independent of its fields.
+source, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The schema holder is inspected through own descriptors before its contents are trusted.
+holder, key, value) {
     const expected = source && signatures.get(source);
     const descriptor = Object.getOwnPropertyDescriptor(holder, key);
     return (expected !== undefined &&
@@ -110194,6 +110584,7 @@ function shadowSerializedParserMetadata(descriptors, source, fields) {
     }
 }
 function snapshotSerializedParserTool(serialized) {
+    // SAFETY: The fallback is a serialization scaffold: the code below installs the captured wire fields before the tool is returned.
     const source = serialized.source ??
         {
             type: serialized.type,
@@ -110206,9 +110597,11 @@ function snapshotSerializedParserTool(serialized) {
             descriptors.function = serializedParserDescriptor(descriptors.function, undefined);
         }
         shadowSerializedParserMetadata(descriptors, source, ['$brand', '$parseRaw', '$callback']);
+        // SAFETY: The descriptors reconstruct the tool's captured serialized fields and shadow parser metadata while retaining its original prototype.
         return Object.create(Object.getPrototypeOf(source), descriptors);
     }
     const descriptor = descriptors.function;
+    // SAFETY: The preceding guard proves this data descriptor contains a non-null object; no more specific type is assumed.
     const original = descriptor && 'value' in descriptor && typeof descriptor.value === 'object' && descriptor.value !== null
         ? descriptor.value
         : {};
@@ -110219,17 +110612,21 @@ function snapshotSerializedParserTool(serialized) {
     if (!serialized.function.schemaMatches) {
         shadowSerializedParserMetadata(descriptors, source, ['$brand', '$parseRaw', '$callback']);
     }
+    // SAFETY: The descriptors reconstruct the tool's captured serialized fields and shadow parser metadata while retaining its original prototype.
     return Object.create(Object.getPrototypeOf(source), descriptors);
 }
 function snapshotSerializedResponseFormat(serialized) {
+    // SAFETY: The fallback seeds only the discriminator; the captured response-format fields are installed below before returning it.
     const source = serialized.source ?? { type: serialized.type };
     const descriptors = Object.getOwnPropertyDescriptors(source);
     descriptors.type = serializedParserDescriptor(descriptors.type, serialized.type);
     if (serialized.type !== 'json_schema' || !serialized.source || !serialized.schemaMatches) {
         shadowSerializedParserMetadata(descriptors, source, ['$brand', '$parseRaw']);
     }
+    // SAFETY: The descriptors restore the captured response-format fields and parser metadata on the original prototype.
     return Object.create(Object.getPrototypeOf(source), descriptors);
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The serialization visitor accepts arbitrary object and array holders, inspecting own descriptors only.
 function ownSerializedParserObject(holder, key) {
     const descriptor = Object.getOwnPropertyDescriptor(holder, key);
     if (!descriptor || !('value' in descriptor)) {
@@ -110295,6 +110692,8 @@ function observeSerializedChatCompletionParserParams(body, initial, update) {
                 if (Array.isArray(value)) {
                     tools = new Proxy(value, {
                         get(target, property) {
+                            // SAFETY: Proxy property values may be arbitrary; unknown preserves that uncertainty before the property-specific checks below.
+                            // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys with the original target as accessor receiver.
                             const actual = Reflect.get(target, property, target);
                             if (typeof property === 'string') {
                                 const index = Number(property);
@@ -110406,6 +110805,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
         super();
         _ChatCompletionStream_instances.add(this);
         _ChatCompletionStream_params.set(this, void 0);
+        _ChatCompletionStream_rejectsUnfinishedTurns.set(this, false);
         _ChatCompletionStream_audioDoneChoiceIndexes.set(this, void 0);
         _ChatCompletionStream_choiceEventStates.set(this, void 0);
         _ChatCompletionStream_currentChatCompletionSnapshot.set(this, void 0);
@@ -110424,6 +110824,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
                 if (!descriptor || !('value' in descriptor)) {
                     continue;
                 }
+                // SAFETY: The descriptor is read from the typed request tools array and checked as an own data property before accessing the tool.
                 const tool = descriptor.value;
                 if (isChatCompletionFunctionTool(tool) &&
                     (isAutoParsableTool(tool) || tool.function.strict === true)) {
@@ -110452,9 +110853,15 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
     }
     /** Starts a streaming chat completion request and returns its event-driven helper. */
     static createChatCompletion(client, params, options) {
+        // SAFETY: The runner forces stream: true when sending this request; the same parameters retain the caller's parsing configuration.
         const runner = new ChatCompletionStream(params);
         runner._run(() => runner._runChatCompletion(client, { ...params, stream: true }, { ...options, __metadata: { ...options?.__metadata, helperMethod: 'stream' } }));
         return runner;
+    }
+    /** Rejects unfinished turns before tool callbacks while preserving ordinary stream and replay behavior. */
+    _runTools(client, params, runner, options) {
+        __classPrivateFieldSet(this, _ChatCompletionStream_rejectsUnfinishedTurns, true, "f");
+        return super._runTools(client, params, runner, options);
     }
     async _createChatCompletion(client, params, options) {
         this._listenForAbort(options?.signal);
@@ -110482,7 +110889,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
             __classPrivateFieldGet(this, _ChatCompletionStream_instances, "m", _ChatCompletionStream_addChunk).call(this, chunk);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return this._addChatCompletion(__classPrivateFieldGet(this, _ChatCompletionStream_instances, "m", _ChatCompletionStream_endRequest).call(this));
     }
@@ -110523,7 +110930,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
             }
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         if (__classPrivateFieldGet(this, _ChatCompletionStream_currentChatCompletionSnapshot, "f")) {
             return this._addChatCompletion(__classPrivateFieldGet(this, _ChatCompletionStream_instances, "m", _ChatCompletionStream_endRequest).call(this));
@@ -110535,7 +110942,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
         throw new error_OpenAIError(`request ended without sending any chunks`);
     }
     /** Iterates over raw API chunks; stopping iteration early aborts the underlying request. */
-    [(_ChatCompletionStream_params = new WeakMap(), _ChatCompletionStream_audioDoneChoiceIndexes = new WeakMap(), _ChatCompletionStream_choiceEventStates = new WeakMap(), _ChatCompletionStream_currentChatCompletionSnapshot = new WeakMap(), _ChatCompletionStream_hasAutoParseableTool = new WeakMap(), _ChatCompletionStream_partialJSONParseBudget = new WeakMap(), _ChatCompletionStream_instances = new WeakSet(), _ChatCompletionStream_beginRequest = function _ChatCompletionStream_beginRequest() {
+    [(_ChatCompletionStream_params = new WeakMap(), _ChatCompletionStream_rejectsUnfinishedTurns = new WeakMap(), _ChatCompletionStream_audioDoneChoiceIndexes = new WeakMap(), _ChatCompletionStream_choiceEventStates = new WeakMap(), _ChatCompletionStream_currentChatCompletionSnapshot = new WeakMap(), _ChatCompletionStream_hasAutoParseableTool = new WeakMap(), _ChatCompletionStream_partialJSONParseBudget = new WeakMap(), _ChatCompletionStream_instances = new WeakSet(), _ChatCompletionStream_beginRequest = function _ChatCompletionStream_beginRequest() {
         if (this.ended) {
             return;
         }
@@ -110679,7 +111086,9 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
             throw new Error('tool call snapshot missing `type`');
         }
         if (toolCallSnapshot.type === 'function') {
+            // SAFETY: The find predicate verifies the function-tool discriminator before matching its name; the cast carries that refinement through find.
             const inputTool = __classPrivateFieldGet(this, _ChatCompletionStream_params, "f")?.tools?.find((tool) => isChatCompletionFunctionTool(tool) && tool.function.name === toolCallSnapshot.function.name); // TS doesn't narrow based on isChatCompletionTool
+            // oxlint-disable-next-line anti-slop/no-known-value-widening -- The initial null is replaced with an arbitrary tool-parser result after snapshot validation.
             let parsedArguments = null;
             const parseable = isAutoParsableTool(inputTool) || inputTool?.function.strict === true;
             let argumentsSnapshot;
@@ -110831,6 +111240,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
                 if (!descriptor || !('value' in descriptor)) {
                     throw new error_OpenAIError('Chat completion stream contains an unsafe structured JSON snapshot');
                 }
+                // SAFETY: The tool-call function is captured through an own data descriptor; its fields are subsequently checked by the structured snapshot reader.
                 const fn = descriptor.value;
                 const argumentsSnapshot = captureStructuredJSONSnapshot(fn, 'arguments');
                 if (typeof argumentsSnapshot !== 'string') {
@@ -110924,7 +111334,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
             }
             if (finish_reason) {
                 choice.finish_reason = finish_reason;
-                if (__classPrivateFieldGet(this, _ChatCompletionStream_params, "f") && hasAutoParseableInput(__classPrivateFieldGet(this, _ChatCompletionStream_params, "f"))) {
+                if (__classPrivateFieldGet(this, _ChatCompletionStream_params, "f") && (__classPrivateFieldGet(this, _ChatCompletionStream_rejectsUnfinishedTurns, "f") || hasAutoParseableInput(__classPrivateFieldGet(this, _ChatCompletionStream_params, "f")))) {
                     if (finish_reason === 'length') {
                         throw new LengthFinishReasonError();
                     }
@@ -110939,6 +111349,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
                 continue;
             } // Shouldn't happen; just in case.
             __classPrivateFieldGet(this, _ChatCompletionStream_audioDoneChoiceIndexes, "f").delete(index);
+            // SAFETY: Streaming audio fields arrive incrementally even though the generated delta type omits them; each present field is merged below.
             const { audio, content, refusal, function_call, role, ...capturedDeltaFields } = delta;
             const { tool_calls: capturedToolCallDelta, ...rest } = capturedDeltaFields;
             const tool_calls = values_hasOwn(capturedDeltaFields, 'tool_calls') ? capturedToolCallDelta : delta.tool_calls;
@@ -111018,6 +111429,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
                 // Tool calls are built up across chunks, so while the stream is in progress the
                 // entries are only partially filled in; they match `ChatCompletionSnapshot.Choice.Message.ToolCall`
                 // once every delta for them has been accumulated.
+                // SAFETY: This SDK-owned collection holds partial tool calls during accumulation; finalization checks required fields before exposing completed calls.
                 const toolCallSnapshots = ((_e = choice.message).tool_calls ?? (_e.tool_calls = []));
                 for (const toolCallDelta of tool_calls) {
                     const { index, id, type, function: fn, custom, ...rest } = toolCallDelta;
@@ -111143,6 +111555,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
             }
             const stableChoice = new Proxy(choice, {
                 get(target, property, receiver) {
+                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys and the original accessor receiver.
                     return property === 'message' ? validated.message : Reflect.get(target, property, receiver);
                 },
             });
@@ -111158,6 +111571,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
                     if (property === 'tool_calls') {
                         return validated.toolCallCollection;
                     }
+                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys and the original accessor receiver.
                     return Reflect.get(target, property, receiver);
                 },
             });
@@ -111168,7 +111582,9 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
             if (!finishReason) {
                 throw new error_OpenAIError(`missing finish_reason for choice ${index}`);
             }
+            // SAFETY: The completed API response contract supplies the audio fields; this preserves the existing pass-through behavior at finalization.
             const audioResponse = audio ? { audio: audio } : {};
+            // SAFETY: The API completion contract uses assistant role; retaining the wire role preserves existing behavior without adding runtime rejection.
             const role = message.role; // this is what we expect; in theory it could be different which would make our types a slight lie but would be fine.
             if (!role) {
                 throw new error_OpenAIError(`missing role for choice ${index}`);
@@ -111231,6 +111647,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
                                         if (property === 'name') {
                                             return captured.name;
                                         }
+                                        // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys and the original accessor receiver.
                                         return Reflect.get(target, property, receiver);
                                     },
                                 });
@@ -111243,6 +111660,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
                                         if (property === 'function') {
                                             return stableFunction;
                                         }
+                                        // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys and the original accessor receiver.
                                         return Reflect.get(target, property, receiver);
                                     },
                                 })
@@ -111292,6 +111710,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
         created,
         model,
         object: 'chat.completion',
+        // Spread creates an own data property without invoking inherited setters or changing the object prototype.
         ...(system_fingerprint ? { system_fingerprint } : {}),
     };
     return maybeParseChatCompletion(completion, params);
@@ -114676,8 +115095,9 @@ function normalizedOutput(value) {
     }
     throw new error_OpenAIError('Tool output must be text, content, a JSON object, or null');
 }
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The public AgentToolOutput contract accepts arbitrary JSON-serializable object results.
 function toolResult(call, value) {
-    const output = value !== null && typeof value === 'object' && !Array.isArray(value) ? JSON.stringify(value) : value;
+    const output = isObj(value) ? JSON.stringify(value) : value;
     // Detect unserializable callback results inside the redacted failure boundary.
     const serialized = JSON.stringify(output);
     if (serialized === undefined) {
@@ -114789,6 +115209,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
         __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
         await __classPrivateFieldGet(this, _AgentSessionStream_sessions, "f").events.create(__classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"), {
             events: [__classPrivateFieldGet(this, _AgentSessionStream_input, "f")],
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(__classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") === undefined ? {} : { 'Idempotency-Key': __classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") }),
         }, {
             ...options,
@@ -114832,9 +115253,10 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
 }, _AgentSessionStream_result = async function _AgentSessionStream_result(call, handler) {
     try {
         const args = typeof call.arguments === 'string' ? JSON.parse(call.arguments) : call.arguments;
-        if (args === null || typeof args !== 'object' || Array.isArray(args)) {
+        if (!isObj(args)) {
             throw new error_OpenAIError('Function arguments must be a JSON object');
         }
+        // SAFETY: Arguments were parsed as JSON and checked to be a non-null non-array object before invoking the handler.
         return toolResult(call, await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_wait).call(this, () => handler(args)));
     }
     catch {
@@ -115021,7 +115443,10 @@ class Artifacts extends resource_APIResource {
 class sessions_events_Events extends resource_APIResource {
     /**
      * Submits message, cancellation, or tool-result events to a managed agent session.
-     * See
+     * Cancellation can recover a still-open turn whose backend execution has ended by
+     * marking it cancelled and abandoning unpublished outputs. Saved results,
+     * published files, and existing terminal outcomes are preserved. HTTP 202 confirms
+     * acceptance, not durable completion. See
      * [session events](https://developers.openai.com/api/docs/guides/agents-api/sessions/events).
      *
      * @example
@@ -115418,7 +115843,8 @@ class sessions_sessions_Sessions extends resource_APIResource {
         });
     }
     /**
-     * Updates session metadata. Omitted fields are unchanged. See
+     * Updates session metadata, model, reasoning effort, or service tier. Model
+     * settings apply to subsequent turns. Omitted fields are unchanged. See
      * [managing sessions](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage).
      *
      * @example
@@ -115458,7 +115884,9 @@ class sessions_sessions_Sessions extends resource_APIResource {
     }
     /**
      * Removes a managed agent session from the public API and returns a deletion
-     * confirmation. Physical cleanup may continue asynchronously. See
+     * confirmation. If backend execution has ended, deletion can cancel a still-open
+     * public turn and abandon unpublished outputs. Running execution must be cancelled
+     * first. Physical cleanup may continue asynchronously. See
      * [managing sessions](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage).
      *
      * @example
@@ -116429,6 +116857,7 @@ function getAssistantStreamDeltaIndex(deltaEntry, kind, baselineLength) {
     if (kind === 'array' && typeof index !== 'number') {
         throw new TypeError('Expected array delta entry `index` property to be a number but got an invalid value');
     }
+    // SAFETY: Number.isSafeInteger rejects non-numbers before numeric comparisons; the remaining checks enforce the permitted index range.
     if (!Number.isSafeInteger(index) ||
         index < 0 ||
         index >= baselineLength + MAX_ASSISTANT_STREAM_ARRAY_GROWTH ||
@@ -116436,6 +116865,7 @@ function getAssistantStreamDeltaIndex(deltaEntry, kind, baselineLength) {
         const safeIndex = typeof index === 'number' ? index : 'unknown';
         throw new error_OpenAIError(`Assistant stream delta contains an invalid ${kind} index: ${safeIndex}`);
     }
+    // SAFETY: Number.isSafeInteger rejects non-numbers before numeric comparisons; the remaining checks enforce the permitted index range.
     return index;
 }
 function assertValidAssistantStreamArrayDelta(accumulator, delta, kind, projection, validateRecord) {
@@ -116573,6 +117003,7 @@ function applyAssistantStreamArrayDelta(accumulator, delta, applyRecord) {
                 accumulator[index] = deltaEntry;
             }
             else {
+                // SAFETY: The preceding validation accepts this accumulated record before recursively merging the matching delta entry.
                 accumulator[index] = applyRecord(accumulatedEntry, deltaEntry);
             }
         }
@@ -116637,9 +117068,13 @@ function assertSafeAssistantStreamDelta(value) {
         assertSafeAssistantStreamDelta(nestedValue);
     }
 }
-function accumulateAssistantStreamDelta(accumulator, delta, cacheArrays = false) {
+function accumulateAssistantStreamDelta(accumulator, 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- This exported accumulator accepts heterogeneous partial SDK deltas and validates their properties at runtime.
+delta, cacheArrays = false) {
     assertSafeAssistantStreamDelta(delta);
+    // SAFETY: The generic accumulator uses record entries after delta validation; recursive merge retains the original accumulator's public type.
     const accumulatorRecord = accumulator;
+    // SAFETY: The generic accumulator uses record entries after delta validation; recursive merge retains the original accumulator's public type.
     const deltaRecord = delta;
     const projection = createAssistantStreamDeltaProjection(cacheArrays && !isAssistantStreamValueExternallyMutable(accumulator));
     assertValidAssistantStreamDeltaIndices(accumulatorRecord, deltaRecord, projection);
@@ -116665,7 +117100,9 @@ var _AssistantStream_instances, _AssistantStream_runStepSnapshots, _AssistantStr
 function stabilizeAssistantStreamEvent(event) {
     const eventDescriptor = Object.getOwnPropertyDescriptor(event, 'event');
     const dataDescriptor = Object.getOwnPropertyDescriptor(event, 'data');
+    // oxlint-disable-next-line anti-slop/no-reflect-get -- Reflective wire reads reject primitive frames and preserve the original event receiver.
     const eventType = Reflect.get(event, 'event', event);
+    // oxlint-disable-next-line anti-slop/no-reflect-get -- Keep the paired wire-data read on the original receiver after reading the event discriminator.
     const data = Reflect.get(event, 'data', event);
     let stableData = data;
     if (eventType === 'thread.message.created' ||
@@ -116681,15 +117118,22 @@ function stabilizeAssistantStreamEvent(event) {
         eventType === 'thread.run.step.cancelled' ||
         eventType === 'thread.run.step.expired') {
         const messageID = Object.getOwnPropertyDescriptor(data, 'id');
-        if (messageID && 'value' in messageID && Reflect.get(data, 'id', data) !== messageID.value) {
+        if (messageID &&
+            'value' in messageID &&
+            // SAFETY: The own id descriptor was found above; keep its live read unknown while comparing it with the captured descriptor value.
+            data.id !== messageID.value) {
+            // SAFETY: Descriptor values are untyped; retaining this value as unknown avoids trusting a mutable message identifier.
             const canonicalID = messageID.value;
+            // SAFETY: The proxy retains the event data and substitutes only its captured own id; all other properties forward to the original receiver.
             stableData = new Proxy(data, {
                 get(target, property) {
+                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys with the original target as accessor receiver.
                     return property === 'id' ? canonicalID : Reflect.get(target, property, target);
                 },
             });
         }
     }
+    // SAFETY: The captured event discriminator and data originate from the same event; TypeScript loses their correlation when constructing the stabilized copy.
     const stableEvent = Object.freeze({ event: eventType, data: stableData });
     const ordinaryEvent = eventDescriptor !== undefined &&
         'value' in eventDescriptor &&
@@ -116698,6 +117142,7 @@ function stabilizeAssistantStreamEvent(event) {
         'value' in dataDescriptor &&
         dataDescriptor.value === data &&
         stableData === data;
+    // SAFETY: The captured event discriminator and data originate from the same event; TypeScript loses their correlation when constructing the stabilized copy.
     return {
         event: stableEvent,
         exposedEvent: ordinaryEvent ? event : { event: eventType, data: stableData },
@@ -116750,7 +117195,7 @@ class AssistantStream extends EventStream {
             __classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return this._addRun(__classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
     }
@@ -116780,7 +117225,7 @@ class AssistantStream extends EventStream {
             __classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return this._addRun(__classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
     }
@@ -116852,7 +117297,7 @@ class AssistantStream extends EventStream {
             __classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return this._addRun(__classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
     }
@@ -116865,7 +117310,7 @@ class AssistantStream extends EventStream {
             __classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_addEvent).call(this, event);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return this._addRun(__classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_endRequest).call(this));
     }
@@ -117201,6 +117646,7 @@ _AssistantStream_addEvent = function _AssistantStream_addEvent(event) {
                 accumulatedRunStep.step_details.type === 'tool_calls') {
                 for (const toolCall of delta.step_details.tool_calls) {
                     if (toolCall.index === __classPrivateFieldGet(this, _AssistantStream_currentToolCallIndex, "f")) {
+                        // SAFETY: The indexed tool call comes from this run-step snapshot after applying the delta for the same tool-call index.
                         __classPrivateFieldGet(this, _AssistantStream_instances, "m", _AssistantStream_emitExposed).call(this, 'toolCallDelta', toolCall, accumulatedRunStep.step_details.tool_calls[toolCall.index]);
                     }
                     else {
@@ -117253,6 +117699,7 @@ _AssistantStream_addEvent = function _AssistantStream_addEvent(event) {
             return event.data;
         }
         case 'thread.run.step.delta': {
+            // SAFETY: Run-step snapshots are stored by their canonical run-step id; the delta path checks that the snapshot exists before updating it.
             const snapshot = __classPrivateFieldGet(this, _AssistantStream_runStepSnapshots, "f")[runStepID];
             if (!snapshot) {
                 throw new Error('Received a RunStepDelta before creation of a snapshot');
@@ -117266,6 +117713,7 @@ _AssistantStream_addEvent = function _AssistantStream_addEvent(event) {
                 const accumulated = accumulateAssistantStreamDelta(snapshot, delta, true);
                 __classPrivateFieldGet(this, _AssistantStream_runStepSnapshots, "f")[runStepID] = accumulated;
             }
+            // SAFETY: Run-step snapshots are stored by their canonical run-step id; the delta path checks that the snapshot exists before updating it.
             return __classPrivateFieldGet(this, _AssistantStream_runStepSnapshots, "f")[runStepID];
         }
         case 'thread.run.step.completed':
@@ -117325,6 +117773,7 @@ _AssistantStream_addEvent = function _AssistantStream_addEvent(event) {
     }
     throw new Error('Tried to accumulate a non-message event');
 }, _AssistantStream_accumulateContent = function _AssistantStream_accumulateContent(contentElement, currentContent, cacheArrays) {
+    // SAFETY: The accumulator merges the matching message-content delta into its existing block; the public return remains the text/image block union.
     return accumulateAssistantStreamDelta(currentContent, contentElement, cacheArrays);
 }, _AssistantStream_handleRun = function _AssistantStream_handleRun(event) {
     __classPrivateFieldSet(this, _AssistantStream_currentRunSnapshot, event.data, "f");
@@ -118092,12 +118541,14 @@ function createEmbedding(client, body, options) {
             // Preserve the original iteration length and skip sparse-array holes.
             for (let index = 0; index < length; index += 1) {
                 if (index in embeddings) {
+                    // SAFETY: This indexed entry belongs to the API embedding data array; sparse entries are skipped by the preceding membership check.
                     const embeddingBase64Obj = embeddings[index];
                     const { embedding } = embeddingBase64Obj;
                     // Request hooks and serialization can also select float embeddings.
                     if (Array.isArray(embedding)) {
                         continue;
                     }
+                    // SAFETY: The Array.isArray branch already handled decoded vectors; this request explicitly asked the server for base64 encoding.
                     embeddingBase64Obj.embedding = toFloat32Array(embedding);
                 }
             }
@@ -119269,6 +119720,7 @@ function maybeParseResponse(response, params) {
             }),
         };
         if (needsOutputText(response, parsed)) {
+            // SAFETY: The copy retains every response field and only adds parsed metadata; addOutputText accepts that original response structure.
             addOutputText(parsed);
         }
         return parsed;
@@ -119325,6 +119777,7 @@ function parseResponse(response, params) {
             return null;
         },
     });
+    // SAFETY: The output_parsed getter was installed immediately above and returns the first parsed content or null.
     return parsed;
 }
 function parseTextFormat(params, content) {
@@ -119358,6 +119811,7 @@ function makeParseableResponseTool(tool, { parser, callback, }) {
             enumerable: false,
         },
     });
+    // SAFETY: The non-enumerable parser brand and callbacks were installed on this copied tool immediately above.
     return obj;
 }
 /** Returns whether a Responses API tool carries the SDK's argument-parser marker. */
@@ -119379,6 +119833,7 @@ function getInputToolByName(input_tools, name, namespace) {
 }
 function ResponsesParser_parseToolCall(params, toolCall) {
     const inputTool = getInputToolByName(params.tools ?? [], toolCall.name, toolCall.namespace);
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- Parsing replaces the initial null with an arbitrary caller-parser result, so unknown is required.
     let parsedArguments = null;
     if (ResponsesParser_isAutoParsableTool(inputTool)) {
         parsedArguments = inputTool.$parseRaw(toolCall.arguments);
@@ -119658,12 +120113,14 @@ function hasRoutedOutputCallIdentity(output) {
         output.type === 'shell_call_output');
 }
 function getOutputItemIdentityKeys(output, eventType) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
     if (!values_hasOwn(output, 'type') || typeof output.type !== 'string') {
         throw new error_OpenAIError(`expected an own output item type for ${eventType}`);
     }
     const optionalPlatformID = output.type === 'function_call' || output.type === 'custom_tool_call';
     const identities = [];
     if (values_hasOwn(output, 'id')) {
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
         if (typeof output.id !== 'string' || output.id.length === 0) {
             throw new error_OpenAIError(`expected a non-empty output item id for ${eventType}`);
         }
@@ -119673,6 +120130,7 @@ function getOutputItemIdentityKeys(output, eventType) {
         throw new error_OpenAIError(`expected a non-empty output item id for ${eventType}`);
     }
     if (hasRoutedOutputCallIdentity(output)) {
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
         if (!values_hasOwn(output, 'call_id') || typeof output.call_id !== 'string' || output.call_id.length === 0) {
             throw new error_OpenAIError(`expected a non-empty output item call_id for ${eventType}`);
         }
@@ -119769,6 +120227,7 @@ const expectedOutputItemTypes = {
     'response.mcp_list_tools.in_progress': 'mcp_list_tools',
     'response.mcp_list_tools.completed': 'mcp_list_tools',
     'response.mcp_list_tools.failed': 'mcp_list_tools',
+    'response.compaction.compacting': 'compaction',
 };
 function getExpectedOutputItemType(event) {
     if (event.type === 'response.content_part.added' || event.type === 'response.content_part.done') {
@@ -119815,7 +120274,9 @@ function validateOutputItemIdentity(event, snapshot, rejectInvalidShellTargets) 
         !values_hasOwn(expectedOutputItemTypes, event.type)) {
         return;
     }
+    // SAFETY: The event type was classified as item-scoped; the following checks validate its own item_id before use.
     const itemEvent = event;
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
     if (!values_hasOwn(event, 'item_id') || typeof itemEvent.item_id !== 'string' || itemEvent.item_id.length === 0) {
         throw new error_OpenAIError(`expected a non-empty item_id for ${event.type}`);
     }
@@ -119911,6 +120372,7 @@ const supportedResponseEventTypes = createSupportedResponseEventTypes([
     'response.audio.done',
     'response.audio.transcript.delta',
     'response.audio.transcript.done',
+    'response.compaction.compacting',
     'response.image_generation_call.partial_image',
     'response.mcp_list_tools.in_progress',
     'response.mcp_list_tools.completed',
@@ -119935,11 +120397,16 @@ function sanitizeResponseEvent(event) {
         descriptor = Object.getOwnPropertyDescriptor(event, 'type');
     }
     catch {
+        // SAFETY: assertNever always throws; the cast routes invalid runtime events through the existing unsupported-event error path.
         return response_accumulator_assertNever(event);
     }
     const type = descriptor?.value;
-    if (typeof type !== 'string' ||
+    // SAFETY: The string is used only as a Set lookup key; membership performs the supported-event check.
+    if (
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
+    typeof type !== 'string' ||
         !supportedResponseEventTypes.has(type)) {
+        // SAFETY: assertNever always throws; the cast routes invalid runtime events through the existing unsupported-event error path.
         return response_accumulator_assertNever(event);
     }
     const stableValues = new Map([['type', type]]);
@@ -119955,21 +120422,23 @@ function sanitizeResponseEvent(event) {
         try {
             for (const field of responseEventRoutingFields) {
                 const routingDescriptor = Object.getOwnPropertyDescriptor(event, field);
-                stableValues.set(field, routingDescriptor ? Reflect.get(event, field, event) : undefined);
+                stableValues.set(field, routingDescriptor ? event[field] : undefined);
             }
             if (type === 'response.output_item.done') {
-                stableValues.set('item', structuredClone(Reflect.get(event, 'item', event)));
+                stableValues.set('item', structuredClone(event.item));
             }
             else if (type === 'response.content_part.added' || type === 'response.content_part.done') {
-                stableValues.set('part', structuredClone(Reflect.get(event, 'part', event)));
+                stableValues.set('part', structuredClone(event.part));
             }
         }
         catch {
+            // SAFETY: assertNever always throws; the cast routes invalid runtime events through the existing unsupported-event error path.
             return response_accumulator_assertNever(event);
         }
     }
     return new Proxy(event, {
         get(target, property) {
+            // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy forwarding must preserve arbitrary keys with the original target as accessor receiver.
             return stableValues.has(property) ? stableValues.get(property) : Reflect.get(target, property, target);
         },
     });
@@ -120128,6 +120597,7 @@ function accumulateOutputTextEvent(event, snapshot, context) {
                     throw new error_OpenAIError(`expected content to be 'output_text', got ${content.type}`);
                 }
                 validateArrayIndex(content.annotations, event.annotation_index, 'annotation', true);
+                // SAFETY: The output_text discriminator and annotation index were checked; the annotation is cloned from the corresponding API event contract.
                 content.annotations[event.annotation_index] = structuredClone(event.annotation);
             }
             return true;
@@ -120479,6 +120949,7 @@ function isIgnoredResponseEvent(event) {
         case 'response.audio.done':
         case 'response.audio.transcript.delta':
         case 'response.audio.transcript.done':
+        case 'response.compaction.compacting':
         case 'response.image_generation_call.partial_image':
         case 'response.mcp_list_tools.in_progress':
         case 'response.mcp_list_tools.completed':
@@ -120568,6 +121039,7 @@ class ResponseStream extends EventStream {
     }
     /** Starts a new response stream or replays an existing response by its identifier. */
     static createResponse(client, params, options) {
+        // SAFETY: The runner's request path forces stream: true; the constructor retains the same caller parameters for parsing metadata.
         const runner = new ResponseStream(params);
         runner._run(() => runner._createOrRetrieveResponse(client, params, {
             ...options,
@@ -120600,7 +121072,7 @@ class ResponseStream extends EventStream {
             __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_addEvent).call(this, event, starting_after);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_endRequest).call(this);
     }
@@ -120613,7 +121085,7 @@ class ResponseStream extends EventStream {
             __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_addEvent).call(this, event, null);
         }
         if (stream.controller.signal?.aborted) {
-            throw new error_APIUserAbortError();
+            throw this._userAbortError();
         }
         return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_endRequest).call(this);
     }
@@ -120630,13 +121102,16 @@ class ResponseStream extends EventStream {
         }
         const maybeEmit = (name, event) => {
             if (starting_after == null || event.sequence_number > starting_after) {
+                // SAFETY: The caller derives the event name from the dispatched event discriminator; this bridge preserves the corresponding payload.
                 this._emit(name, event);
             }
         };
         if (event.type === 'error') {
             // First-party providers nest their error payload; retain flat compatibility for
             // serialized events matching the currently published event schema.
-            const error = 'error' in event && typeof event.error === 'object' && event.error !== null ? event.error : event;
+            const error = 
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- An error event can contain malformed server data; validate its container before extracting error details.
+            'error' in event && typeof event.error === 'object' && event.error !== null ? event.error : event;
             throw new error_APIError(undefined, error, event.message, undefined);
         }
         let dispatchEvent = event;
@@ -121773,9 +122248,31 @@ async function verifyWebhookSignature(payload, signatureHeader, timestamp, webho
     throw new InvalidWebhookSignatureError('The given webhook signature does not match the expected signature');
 }
 //# sourceMappingURL=webhook-signature.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/webhooks/event-types.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+class EventTypes extends resource_APIResource {
+    /**
+     * Returns webhook event types visible to the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEventTypeList =
+     *   await client.webhooks.eventTypes.list();
+     * ```
+     */
+    list(options) {
+        return this._client.get('/webhook_event_types', { ...options, __security: { bearerAuth: true } });
+    }
+}
+//# sourceMappingURL=event-types.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/webhooks/webhooks.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 var _Webhooks_instances, _Webhooks_validateSecret, _Webhooks_getRequiredHeader;
+
+
+
+
 
 
 
@@ -121784,6 +122281,122 @@ class webhooks_Webhooks extends resource_APIResource {
     constructor() {
         super(...arguments);
         _Webhooks_instances.add(this);
+        this.eventTypes = new EventTypes(this._client);
+    }
+    /**
+     * Creates a webhook endpoint for the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEndpointWithSecret =
+     *   await client.webhooks.create({
+     *     event_types: ['batch.completed'],
+     *     name: 'x',
+     *     url: 'https://',
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/webhook_endpoints', { body, ...options, __security: { bearerAuth: true } });
+    }
+    /**
+     * Retrieves a webhook endpoint for the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEndpoint = await client.webhooks.retrieve(
+     *   'whe_123',
+     * );
+     * ```
+     */
+    retrieve(webhookEndpointID, options) {
+        return this._client.get(utils_path_path `/webhook_endpoints/${webhookEndpointID}`, {
+            ...options,
+            __security: { bearerAuth: true },
+        });
+    }
+    /**
+     * Updates a webhook endpoint for the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEndpoint = await client.webhooks.update('whe_123');
+     * ```
+     */
+    update(webhookEndpointID, body = {}, options) {
+        return this._client.post(utils_path_path `/webhook_endpoints/${webhookEndpointID}`, {
+            body,
+            ...options,
+            __security: { bearerAuth: true },
+        });
+    }
+    /**
+     * Returns webhook endpoints for the authenticated project in newest-first order.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const webhookEndpoint of client.webhooks.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/webhook_endpoints', (CursorPage), {
+            query,
+            ...options,
+            __security: { bearerAuth: true },
+        });
+    }
+    /**
+     * Deletes a webhook endpoint for the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const deletedWebhookEndpoint = await client.webhooks.delete(
+     *   'whe_123',
+     * );
+     * ```
+     */
+    delete(webhookEndpointID, options) {
+        return this._client.delete(utils_path_path `/webhook_endpoints/${webhookEndpointID}`, {
+            ...options,
+            __security: { bearerAuth: true },
+        });
+    }
+    /**
+     * Rotates the signing secret for a webhook endpoint in the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEndpointWithSecret =
+     *   await client.webhooks.rotateSecret('whe_123');
+     * ```
+     */
+    rotateSecret(webhookEndpointID, body = {}, options) {
+        return this._client.post(utils_path_path `/webhook_endpoints/${webhookEndpointID}/rotate_secret`, {
+            body,
+            ...options,
+            __security: { bearerAuth: true },
+        });
+    }
+    /**
+     * Sends a sample event to a webhook endpoint for the authenticated project.
+     *
+     * @example
+     * ```ts
+     * const webhookEndpointTestResult =
+     *   await client.webhooks.test('whe_123', {
+     *     event_type: 'batch.completed',
+     *   });
+     * ```
+     */
+    test(webhookEndpointID, body, options) {
+        return this._client.post(utils_path_path `/webhook_endpoints/${webhookEndpointID}/test`, {
+            body,
+            ...options,
+            __security: { bearerAuth: true },
+        });
     }
     /**
      * Validates that the given payload was sent by OpenAI and parses the payload.
@@ -121833,14 +122446,7 @@ _Webhooks_instances = new WeakSet(), _Webhooks_validateSecret = function _Webhoo
     }
     return value;
 };
-//# sourceMappingURL=webhooks.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/resources/webhooks/index.mjs
-// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
-
-//# sourceMappingURL=index.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/resources/webhooks.mjs
-// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
-
+webhooks_Webhooks.EventTypes = EventTypes;
 //# sourceMappingURL=webhooks.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/index.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -121872,6 +122478,26 @@ _Webhooks_instances = new WeakSet(), _Webhooks_validateSecret = function _Webhoo
 
 
 //# sourceMappingURL=index.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/realtime-credentials.mjs
+/** Selects a captured credential without treating an explicit null as absent. @internal */
+function getRealtimeAPIKey(client, captured) {
+    return captured === undefined ? client?.apiKey : captured;
+}
+/**
+ * Captures the key belonging to this request or factory invocation while retaining the
+ * existing boolean credential-hook contract. Legacy overrides that do not
+ * capture a key keep their shared-property behavior and remain responsible for
+ * synchronizing concurrent credential updates.
+ * @internal
+ */
+async function resolveRealtimeAPIKey(client) {
+    let apiKey;
+    const isProvider = await client._callApiKey((resolved) => {
+        apiKey = resolved;
+    });
+    return { apiKey: apiKey === undefined ? client.apiKey : apiKey, isProvider };
+}
+//# sourceMappingURL=realtime-credentials.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/provider.mjs
 /**
  * A provider factory such as `bedrock(options)` captures configuration in a
@@ -121886,7 +122512,9 @@ _Webhooks_instances = new WeakSet(), _Webhooks_validateSecret = function _Webhoo
  * provider configurations.
  */
 const providerDefinitionsKey = Symbol.for('openai.node.providerDefinitions.v1');
+// SAFETY: This versioned global symbol is the SDK-owned cross-copy WeakMap registry; no provider object fields are trusted through it.
 const providerGlobal = globalThis;
+// SAFETY: This versioned global symbol is the SDK-owned cross-copy WeakMap registry; no provider object fields are trusted through it.
 const existingProviderDefinitions = providerGlobal[providerDefinitionsKey];
 const providerDefinitions = existingProviderDefinitions ?? new WeakMap();
 if (!existingProviderDefinitions) {
@@ -121899,6 +122527,7 @@ if (!existingProviderDefinitions) {
  * installed copy of the SDK in the same JavaScript realm.
  */
 function createProvider(definition) {
+    // SAFETY: This function creates the opaque handle and immediately registers its identity in the private WeakMap, which is the runtime brand check.
     const provider = Object.freeze({});
     providerDefinitions.set(provider, definition);
     return provider;
@@ -121919,6 +122548,8 @@ function configureProvider(provider) {
 ;// CONCATENATED MODULE: ./node_modules/openai/client.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 var _OpenAI_instances, client_a, _OpenAI_encoder, _OpenAI_x509Authentication, _OpenAI_x509Credential, _OpenAI_x509Fetch, _OpenAI_explicitDataResidency, _OpenAI_responseAttempts, _OpenAI_baseURLOverridden;
+
+
 
 
 
@@ -122251,6 +122882,18 @@ class OpenAI {
     defaultQuery() {
         return this._options.defaultQuery;
     }
+    /** @internal Client request headers for each new WebSocket handshake. */
+    _buildWebSocketHeaders(authHeaders) {
+        return Object.fromEntries(headers_buildHeaders([
+            {
+                'User-Agent': this.getUserAgent(),
+                'OpenAI-Organization': this.organization,
+                'OpenAI-Project': this.project,
+            },
+            authHeaders,
+            this._options.defaultHeaders,
+        ]).values);
+    }
     validateHeaders({ values, nulls }, schemes = {
         bearerAuth: true,
         adminAPIKeyAuth: true,
@@ -122306,10 +122949,11 @@ class OpenAI {
                 : await authentication.getToken();
             return headers_buildHeaders([{ Authorization: `Bearer ${token}` }]);
         }
-        if (this.apiKey == null) {
+        const { apiKey } = await resolveRealtimeAPIKey(this);
+        if (apiKey == null) {
             return undefined;
         }
-        return headers_buildHeaders([{ Authorization: `Bearer ${this.apiKey}` }]);
+        return headers_buildHeaders([{ Authorization: `Bearer ${apiKey}` }]);
     }
     async adminAPIKeyAuth(opts) {
         if (this.adminAPIKey == null) {
@@ -122330,12 +122974,15 @@ class OpenAI {
         const normalizedError = error && typeof error === 'object' && error.error == null ? { error } : error;
         return error_APIError.generate(status, normalizedError, message, headers);
     }
+    _hasApiKeyProvider() {
+        return typeof this._options.apiKey === 'function';
+    }
     /**
      * Resolves a function-based API key and retains the resolved value on this client.
      * Returns whether a provider was invoked. Internal callers can capture this
      * invocation's key before another request updates the shared `apiKey` property.
      * Overrides should forward `capture` or invoke it with their own resolved key
-     * to preserve connection-local credentials in concurrent Realtime factories.
+     * to preserve invocation-local credentials in concurrent requests and Realtime factories.
      * @internal
      */
     async _callApiKey(capture) {
@@ -122383,15 +123030,11 @@ class OpenAI {
     }
     /**
      * Used as a callback for mutating the given `FinalRequestOptions` object.
+     * Function-based credentials are resolved later, when building authentication
+     * headers, including for direct `buildRequest()` calls. Overriding this hook
+     * does not bypass that resolution.
      */
-    async prepareOptions(options) {
-        if (this._provider)
-            return;
-        const security = options.__security ?? { bearerAuth: true };
-        if (security.bearerAuth) {
-            await this._callApiKey();
-        }
-    }
+    async prepareOptions(options) { }
     /**
      * Used as a callback for mutating the given `RequestInit` object.
      *
@@ -122526,7 +123169,7 @@ class OpenAI {
                 if (abortListener)
                     callerSignal?.removeEventListener('abort', abortListener);
                 abortListener = undefined;
-                const next = await this.retryRequest(props.options, retriesRemaining, props.retryOfRequestLogID ?? props.requestLogID);
+                const next = await this.retryRequest(props.options, retriesRemaining, props.retryOfRequestLogID ?? props.requestLogID, undefined, props.requestSignal);
                 Object.assign(props, next);
             }
             finally {
@@ -122654,13 +123297,19 @@ class OpenAI {
         const requestLogID = 'log_' + ((Math.random() * (1 << 24)) | 0).toString(16).padStart(6, '0');
         const retryLogStr = retryOfRequestLogID === undefined ? '' : `, retryOf: ${retryOfRequestLogID}`;
         const startTime = x509Authentication?.requestStartedAt(options) ?? Date.now();
-        loggerFor(this).debug(`[${requestLogID}] sending request`, formatRequestDetails({
-            retryOfRequestLogID,
-            method: options.method,
-            url,
-            options: x509Authentication ? { body: req.body, ...x509Authentication.requestSnapshot() } : options,
-            headers: req.headers,
-        }));
+        if (this.logLevel === 'debug') {
+            // Summarize serialized strings without reparsing or re-running caller serialization hooks.
+            const body = typeof req.body === 'string' ? { type: 'string', length: req.body.length } : req.body;
+            loggerFor(this).debug(`[${requestLogID}] sending request`, formatRequestDetails({
+                retryOfRequestLogID,
+                method: options.method,
+                url,
+                options: x509Authentication
+                    ? { body, ...x509Authentication.requestSnapshot() }
+                    : { ...options, body },
+                headers: req.headers,
+            }));
+        }
         const callerSignal = x509Authentication ? x509Authentication.requestSnapshot().signal : options.signal;
         if (callerSignal?.aborted || req.signal?.aborted) {
             throw this._makeUserAbortError(callerSignal?.aborted ? callerSignal : req.signal);
@@ -122698,7 +123347,7 @@ class OpenAI {
                     durationMs: headersTime - startTime,
                     message: x509Authentication ? 'X.509 workload identity API connection failed.' : response.message,
                 }));
-                return this.retryRequest(options, retriesRemaining, retryOfRequestLogID ?? requestLogID);
+                return this.retryRequest(options, retriesRemaining, retryOfRequestLogID ?? requestLogID, undefined, req.signal);
             }
             const terminalMessage = hasStreamingBody
                 ? 'error; streaming body cannot be retried'
@@ -122794,7 +123443,7 @@ class OpenAI {
                     headers: response.headers,
                     durationMs: headersTime - startTime,
                 }));
-                return this.retryRequest(options, retriesRemaining, retryOfRequestLogID ?? requestLogID, response.headers);
+                return this.retryRequest(options, retriesRemaining, retryOfRequestLogID ?? requestLogID, response.headers, req.signal);
             }
             const retryMessage = shouldRetry
                 ? hasStreamingBody
@@ -122836,7 +123485,15 @@ class OpenAI {
             helperMethod: options.__metadata?.['helperMethod'],
             ...(continueRequest ? { continueRequest } : {}),
         });
-        return { response, options, controller, requestLogID, retryOfRequestLogID, startTime };
+        return {
+            response,
+            options,
+            controller,
+            requestSignal: req.signal,
+            requestLogID,
+            retryOfRequestLogID,
+            startTime,
+        };
     }
     getAPIList(path, Page, opts) {
         return this.requestAPIList(Page, opts && 'then' in opts
@@ -122880,8 +123537,7 @@ class OpenAI {
         const { signal, method, ...options } = init || {};
         const abort = this._makeAbort(controller);
         const composed = !!signal && composedCallerSignals.get(controller) === signal;
-        if (signal && !composed)
-            signal.addEventListener('abort', abort, { once: true });
+        const cleanup = signal && !composed ? addRequestAbortListener(signal, abort, controller.signal) : undefined;
         const timeout = setTimeout(abort, ms);
         const isReadableBody = (globalThis.ReadableStream && options.body instanceof globalThis.ReadableStream) ||
             (typeof options.body === 'object' && options.body !== null && Symbol.asyncIterator in options.body);
@@ -122898,11 +123554,14 @@ class OpenAI {
         }
         try {
             // use undefined this binding; fetch errors if bound to something else in browser/cloudflare
-            return await (__classPrivateFieldGet(this, _OpenAI_x509Fetch, "f") ?? this.fetch).call(undefined, url, fetchOptions);
+            const response = await (__classPrivateFieldGet(this, _OpenAI_x509Fetch, "f") ?? this.fetch).call(undefined, url, fetchOptions);
+            if (cleanup) {
+                retainRequestAbortCallback(response.body ?? response, abort, controller.signal);
+            }
+            return response;
         }
         catch (err) {
-            if (signal && !composed)
-                signal.removeEventListener('abort', abort);
+            cleanup?.();
             throw err;
         }
         finally {
@@ -122931,7 +123590,7 @@ class OpenAI {
             return true;
         return false;
     }
-    async retryRequest(options, retriesRemaining, requestLogID, responseHeaders) {
+    async retryRequest(options, retriesRemaining, requestLogID, responseHeaders, requestSignal = options.signal) {
         let timeoutMillis;
         // Note the `retry-after-ms` header may not be standard, but is a good idea and we'd like proactive support for it.
         const retryAfterMillisHeader = responseHeaders?.get('retry-after-ms');
@@ -122972,7 +123631,17 @@ class OpenAI {
             await x509Authentication.waitForRetry(timeoutMillis, x509Authentication.effectiveSignal());
         }
         else {
-            await sleep_sleep(timeoutMillis);
+            const retrySignals = requestSignal === options.signal ? [requestSignal] : [requestSignal, options.signal];
+            try {
+                await sleep_sleep(timeoutMillis, ...retrySignals);
+            }
+            catch (error) {
+                const abortedSignal = retrySignals.find((signal) => signal?.aborted);
+                if (abortedSignal) {
+                    throw this._makeUserAbortError(abortedSignal);
+                }
+                throw error;
+            }
         }
         return this.makeRequest(options, retriesRemaining - 1, requestLogID);
     }
@@ -122986,6 +123655,12 @@ class OpenAI {
         const jitter = 1 - Math.random() * 0.25;
         return sleepSeconds * jitter * 1000;
     }
+    /**
+     * Builds a request, resolving callback credentials when constructing authentication
+     * headers, after any subclass request-option rewrites. Calling this method directly
+     * also resolves credentials. Complete replacement builders own authentication and
+     * can call `this.authHeaders()` to resolve headers with request-local credentials.
+     */
     async buildRequest(inputOptions, { retryCount = 0 } = {}) {
         if (__classPrivateFieldGet(this, _OpenAI_x509Authentication, "f") && !__classPrivateFieldGet(this, _OpenAI_x509Authentication, "f").inRequest(this)) {
             const authentication = __classPrivateFieldGet(this, _OpenAI_x509Authentication, "f");
@@ -123028,6 +123703,9 @@ class OpenAI {
                 options.signal = snapshot.signal;
             }
         }
+        const authenticationHeaders = this._provider || x509Authentication
+            ? undefined
+            : await this.authHeaders(inputOptions, inputOptions.__security ?? { bearerAuth: true });
         const { bodyHeaders, body, isStreamingBody } = this.buildBody({ options });
         if (isStreamingBody) {
             inputOptions.__metadata = {
@@ -123040,6 +123718,7 @@ class OpenAI {
             options: inputOptions,
             method,
             bodyHeaders,
+            authenticationHeaders,
             retryCount,
             x509Headers,
             x509Timeout: explicitTimeout ? options.timeout : undefined,
@@ -123057,7 +123736,7 @@ class OpenAI {
         };
         return { req, url, timeout: options.timeout };
     }
-    async buildHeaders({ options, method, bodyHeaders, retryCount, x509Headers, x509Timeout, x509Tenant, }) {
+    async buildHeaders({ options, method, bodyHeaders, authenticationHeaders, retryCount, x509Headers, x509Timeout, x509Tenant, }) {
         let idempotencyHeaders = {};
         if (this.idempotencyHeader && method !== 'get') {
             if (!options.idempotencyKey)
@@ -123078,9 +123757,10 @@ class OpenAI {
                 'OpenAI-Organization': x509Tenant ? x509Tenant.organization : this.organization,
                 'OpenAI-Project': x509Tenant ? x509Tenant.project : this.project,
             },
-            this._provider || __classPrivateFieldGet(this, _OpenAI_x509Authentication, "f")?.isPlanningRequest()
-                ? undefined
-                : await this.authHeaders(options, options.__security ?? { bearerAuth: true }),
+            // X.509 owns streaming uploads before authentication so it can retire them on failure.
+            __classPrivateFieldGet(this, _OpenAI_x509Authentication, "f") && !__classPrivateFieldGet(this, _OpenAI_x509Authentication, "f").isPlanningRequest()
+                ? await this.authHeaders(options, options.__security ?? { bearerAuth: true })
+                : authenticationHeaders,
             x509Headers?.defaultHeaders ?? this._options.defaultHeaders,
             bodyHeaders,
             x509Headers?.requestHeaders ?? options.headers,
@@ -123211,6 +123891,11 @@ OpenAI.Evals = Evals;
 OpenAI.Containers = Containers;
 OpenAI.Skills = skills_skills_Skills;
 OpenAI.Videos = Videos;
+OpenAI.ConversationCursorPage = ConversationCursorPage;
+OpenAI.CursorPage = CursorPage;
+OpenAI.NextCursorPage = NextCursorPage;
+OpenAI.Page = pagination_Page;
+OpenAI.TokenPage = pagination_TokenPage;
 const composedCallerSignals = new WeakMap();
 function createRequestController(callerSignal, originalSignal) {
     const controller = new AbortController();
@@ -123287,6 +123972,7 @@ class AzureOpenAI extends OpenAI {
         if (!apiVersion) {
             throw new error_OpenAIError("The OPENAI_API_VERSION environment variable is missing or empty; either provide it, or instantiate the AzureOpenAI client with an apiVersion option, like new AzureOpenAI({ apiVersion: 'My API Version' }).");
         }
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Azure accepts JavaScript credential configuration; distinguish static keys from callable token providers.
         if (typeof azureADTokenProvider === 'function') {
             dangerouslyAllowBrowser ?? (dangerouslyAllowBrowser = true);
         }
@@ -123317,6 +124003,7 @@ class AzureOpenAI extends OpenAI {
             apiKey: azureADTokenProvider ?? apiKey,
             baseURL,
             ...opts,
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(dangerouslyAllowBrowser === undefined ? {} : { dangerouslyAllowBrowser }),
         });
         /** Azure OpenAI API version included in requests made by this client. */
@@ -123367,6 +124054,7 @@ class AzureOpenAI extends OpenAI {
     }
     async authHeaders(opts, schemes) {
         const security = schemes ?? { bearerAuth: true, adminAPIKeyAuth: true };
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Azure accepts JavaScript credential configuration; distinguish static keys from callable token providers.
         if (security.bearerAuth && typeof this._options.apiKey === 'string') {
             return headers_buildHeaders([{ 'api-key': this.apiKey }]);
         }
@@ -123407,12 +124095,14 @@ const _deployments_endpoints = new Set([
 const brand_privateBedrockClient = Symbol.for('openai.privateBedrockClient');
 /** Wraps a provider failure in an SDK error while preserving its original cause. */
 function errorWithCause(message, cause) {
+    // SAFETY: This SDK error is created locally and receives its optional cause immediately below; no existing error shape is trusted.
     const error = new Errors.OpenAIError(message);
     error.cause = cause;
     return error;
 }
 /** Trims a configuration string, treating missing and whitespace-only values as absent. */
 function normalizeOptionalString(value) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
     const normalized = typeof value === 'string' ? value.trim() : undefined;
     return normalized || undefined;
 }
@@ -123516,6 +124206,7 @@ function resolveBedrockEndpoint(options) {
         const baseURL = normalizeBaseURL(configuredBaseURL);
         const endpoint = options.endpoint ?? parseBedrockEndpointHostname(new URL(baseURL).hostname)?.endpoint ?? 'mantle';
         validateCanonicalBedrockEndpoint(baseURL, endpoint, region);
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Preserve the declared endpoint resolver contract across configured URLs and inferred regions.
         return { endpoint, region, baseURL };
     }
     const endpoint = options.endpoint ?? 'mantle';
@@ -123525,6 +124216,7 @@ function resolveBedrockEndpoint(options) {
     const hostname = endpoint === 'runtime'
         ? `bedrock-runtime.${region}.${resolveRuntimeDnsSuffixes(region)[0]}`
         : `bedrock-mantle.${region}.api.aws`;
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The resolver intentionally returns its declared endpoint contract across all configuration paths.
     return { endpoint, region, baseURL: `https://${hostname}/openai/v1` };
 }
 /**
@@ -123544,7 +124236,9 @@ function assertBedrockRequestOrigin(baseURL, requestURL) {
     }
 }
 /** Validates a final WebSocket URL before a legacy Bedrock client resolves or attaches credentials. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The WebSocket authentication boundary verifies the caller client at runtime before trusting provider metadata.
 function assertBedrockWebSocketOrigin(client, requestURL) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
     if (typeof client !== 'object' || client === null || !(brand_privateBedrockClient in client)) {
         return;
     }
@@ -123555,7 +124249,10 @@ function assertBedrockWebSocketOrigin(client, requestURL) {
     else if (normalizedRequestURL.protocol === 'ws:') {
         normalizedRequestURL.protocol = 'http:';
     }
-    assertBedrockRequestOrigin(client.baseURL, normalizedRequestURL.toString());
+    // SAFETY: The private Bedrock brand checked above identifies the client whose baseURL is validated against the finalized request origin.
+    assertBedrockRequestOrigin(
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The private Bedrock client brand checked above identifies the client baseURL contract.
+    client.baseURL, normalizedRequestURL.toString());
 }
 /**
  * Rejects caller-provided authorization headers that conflict with provider authentication.
@@ -123623,6 +124320,7 @@ function resolveAbortableBedrockAuth(operation, signals, failure) {
                 reject(result.error);
             }
         };
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Failures and rejection reasons can be arbitrary JavaScript values; preserve them until inspection or forwarding.
         const rejectSignalFailure = (error) => {
             if (failure.error) {
                 return;
@@ -123747,6 +124445,7 @@ class BedrockBearerAuth {
             resolve: () => this.tokenProvider(),
             failureMessage: 'Failed to resolve a bearer credential for Bedrock.',
             apply: (token) => {
+                // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
                 if (typeof token !== 'string' || !token.trim()) {
                     throw new Errors.OpenAIError('The Bedrock bearer credential provider must return a non-empty string.');
                 }
@@ -123780,6 +124479,7 @@ class BedrockBearerAuth {
 function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
     if (options.apiKey !== undefined &&
         options.apiKey !== null &&
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
         (typeof options.apiKey !== 'string' || !options.apiKey.trim())) {
         throw new Errors.OpenAIError('The Bedrock bearer credential must not be empty.');
     }
@@ -123788,13 +124488,16 @@ function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
     }
     if (options.tokenProvider) {
         const tokenProvider = options.tokenProvider;
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared bearer-auth contract hides concrete authenticator implementations behind their factory.
         return { factory: () => new BedrockBearerAuth(tokenProvider), explicit: true };
     }
     if (options.apiKey != null) {
         const apiKey = options.apiKey;
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Explicit API keys use the same declared auth-factory contract as token providers.
         return { factory: () => new BedrockBearerAuth(async () => apiKey), explicit: true };
     }
     if (allowEnvironment && options.apiKey !== null && readEnv('AWS_BEARER_TOKEN_BEDROCK')) {
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Environment credentials must preserve the same declared auth-factory contract as explicit options.
         return {
             explicit: false,
             factory: () => new BedrockBearerAuth(async () => {
@@ -123806,11 +124509,13 @@ function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
             }),
         };
     }
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared optional factory contract also represents the absence of bearer credentials.
     return { factory: undefined, explicit: false };
 }
 //# sourceMappingURL=bedrock.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/bedrock.mjs
 var bedrock_a;
+
 
 
 
@@ -123849,6 +124554,7 @@ function addBedrockOutputText(response) {
 /** Keep the standard Responses surface while repairing Bedrock streamed final responses. */
 function restoreBedrockStreamOutputText(responses) {
     const stream = responses.stream.bind(responses);
+    // SAFETY: The wrapper forwards the original stream parameters and preserves its generic result, only repairing the final response's output_text property.
     responses.stream = ((body, options) => {
         const responseStream = stream(body, options);
         const finalResponse = responseStream.finalResponse.bind(responseStream);
@@ -123875,6 +124581,8 @@ class BedrockOpenAI extends OpenAI {
         if (apiKey === undefined && !bedrockTokenProvider) {
             apiKey = env_readEnv('AWS_BEARER_TOKEN_BEDROCK') ?? null;
         }
+        // SAFETY: The widening keeps a runtime guard for JavaScript callers that supply an API-key function despite the declared string contract.
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Reject a JavaScript function supplied as a static Bedrock API key before it can become a credential.
         if (typeof apiKey === 'function') {
             throw new error_OpenAIError('Pass refreshable Bedrock credentials via `bedrockTokenProvider`, not `apiKey`.');
         }
@@ -123930,22 +124638,24 @@ class BedrockOpenAI extends OpenAI {
     async prepareOptions(options) {
         const configuredBaseURL = this._options.baseURL ?? this.baseURL;
         assertBedrockRequestOrigin(configuredBaseURL, this.buildURL(options.path, null, options.defaultBaseURL));
-        const security = options.__security ?? { bearerAuth: true };
-        if (security.adminAPIKeyAuth && !security.bearerAuth) {
-            await this._callApiKey();
-        }
         await super.prepareOptions(options);
         assertBedrockRequestOrigin(configuredBaseURL, this.buildURL(options.path, null, options.defaultBaseURL));
     }
     async prepareRequest(request, context) {
         assertBedrockRequestOrigin(this._options.baseURL ?? this.baseURL, context.url);
         await super.prepareRequest(request, context);
+        assertBedrockRequestOrigin(this._options.baseURL ?? this.baseURL, this.buildURL(context.options.path, null, context.options.defaultBaseURL));
         request.redirect = 'manual';
     }
     async authHeaders(opts, schemes) {
         const security = schemes ?? { bearerAuth: true, adminAPIKeyAuth: true };
-        const credential = this.apiKey;
-        if ((security.bearerAuth || security.adminAPIKeyAuth) && credential !== null) {
+        if (security.bearerAuth || security.adminAPIKeyAuth) {
+            assertBedrockRequestOrigin(this._options.baseURL ?? this.baseURL, this.buildURL(opts.path, null, opts.defaultBaseURL));
+            const { apiKey: credential } = await resolveRealtimeAPIKey(this);
+            assertBedrockRequestOrigin(this._options.baseURL ?? this.baseURL, this.buildURL(opts.path, null, opts.defaultBaseURL));
+            if (credential === null) {
+                return undefined;
+            }
             assertValidBedrockBearerCredential(credential);
             try {
                 return headers_buildHeaders([{ Authorization: `Bearer ${credential}` }]);
@@ -123963,8 +124673,10 @@ class BedrockOpenAI extends OpenAI {
     /** Clones this client while preserving its refreshable Bedrock token provider when appropriate. */
     withOptions(options) {
         const bedrockTokenProvider = options.apiKey === undefined ? (options.bedrockTokenProvider ?? this.bedrockTokenProvider) : undefined;
+        // SAFETY: Bedrock options extend the base client options; forwarding them preserves the subclass's existing withOptions construction behavior.
         return super.withOptions({
             ...options,
+            // Spread creates an own data property without invoking inherited setters or changing the object prototype.
             ...(bedrockTokenProvider ? { apiKey: undefined, bedrockTokenProvider } : {}),
         });
     }
