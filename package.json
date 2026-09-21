@@ -25,7 +25,7 @@
     "@actions/github": "^9.1.1",
     "@anthropic-ai/sdk": "^0.127.0",
     "@google/genai": "^2.23.0",
-    "openai": "^7.15.0"
+    "openai": "^7.19.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.1",
