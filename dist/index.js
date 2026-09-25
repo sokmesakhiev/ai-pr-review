@@ -60013,7 +60013,7 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/errors.mjs
 var errors = __nccwpck_require__(2533);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/version.mjs
-const sdk_version_VERSION = '0.127.0'; // x-release-please-version
+const sdk_version_VERSION = '0.128.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
 
@@ -63271,7 +63271,8 @@ function wasCreatedByStainlessHelper(value) {
     return typeof value === 'object' && value !== null && SDK_HELPER_SYMBOL in value;
 }
 /**
- * Collects helper names from tools and messages arrays.
+ * Collects helper names from tools and messages arrays, including tools that a
+ * `tool_addition` block in a message defines by value.
  * Returns a deduplicated array of helper names found.
  */
 function collectStainlessHelpers(tools, messages) {
@@ -63295,6 +63296,10 @@ function collectStainlessHelpers(tools, messages) {
                 for (const block of content) {
                     if (wasCreatedByStainlessHelper(block)) {
                         helpers.add(block[SDK_HELPER_SYMBOL]);
+                    }
+                    const definition = block?.tool?.definition;
+                    if (wasCreatedByStainlessHelper(definition)) {
+                        helpers.add(definition[SDK_HELPER_SYMBOL]);
                     }
                 }
             }
@@ -65362,7 +65367,17 @@ class Deployments extends APIResource {
 
 class Dreams extends APIResource {
     /**
-     * Create a Dream
+     * Start an asynchronous job that uses past sessions to produce a reorganized
+     * version of a memory store and get back the dream to poll for the result.
+     *
+     * By default the dream writes its result to a new memory store and doesn't change
+     * the input memory store. The response has `status` set to `pending` and an empty
+     * `outputs` array. Poll the dream until `status` is `completed`, `failed`, or
+     * `canceled`.
+     *
+     * See the
+     * [Dreams guide](https://platform.claude.com/docs/en/managed-agents/dreams#create-a-dream)
+     * to learn more about creating dreams.
      *
      * @example
      * ```ts
@@ -65387,7 +65402,13 @@ class Dreams extends APIResource {
         });
     }
     /**
-     * Get a Dream
+     * Get a dream by ID to check its status, output memory store, and token usage.
+     *
+     * Archived dreams are returned too.
+     *
+     * See the
+     * [Dreams guide](https://platform.claude.com/docs/en/managed-agents/dreams#track-progress)
+     * for how to poll a dream and what each status means.
      *
      * @example
      * ```ts
@@ -65410,7 +65431,13 @@ class Dreams extends APIResource {
         });
     }
     /**
-     * List Dreams
+     * List the dreams in the workspace, newest first.
+     *
+     * Archived dreams are left out unless `include_archived` is `true`.
+     *
+     * See the
+     * [Dreams guide](https://platform.claude.com/docs/en/managed-agents/dreams#list-dreams)
+     * for how to page through dreams.
      *
      * @example
      * ```ts
@@ -65435,7 +65462,16 @@ class Dreams extends APIResource {
         });
     }
     /**
-     * Archive a Dream
+     * Hide a `completed`, `failed`, or `canceled` dream from the default list of
+     * dreams.
+     *
+     * Archiving a `pending` or `running` dream returns a 400 error, so cancel it
+     * first. Archiving an archived dream returns it unchanged. An archived dream can
+     * still be fetched by ID. Archiving can't be undone.
+     *
+     * See the
+     * [Dreams guide](https://platform.claude.com/docs/en/managed-agents/dreams#archive-a-dream)
+     * to learn more about archiving dreams.
      *
      * @example
      * ```ts
@@ -65458,7 +65494,16 @@ class Dreams extends APIResource {
         });
     }
     /**
-     * Cancel a Dream
+     * Stop a `pending` or `running` dream.
+     *
+     * The response shows `status` as `canceled`, unless the dream reached `completed`
+     * or `failed` first. `usage` can keep changing after the response. Canceling a
+     * `canceled` dream returns it unchanged. Canceling a `completed` or `failed` dream
+     * returns a 400 error.
+     *
+     * See the
+     * [Dreams guide](https://platform.claude.com/docs/en/managed-agents/dreams#cancel-a-dream)
+     * to learn more about canceling dreams.
      *
      * @example
      * ```ts
@@ -69438,6 +69483,7 @@ var BetaMessageStream = /* @__PURE__ */ (() => {
                     break;
                 }
                 case 'message_stop': {
+                    // Assertion needed until the generated request and response types of `tool_listing` agree.
                     this._addMessageParam(messageSnapshot);
                     this._addMessage(maybeParseBetaMessage(messageSnapshot, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaMessageStream_params, "f"), { logger: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaMessageStream_logger, "f") }), true);
                     break;
@@ -69699,7 +69745,7 @@ Be concise but complete—err on the side of including information that would pr
 Wrap your summary in <summary></summary> tags.`;
 //# sourceMappingURL=CompactionControl.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/BetaToolRunner.mjs
-var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_turnPaused, _BetaToolRunner_checkAndCompact, _BetaToolRunner_send, _BetaToolRunner_compact, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse;
+var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_lastStopReason, _BetaToolRunner_toolOverrides, _BetaToolRunner_pendingToolChanges, _BetaToolRunner_checkAndCompact, _BetaToolRunner_send, _BetaToolRunner_compact, _BetaToolRunner_runnableTools, _BetaToolRunner_availableToolNames, _BetaToolRunner_recordRemovalsFromHistory, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse, _BetaToolRunner_flushPendingToolChanges, _BetaToolRunner_pendingToolChangesMessage;
 
 
 
@@ -69745,8 +69791,17 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             _BetaToolRunner_iterationCount.set(this, 0);
             /** A compaction scheduled with `compactBeforeNextTurn()`, in flight until its response has been handled */
             _BetaToolRunner_compaction.set(this, { status: 'idle' });
-            /** Whether the last turn was paused; a scheduled compaction waits for it to be resumed */
-            _BetaToolRunner_turnPaused.set(this, false);
+            /** The last turn's stop reason, or `null` once the history has been replaced since */
+            _BetaToolRunner_lastStopReason.set(this, null);
+            /**
+             * `addTools()` / `removeTools()` never edit `params.tools`, because a changed `tools` misses the prompt
+             * cache, so what they change about which tool runs under a name is kept here instead: the runnable tool
+             * added under that name, or `null` once the name was removed or taken by a raw definition. A tool call is
+             * looked up here first, and in `params.tools` only when its name has no entry.
+             */
+            _BetaToolRunner_toolOverrides.set(this, new Map());
+            /** Changes queued by `addTools()` / `removeTools()`, in call order, for the next request */
+            _BetaToolRunner_pendingToolChanges.set(this, []);
             rejectCompactionParam(params);
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_state, {
                 params: {
@@ -69754,10 +69809,12 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                     // You also don't really need to clone params.messages, but it probably will prevent a foot gun
                     // somewhere.
                     ...params,
-                    messages: structuredClone(params.messages),
+                    // Not structuredClone(): it throws on a function, and a runnable tool written by value into a
+                    // `tool_addition` block has `run`. A JSON copy is the messages as they are sent, which drops it.
+                    messages: JSON.parse(JSON.stringify(params.messages)),
                 },
             }, "f");
-            // structuredClone drops symbol-keyed properties, so collect helper marks
+            // Cloning drops symbol-keyed properties, so collect helper marks
             // from the original params here — the create()-side collector won't see
             // them on the cloned messages.
             const collected = collectStainlessHelpers(params.tools, params.messages);
@@ -69776,7 +69833,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                     'See https://platform.claude.com/docs/en/build-with-claude/compaction');
             }
         }
-        async *[(_BetaToolRunner_consumed = new WeakMap(), _BetaToolRunner_mutated = new WeakMap(), _BetaToolRunner_state = new WeakMap(), _BetaToolRunner_options = new WeakMap(), _BetaToolRunner_message = new WeakMap(), _BetaToolRunner_stream = new WeakMap(), _BetaToolRunner_toolResponse = new WeakMap(), _BetaToolRunner_completion = new WeakMap(), _BetaToolRunner_iterationCount = new WeakMap(), _BetaToolRunner_compaction = new WeakMap(), _BetaToolRunner_turnPaused = new WeakMap(), _BetaToolRunner_instances = new WeakSet(), _BetaToolRunner_checkAndCompact = async function _BetaToolRunner_checkAndCompact() {
+        async *[(_BetaToolRunner_consumed = new WeakMap(), _BetaToolRunner_mutated = new WeakMap(), _BetaToolRunner_state = new WeakMap(), _BetaToolRunner_options = new WeakMap(), _BetaToolRunner_message = new WeakMap(), _BetaToolRunner_stream = new WeakMap(), _BetaToolRunner_toolResponse = new WeakMap(), _BetaToolRunner_completion = new WeakMap(), _BetaToolRunner_iterationCount = new WeakMap(), _BetaToolRunner_compaction = new WeakMap(), _BetaToolRunner_lastStopReason = new WeakMap(), _BetaToolRunner_toolOverrides = new WeakMap(), _BetaToolRunner_pendingToolChanges = new WeakMap(), _BetaToolRunner_instances = new WeakSet(), _BetaToolRunner_checkAndCompact = async function _BetaToolRunner_checkAndCompact() {
             const compactionControl = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.compactionControl;
             if (!compactionControl || !compactionControl.enabled) {
                 return false;
@@ -69839,10 +69896,13 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             if (response.content[0]?.type !== 'text') {
                 throw new core_error/* AnthropicError */.pJ('Expected text response for compaction');
             }
+            // Must run before the history is replaced: a removal the caller wrote into it is known only from it.
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_recordRemovalsFromHistory).call(this);
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, null, "f");
             (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages = [
                 {
                     role: 'user',
-                    content: response.content,
+                    content: asContentParam(response.content),
                 },
             ];
             return true;
@@ -69861,8 +69921,10 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                             (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_iterationCount, "f") >= (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.max_iterations) {
                             break;
                         }
+                        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_flushPendingToolChanges).call(this);
                         // The API can't compact a conversation that ends mid-turn, so a paused turn is resumed first.
-                        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_compaction, "f").status === 'scheduled' && !(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_turnPaused, "f")) {
+                        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_compaction, "f").status === 'scheduled' &&
+                            determineNextStepFromStopReason((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_lastStopReason, "f")) !== 'resume') {
                             yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_compact).call(this, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_compaction, "f").config);
                             continue;
                         }
@@ -69877,8 +69939,11 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                             if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_mutated, "f")) {
                                 const message = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
                                 const nextStep = determineNextStepFromStopReason(message.stop_reason);
-                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_turnPaused, nextStep === 'resume', "f");
-                                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push({ role: message.role, content: message.content });
+                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, message.stop_reason, "f");
+                                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push({
+                                    role: message.role,
+                                    content: asContentParam(message.content),
+                                });
                                 // Container-bound server tools reject a follow-up request that omits the container the
                                 // previous turn ran in, so carry its id forward unless the caller pinned one themselves.
                                 const { container } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
@@ -69900,7 +69965,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                             }
                             else {
                                 // The caller has taken over the history, so the last response no longer says how it ends.
-                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_turnPaused, false, "f");
+                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, null, "f");
                             }
                             const toolMessage = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_generateToolResponse).call(this, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.at(-1));
                             if (toolMessage) {
@@ -70073,6 +70138,49 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_compaction, { status: 'scheduled', config: compaction ?? { type: 'summarize' } }, "f");
         }
         /**
+         * Give the model more tools without changing `params.tools`, which would miss the prompt cache.
+         *
+         * Each tool's whole definition is sent in a `tool_addition` block with the next request, and a
+         * runnable tool replaces a runnable tool of the same name straight away, even for a call already in
+         * the message being handled. A raw definition is only sent: the runner never runs it, and stops
+         * running a tool of the same name. Requires the `inline-tools-2026-09-15` beta, which the runner does
+         * not add for you.
+         *
+         * @param tools - Runnable tools (for example from `betaZodTool()`) or raw tool definitions
+         *
+         * @example
+         * runner.addTools(queryDatabaseTool);
+         */
+        addTools(...tools) {
+            for (const tool of tools) {
+                // A definition without a `name` (an `mcp_toolset`) is nothing the runner runs or stops running.
+                if ('name' in tool) {
+                    (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolOverrides, "f").set(tool.name, 'run' in tool ? tool : null);
+                }
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_pendingToolChanges, "f").push({ type: 'addition', tool });
+            }
+        }
+        /**
+         * Take tools away from the model without changing `params.tools`, which would miss the prompt cache.
+         *
+         * The tools stop being run straight away: a call to one of them, even one in the message being
+         * handled, gets the same "not found" error result as a call to an unknown tool. The model is told
+         * in a `tool_removal` block with the next request. Use {@link addTools} to bring a tool back.
+         * Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
+         *
+         * @param tools - The tools to remove, or their names
+         *
+         * @example
+         * runner.removeTools('query_database');
+         */
+        removeTools(...tools) {
+            for (const tool of tools) {
+                const name = typeof tool === 'string' ? tool : tool.name;
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolOverrides, "f").set(name, null);
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_pendingToolChanges, "f").push({ type: 'removal', name });
+            }
+        }
+        /**
          * Makes the ToolRunner directly awaitable, equivalent to calling .runUntilDone()
          * This allows using `await runner` instead of `await runner.runUntilDone()`
          */
@@ -70101,8 +70209,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         }
     }, _BetaToolRunner_compact = async function* _BetaToolRunner_compact(compaction) {
         rejectCompactionEdit((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params);
-        // The API refuses `compaction` alongside `context_management`; later requests keep it.
-        const { max_iterations, compactionControl, context_management, ...params } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
+        const { max_iterations, compactionControl, ...requestParams } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
+        const params = withoutCompactionIncompatibleParams(requestParams);
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_compaction, { status: 'in_flight' }, "f");
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, undefined, "f");
         const lastMessage = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
@@ -70110,6 +70218,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_send).call(this, { ...params, compaction });
             const message = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
             if (message.content.some((block) => block.type === 'compaction' && block.content)) {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_recordRemovalsFromHistory).call(this);
                 // The response has to be sent back as it came, first, replacing the messages it summarizes.
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages = [{ role: message.role, content: message.content }];
             }
@@ -70121,6 +70230,48 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         }
         finally {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_compaction, { status: 'idle' }, "f");
+        }
+    }, _BetaToolRunner_runnableTools = function _BetaToolRunner_runnableTools() {
+        const runnable = new Map();
+        for (const tool of (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.tools) {
+            if ('run' in tool) {
+                runnable.set(tool.name, tool);
+            }
+        }
+        for (const [name, tool] of (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolOverrides, "f")) {
+            if (tool) {
+                runnable.set(name, tool);
+            }
+            else {
+                runnable.delete(name);
+            }
+        }
+        return runnable;
+    }, _BetaToolRunner_availableToolNames = function _BetaToolRunner_availableToolNames() {
+        const available = new Set((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this).keys());
+        for (const message of [...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_pendingToolChangesMessage).call(this)]) {
+            if (typeof message.content === 'string') {
+                continue;
+            }
+            for (const block of message.content) {
+                if (message.role === 'system') {
+                    applyToolChange(block, available);
+                }
+                else if (message.role === 'assistant' && block.type === 'compaction') {
+                    // A compaction block's tool_changes stand in for the system messages of the turns it summarized.
+                    for (const change of block.tool_changes ?? []) {
+                        applyToolChange(change, available);
+                    }
+                }
+            }
+        }
+        return available;
+    }, _BetaToolRunner_recordRemovalsFromHistory = function _BetaToolRunner_recordRemovalsFromHistory() {
+        const available = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this);
+        for (const name of (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this).keys()) {
+            if (!available.has(name)) {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolOverrides, "f").set(name, null);
+            }
         }
     }, _BetaToolRunner_compactAfterFinalTurn = async function* _BetaToolRunner_compactAfterFinalTurn() {
         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_compaction, "f").status !== 'scheduled') {
@@ -70140,11 +70291,33 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f") !== undefined) {
             return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
         }
-        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params, lastMessage, {
-            ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"),
-            signal,
-        }), "f");
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), lastMessage, { ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), signal }), "f");
         return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
+    }, _BetaToolRunner_flushPendingToolChanges = function _BetaToolRunner_flushPendingToolChanges() {
+        // A paused turn has to go back as the last message, so the changes wait for the request after it.
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_lastStopReason, "f") === 'pause_turn' || (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_pendingToolChanges, "f").length === 0) {
+            return;
+        }
+        // Not pushMessages(): that marks the params as changed by the caller, and the runner would then
+        // leave this turn's assistant message and tool results for the caller to append.
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_pendingToolChangesMessage).call(this));
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_pendingToolChanges, [], "f");
+    }, _BetaToolRunner_pendingToolChangesMessage = function _BetaToolRunner_pendingToolChangesMessage() {
+        const content = [];
+        for (const change of (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_pendingToolChanges, "f")) {
+            if (change.type === 'removal') {
+                content.push({ type: 'tool_removal', tool: { type: 'tool_reference', name: change.name } });
+                continue;
+            }
+            // The functions stay out of the definition that is sent.
+            let definition = change.tool;
+            if ('run' in change.tool) {
+                const { run, parse, close, ...rest } = change.tool;
+                definition = rest;
+            }
+            content.push({ type: 'tool_addition', tool: { type: 'tool_definition', definition } });
+        }
+        return { role: 'system', content };
     };
     return BetaToolRunner;
 })();
@@ -70162,7 +70335,27 @@ function rejectCompactionEdit(params) {
             "because the API doesn't accept a compaction block together with one. Remove the edit first.");
     }
 }
-async function generateToolResponse(params, lastMessage = params.messages.at(-1), requestOptions) {
+/**
+ * A compaction request returns only the compaction block, never a reply, so the API rejects the params that
+ * only shape a reply. The runner's later requests keep them.
+ */
+function withoutCompactionIncompatibleParams(params) {
+    const { context_management, stop_sequences, output_format, ...kept } = params;
+    const withoutFormat = ({ format, ...outputConfig }) => outputConfig;
+    if (kept.tool_choice?.type === 'any' || kept.tool_choice?.type === 'tool') {
+        delete kept.tool_choice;
+    }
+    if (kept.output_config) {
+        kept.output_config = withoutFormat(kept.output_config);
+    }
+    if (Array.isArray(kept.fallbacks)) {
+        kept.fallbacks = kept.fallbacks.map((fallback) => fallback.output_config ?
+            { ...fallback, output_config: withoutFormat(fallback.output_config) }
+            : fallback);
+    }
+    return kept;
+}
+async function generateToolResponse(runnable, available, lastMessage, requestOptions) {
     // Only process if the last message is from the assistant and has tool use blocks
     if (!lastMessage ||
         lastMessage.role !== 'assistant' ||
@@ -70174,14 +70367,11 @@ async function generateToolResponse(params, lastMessage = params.messages.at(-1)
     if (toolUseBlocks.length === 0) {
         return null;
     }
-    const available = availableToolNames(params);
     const toolResults = await Promise.all(toolUseBlocks.map(async (toolUse) => {
-        const tool = params.tools.find((t) => ('name' in t ? t.name
-            : 'mcp_server_name' in t ? t.mcp_server_name
-                : t.type) === toolUse.name);
         // A `tool_removal` is only a hint to the model, which may still emit a tool_use for a
         // withdrawn tool — treat those exactly like a tool that was never defined.
-        if (!tool || !('run' in tool) || !available.has(toolUse.name)) {
+        const tool = available.has(toolUse.name) ? runnable.get(toolUse.name) : undefined;
+        if (!tool) {
             return toolNotFoundResult(toolUse);
         }
         try {
@@ -70216,6 +70406,14 @@ async function generateToolResponse(params, lastMessage = params.messages.at(-1)
         content: toolResults,
     };
 }
+/**
+ * Response content is sent back as request content unchanged. The generated request type of the
+ * `tool_listing` block is narrower than its response type, so this needs an assertion until the
+ * two agree.
+ */
+function asContentParam(content) {
+    return content;
+}
 function toolNotFoundResult(toolUse) {
     return {
         type: 'tool_result',
@@ -70223,32 +70421,6 @@ function toolNotFoundResult(toolUse) {
         content: `Error: Tool '${toolUse.name}' not found`,
         is_error: true,
     };
-}
-/**
- * Computes the names of locally runnable tools that are still available for the assistant
- * turn being answered, by folding `tool_removal` / `tool_addition` blocks from the
- * `role: "system"` messages over the runnable tools. The assistant turn being answered is
- * terminal-or-absent and only `system` messages are inspected, so folding the whole current
- * history is exactly folding the messages preceding that turn — call this before appending
- * anything after it. MCP references are ignored — those tools are executed server-side and
- * never dispatched by this runner.
- */
-function availableToolNames(params) {
-    const available = new Set();
-    for (const tool of params.tools) {
-        if ('run' in tool) {
-            available.add(tool.name);
-        }
-    }
-    for (const message of params.messages) {
-        if (message.role !== 'system' || typeof message.content === 'string') {
-            continue;
-        }
-        for (const block of message.content) {
-            applyToolChange(block, available);
-        }
-    }
-    return available;
 }
 function applyToolChange(block, available) {
     switch (block.type) {
@@ -70259,7 +70431,7 @@ function applyToolChange(block, available) {
     }
 }
 function applyToolReference(block, available) {
-    const name = referencedToolName(block.tool);
+    const name = changedToolName(block.tool);
     if (name === undefined)
         return;
     if (block.type === 'tool_removal') {
@@ -70269,13 +70441,16 @@ function applyToolReference(block, available) {
         available.add(name);
     }
 }
-function referencedToolName(ref) {
-    switch (ref.type) {
+function changedToolName(tool) {
+    switch (tool.type) {
         case 'tool_reference':
-            return ref.name;
+            return tool.name;
+        case 'tool_definition':
+            // Not every `tools[]` entry has a `name` (e.g. `mcp_toolset`); those are never locally runnable.
+            return 'name' in tool.definition ? tool.definition.name : undefined;
         default:
-            // mcp_tool_reference / mcp_toolset_reference run server-side; unknown reference
-            // types are ignored rather than rejected.
+            // mcp_tool_reference / mcp_toolset_reference run server-side; unknown types are ignored
+            // rather than rejected.
             return undefined;
     }
 }
