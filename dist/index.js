@@ -60013,7 +60013,7 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/errors.mjs
 var errors = __nccwpck_require__(2533);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/version.mjs
-const sdk_version_VERSION = '0.128.0'; // x-release-please-version
+const sdk_version_VERSION = '0.129.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
 
@@ -62247,8 +62247,8 @@ async function* _iterSSEMessages(response, controller) {
     const sseDecoder = new SSEDecoder();
     const lineDecoder = new LineDecoder();
     const iter = ReadableStreamToAsyncIterable(response.body);
-    for await (const sseChunk of iterSSEChunks(iter)) {
-        for (const line of lineDecoder.decode(sseChunk)) {
+    for await (const chunk of iter) {
+        for (const line of lineDecoder.decode(chunk)) {
             const sse = sseDecoder.decode(line);
             if (sse)
                 yield sse;
@@ -62258,35 +62258,6 @@ async function* _iterSSEMessages(response, controller) {
         const sse = sseDecoder.decode(line);
         if (sse)
             yield sse;
-    }
-}
-/**
- * Given an async iterable iterator, iterates over it and yields full
- * SSE chunks, i.e. yields when a double new-line is encountered.
- */
-async function* iterSSEChunks(iterator) {
-    let data = new Uint8Array();
-    for await (const chunk of iterator) {
-        if (chunk == null) {
-            continue;
-        }
-        const binaryChunk = chunk instanceof ArrayBuffer ? new Uint8Array(chunk)
-            : typeof chunk === 'string' ? (0,utils_bytes/* encodeUTF8 */.YH)(chunk)
-                : chunk;
-        let newData = new Uint8Array(data.length + binaryChunk.length);
-        newData.set(data);
-        newData.set(binaryChunk, data.length);
-        data = newData;
-        // Yield views, not copies, so a chunk holding many events is not re-copied
-        // once per event. This relies on newData never being written again.
-        let patternIndex;
-        while ((patternIndex = findDoubleNewlineIndex(data)) !== -1) {
-            yield data.subarray(0, patternIndex);
-            data = data.subarray(patternIndex);
-        }
-    }
-    if (data.length > 0) {
-        yield data;
     }
 }
 class SSEDecoder {
@@ -62880,7 +62851,7 @@ const checkFileSupport = () => {
  */
 function makeFile(fileBits, fileName, options) {
     checkFileSupport();
-    return new File(fileBits, fileName ?? 'unknown_file', options);
+    return new File(fileBits, fileName ?? '', options);
 }
 function getName(value, stripPath) {
     const val = (typeof value === 'object' &&
@@ -62983,7 +62954,10 @@ const addFormValue = async (form, key, value, stripFilenames) => {
         form.append(key, makeFile([await new Response(ReadableStreamFrom(value)).blob()], getName(value, stripFilenames)));
     }
     else if (value instanceof Blob) {
-        form.append(key, makeFile([value], getName(value, stripFilenames) || undefined, { type: value.type }));
+        // A File's name is one the caller chose, so it is sent as is; any other Blob's name is a path.
+        const isFile = typeof File !== 'undefined' && value instanceof File;
+        const name = isFile ? value.name : getName(value, stripFilenames);
+        form.append(key, makeFile([value], name, { type: value.type }));
     }
     else if (Array.isArray(value)) {
         await Promise.all(value.map((entry) => addFormValue(form, key + '[]', entry, stripFilenames)));
@@ -63040,7 +63014,7 @@ async function toFile(value, name, options) {
     checkFileSupport();
     // If it's a promise, resolve it.
     value = await value;
-    name || (name = getName(value, true));
+    name || (name = value instanceof File ? value.name : getName(value, true));
     // If we've been given a `File` we don't need to do anything if the name / options
     // have not been customised.
     if (isFileLike(value)) {
@@ -63450,34 +63424,35 @@ const tokenize = (input) => {
             continue;
         }
         if (char === '"') {
-            let value = '';
+            // a `"` closes the string only after an even number of backslashes; escapes are kept verbatim
+            const start = current + 1;
+            let end = start;
             let danglingQuote = false;
-            char = input[++current];
-            while (char !== '"') {
-                if (current === input.length) {
+            while (true) {
+                end = input.indexOf('"', end);
+                if (end === -1) {
                     danglingQuote = true;
                     break;
                 }
-                if (char === '\\') {
-                    current++;
-                    if (current === input.length) {
-                        danglingQuote = true;
-                        break;
-                    }
-                    value += char + input[current];
-                    char = input[++current];
+                let backslashes = 0;
+                let i = end - 1;
+                while (i >= start && input[i] === '\\') {
+                    backslashes++;
+                    i--;
                 }
-                else {
-                    value += char;
-                    char = input[++current];
-                }
+                if (backslashes % 2 === 0)
+                    break;
+                end++;
             }
-            char = input[++current];
-            if (!danglingQuote) {
+            if (danglingQuote) {
+                current = input.length;
+            }
+            else {
                 tokens.push({
                     type: 'string',
-                    value,
+                    value: input.slice(start, end),
                 });
+                current = end + 1;
             }
             continue;
         }
@@ -63508,6 +63483,7 @@ const tokenize = (input) => {
             tokens.push({
                 type: 'number',
                 value,
+                unterminated: current === input.length,
             });
             continue;
         }
@@ -63538,42 +63514,53 @@ const tokenize = (input) => {
     }
     return tokens;
 }, strip = (tokens) => {
-    if (tokens.length === 0) {
-        return tokens;
+    let open = [];
+    for (const token of tokens) {
+        if (token.type === 'brace' || token.type === 'paren') {
+            if (token.value === '{' || token.value === '[') {
+                open.push(token.value);
+            }
+            else {
+                open.pop();
+            }
+        }
     }
-    let lastToken = tokens[tokens.length - 1];
-    switch (lastToken.type) {
-        case 'separator':
-            tokens = tokens.slice(0, tokens.length - 1);
-            return strip(tokens);
-            break;
-        case 'number':
-            let lastCharacterOfLastToken = lastToken.value[lastToken.value.length - 1];
-            if (lastCharacterOfLastToken === '.' ||
-                lastCharacterOfLastToken === '-' ||
-                lastCharacterOfLastToken === '+' ||
-                lastCharacterOfLastToken === 'e' ||
-                lastCharacterOfLastToken === 'E') {
-                tokens = tokens.slice(0, tokens.length - 1);
-                return strip(tokens);
-            }
-        case 'string':
-            let tokenBeforeTheLastToken = tokens[tokens.length - 2];
-            if (tokenBeforeTheLastToken?.type === 'delimiter') {
-                tokens = tokens.slice(0, tokens.length - 1);
-                return strip(tokens);
-            }
-            else if (tokenBeforeTheLastToken?.type === 'brace' && tokenBeforeTheLastToken.value === '{') {
-                tokens = tokens.slice(0, tokens.length - 1);
-                return strip(tokens);
-            }
-            break;
-        case 'delimiter':
-            tokens = tokens.slice(0, tokens.length - 1);
-            return strip(tokens);
-            break;
+    // brackets are never stripped, so this holds for every token looked at below
+    let innermostOpenBracket = open[open.length - 1];
+    let length = tokens.length;
+    let JSON_NUMBER = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?$/;
+    while (length > 0) {
+        let lastToken = tokens[length - 1];
+        switch (lastToken.type) {
+            case 'separator':
+                length--;
+                continue;
+            case 'number':
+                // more digits may follow a number that runs to the end of the input, and one that
+                // something else cuts short, e.g. `1.` or `1e-`, will never be a number
+                if (lastToken.unterminated || !JSON_NUMBER.test(lastToken.value)) {
+                    length--;
+                    continue;
+                }
+                break;
+            case 'string':
+                // in an object this is a key without a value yet, in an array it is a complete item
+                let tokenBeforeTheLastToken = tokens[length - 2];
+                if (innermostOpenBracket === '{' &&
+                    (tokenBeforeTheLastToken?.type === 'delimiter' ||
+                        (tokenBeforeTheLastToken?.type === 'brace' && tokenBeforeTheLastToken.value === '{'))) {
+                    length--;
+                    continue;
+                }
+                break;
+            case 'delimiter':
+                // whatever precedes a comma is complete
+                length--;
+                break;
+        }
+        break;
     }
-    return tokens;
+    return tokens.slice(0, length);
 }, unstrip = (tokens) => {
     let tail = [];
     tokens.map((token) => {
@@ -66883,400 +66870,400 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
             }
         }
     }
-    return SessionToolRunner;
-})();
-_SessionToolRunner_requestOptions = function _SessionToolRunner_requestOptions() {
-    return {
-        ...(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f"),
-        headers: buildHeaders([helperHeader('session-tool-runner'), (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f")?.headers]),
-        signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").signal,
-    };
-}, _SessionToolRunner_streamLoop = 
-// ===== event stream =====
-async function _SessionToolRunner_streamLoop() {
-    const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
-    let backoff = STREAM_BACKOFF_START_MS;
-    while (!ctrl.signal.aborted) {
+    _SessionToolRunner_requestOptions = function _SessionToolRunner_requestOptions() {
+        return {
+            ...(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f"),
+            headers: buildHeaders([helperHeader('session-tool-runner'), (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f")?.headers]),
+            signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").signal,
+        };
+    }, _SessionToolRunner_streamLoop = 
+    // ===== event stream =====
+    async function _SessionToolRunner_streamLoop() {
+        const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
+        let backoff = STREAM_BACKOFF_START_MS;
+        while (!ctrl.signal.aborted) {
+            try {
+                // Establish the event stream *before* reconciling history, so an event
+                // emitted in the gap between listing and attaching is buffered on the
+                // stream rather than lost. `seen`/`answered` dedup any event that shows
+                // up both in the reconcile pass and on the live stream.
+                const stream = await this.client.beta.sessions.events.stream(this.sessionId, {}, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this));
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_reconcile).call(this);
+                for await (const ev of stream) {
+                    backoff = STREAM_BACKOFF_START_MS;
+                    if (await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_handleStreamEvent).call(this, ev))
+                        return;
+                }
+            }
+            catch (e) {
+                // An abort throws to unwind the caller (the iterator's `streamPromise`
+                // `.catch`) rather than returning early and letting it carry on.
+                ctrl.signal.throwIfAborted();
+                if ((0,utils_backoff/* isFatal4xx */.bs)(e)) {
+                    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").error('permanent stream failure, shutting down', { error: String(e) });
+                    ctrl.abort();
+                    throw e;
+                }
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('stream disconnected, reconnecting', {
+                    error: String(e),
+                    backoff_ms: backoff,
+                });
+            }
+            ctrl.signal.throwIfAborted();
+            await sleep(backoff, ctrl.signal);
+            backoff = Math.min(backoff * 2, STREAM_BACKOFF_CAP_MS);
+        }
+    }, _SessionToolRunner_reconcile = 
+    /**
+     * Read full history before dispatching so a `tool_use` whose result appears
+     * later in the same history is not re-executed. Runs after the live stream is
+     * already attached (see {@link SessionToolRunner.#streamLoop}).
+     */
+    async function _SessionToolRunner_reconcile() {
+        const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
+        const pending = [];
+        let lastWasEndTurn = false;
         try {
-            // Establish the event stream *before* reconciling history, so an event
-            // emitted in the gap between listing and attaching is buffered on the
-            // stream rather than lost. `seen`/`answered` dedup any event that shows
-            // up both in the reconcile pass and on the live stream.
-            const stream = await this.client.beta.sessions.events.stream(this.sessionId, {}, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this));
-            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_reconcile).call(this);
-            for await (const ev of stream) {
-                backoff = STREAM_BACKOFF_START_MS;
-                if (await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_handleStreamEvent).call(this, ev))
-                    return;
+            for await (const ev of this.client.beta.sessions.events.list(this.sessionId, { limit: 1000 }, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this))) {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_ingestHistory).call(this, ev, pending);
+                lastWasEndTurn = isEndTurnIdle(ev);
             }
         }
         catch (e) {
-            // An abort throws to unwind the caller (the iterator's `streamPromise`
-            // `.catch`) rather than returning early and letting it carry on.
+            // An abort throws to unwind the caller; a real list failure is
+            // non-fatal — undo the speculative `seen` entries and let `#streamLoop`
+            // carry on with the live stream.
             ctrl.signal.throwIfAborted();
-            if ((0,utils_backoff/* isFatal4xx */.bs)(e)) {
-                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").error('permanent stream failure, shutting down', { error: String(e) });
-                ctrl.abort();
-                throw e;
-            }
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('stream disconnected, reconnecting', {
-                error: String(e),
-                backoff_ms: backoff,
-            });
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('reconcile list failed', { error: String(e) });
+            // If list itself failed, undo the speculative `seen` entries so the next
+            // reconcile pass (or the live stream) can pick them up. Leave the idle
+            // timer untouched — the history we read may be incomplete.
+            for (const ev of pending)
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").delete(ev.id);
+            return;
         }
-        ctrl.signal.throwIfAborted();
-        await sleep(backoff, ctrl.signal);
-        backoff = Math.min(backoff * 2, STREAM_BACKOFF_CAP_MS);
-    }
-}, _SessionToolRunner_reconcile = 
-/**
- * Read full history before dispatching so a `tool_use` whose result appears
- * later in the same history is not re-executed. Runs after the live stream is
- * already attached (see {@link SessionToolRunner.#streamLoop}).
- */
-async function _SessionToolRunner_reconcile() {
-    const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
-    const pending = [];
-    let lastWasEndTurn = false;
-    try {
-        for await (const ev of this.client.beta.sessions.events.list(this.sessionId, { limit: 1000 }, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this))) {
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_ingestHistory).call(this, ev, pending);
-            lastWasEndTurn = isEndTurnIdle(ev);
-        }
-    }
-    catch (e) {
-        // An abort throws to unwind the caller; a real list failure is
-        // non-fatal — undo the speculative `seen` entries and let `#streamLoop`
-        // carry on with the live stream.
-        ctrl.signal.throwIfAborted();
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('reconcile list failed', { error: String(e) });
-        // If list itself failed, undo the speculative `seen` entries so the next
-        // reconcile pass (or the live stream) can pick them up. Leave the idle
-        // timer untouched — the history we read may be incomplete.
-        for (const ev of pending)
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").delete(ev.id);
-        return;
-    }
-    const unanswered = pending.filter((ev) => !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id));
-    // Disarm before routing: `#execute` runs inline here, so a timer left armed
-    // from before the reconnect could fire over an in-flight tool.
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").disarm();
-    for (const ev of unanswered)
-        await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_routeToolEvent).call(this, ev);
-    // A held call's verdict is normally applied by the routing pass above; if
-    // its tool_use fell outside the listed window the pass never saw it, so
-    // apply the verdict to the held copy here.
-    for (const held of [...(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").values()]) {
-        const verdict = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").get(held.id);
-        if (verdict !== undefined)
-            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, held, verdict);
-    }
-    // Routing resolves denied calls in place (marking them answered) and holds
-    // ask-gated calls for their `user.tool_confirmation`. If the most recent
-    // event in history is an `end_turn` idle and no tool work is outstanding,
-    // the session is done — arm the idle clock so the runner stops even if that
-    // `end_turn` arrived during a disconnect. A held call is not outstanding
-    // here: it blocks the clock, so this arm stays pending until the verdict
-    // (and, for an allow, the dispatch it releases) resolves it.
-    const outstanding = unanswered.filter((ev) => !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id) && !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").has(ev.id));
-    if (lastWasEndTurn && outstanding.length === 0)
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").arm();
-    else
+        const unanswered = pending.filter((ev) => !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id));
+        // Disarm before routing: `#execute` runs inline here, so a timer left armed
+        // from before the reconnect could fire over an in-flight tool.
         (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").disarm();
-}, _SessionToolRunner_ingestHistory = function _SessionToolRunner_ingestHistory(ev, pending) {
-    if (ev.type === 'agent.tool_use' || ev.type === 'agent.custom_tool_use') {
-        // Mark the event seen so a replay on the live stream is not dispatched
-        // twice, but decide whether it still needs executing from `answered`, not
-        // `seen`: a call whose result post failed is seen-but-unanswered, and must
-        // be retried on the next reconcile pass rather than silently dropped.
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").add(ev.id);
-        if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id))
-            pending.push(ev);
-    }
-    else if (ev.type === 'user.tool_result') {
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.tool_use_id);
-    }
-    else if (ev.type === 'user.custom_tool_result') {
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.custom_tool_use_id);
-    }
-    else if (ev.type === 'user.tool_confirmation') {
-        // Record the verdict only, before the pending pass, so a call whose
-        // confirmation appears later in the same history routes with its verdict
-        // already known. Releasing a held call here as well would dispatch it a
-        // second time when the routing pass reaches its tool_use event.
-        if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.tool_use_id))
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").set(ev.tool_use_id, ev.result);
-    }
-}, _SessionToolRunner_handleStreamEvent = 
-/** Returns true when the runner should exit. */
-async function _SessionToolRunner_handleStreamEvent(ev) {
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").noteEvent(ev);
-    switch (ev.type) {
-        case 'agent.tool_use':
-        case 'agent.custom_tool_use':
-            if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").has(ev.id)) {
-                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").add(ev.id);
-                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_routeToolEvent).call(this, ev);
-            }
-            return false;
-        case 'user.tool_confirmation':
-            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_noteConfirmation).call(this, ev);
-            return false;
-        case 'user.tool_result':
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.tool_use_id);
-            return false;
-        case 'user.custom_tool_result':
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.custom_tool_use_id);
-            return false;
-        case 'session.status_terminated':
-        case 'session.deleted':
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('session terminated', {
-                component: 'session-tool-runner',
-                session_id: this.sessionId,
-            });
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").abort();
-            return true;
-        default:
-            return false;
-    }
-}, _SessionToolRunner_routeToolEvent = 
-// ===== confirmation gating (always_ask tools) =====
-/**
- * Dispatch `ev`, honoring its evaluated permission. A call the server gated
- * (`evaluated_permission == "ask"`) is held until its `user.tool_confirmation`
- * arrives. Fails closed: only an explicit `allow` verdict releases a gated
- * call; a server-side `deny` overrides any recorded verdict; an unrecognized
- * permission is held like `ask` and an unrecognized verdict is denied.
- */
-async function _SessionToolRunner_routeToolEvent(ev) {
-    // `getattr`-style read: today only `agent.tool_use` carries
-    // `evaluated_permission`, but if it ever lands on `agent.custom_tool_use`
-    // the gate must keep failing closed rather than dispatch by event type.
-    const permission = ev.evaluated_permission;
-    // A server-side `deny` overrides any (stray) recorded verdict.
-    const verdict = permission === 'deny' ? 'deny' : (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").get(ev.id);
-    if (verdict === undefined) {
-        if (permission === undefined || permission === 'allow') {
-            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_execute).call(this, ev, undefined);
+        for (const ev of unanswered)
+            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_routeToolEvent).call(this, ev);
+        // A held call's verdict is normally applied by the routing pass above; if
+        // its tool_use fell outside the listed window the pass never saw it, so
+        // apply the verdict to the held copy here.
+        for (const held of [...(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").values()]) {
+            const verdict = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").get(held.id);
+            if (verdict !== undefined)
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, held, verdict);
         }
-        else if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").has(ev.id)) {
-            // "ask" — or a permission this SDK does not recognize, which must not
-            // dispatch unconfirmed — waits for the user's verdict. (Already-held: a
-            // reconcile after reconnect re-routes the call; keep the existing hold.)
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call awaiting confirmation; holding', {
+        // Routing resolves denied calls in place (marking them answered) and holds
+        // ask-gated calls for their `user.tool_confirmation`. If the most recent
+        // event in history is an `end_turn` idle and no tool work is outstanding,
+        // the session is done — arm the idle clock so the runner stops even if that
+        // `end_turn` arrived during a disconnect. A held call is not outstanding
+        // here: it blocks the clock, so this arm stays pending until the verdict
+        // (and, for an allow, the dispatch it releases) resolves it.
+        const outstanding = unanswered.filter((ev) => !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id) && !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").has(ev.id));
+        if (lastWasEndTurn && outstanding.length === 0)
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").arm();
+        else
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").disarm();
+    }, _SessionToolRunner_ingestHistory = function _SessionToolRunner_ingestHistory(ev, pending) {
+        if (ev.type === 'agent.tool_use' || ev.type === 'agent.custom_tool_use') {
+            // Mark the event seen so a replay on the live stream is not dispatched
+            // twice, but decide whether it still needs executing from `answered`, not
+            // `seen`: a call whose result post failed is seen-but-unanswered, and must
+            // be retried on the next reconcile pass rather than silently dropped.
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").add(ev.id);
+            if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id))
+                pending.push(ev);
+        }
+        else if (ev.type === 'user.tool_result') {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.tool_use_id);
+        }
+        else if (ev.type === 'user.custom_tool_result') {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.custom_tool_use_id);
+        }
+        else if (ev.type === 'user.tool_confirmation') {
+            // Record the verdict only, before the pending pass, so a call whose
+            // confirmation appears later in the same history routes with its verdict
+            // already known. Releasing a held call here as well would dispatch it a
+            // second time when the routing pass reaches its tool_use event.
+            if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.tool_use_id))
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").set(ev.tool_use_id, ev.result);
+        }
+    }, _SessionToolRunner_handleStreamEvent = 
+    /** Returns true when the runner should exit. */
+    async function _SessionToolRunner_handleStreamEvent(ev) {
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").noteEvent(ev);
+        switch (ev.type) {
+            case 'agent.tool_use':
+            case 'agent.custom_tool_use':
+                if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").has(ev.id)) {
+                    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_seen, "f").add(ev.id);
+                    await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_routeToolEvent).call(this, ev);
+                }
+                return false;
+            case 'user.tool_confirmation':
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_noteConfirmation).call(this, ev);
+                return false;
+            case 'user.tool_result':
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.tool_use_id);
+                return false;
+            case 'user.custom_tool_result':
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.custom_tool_use_id);
+                return false;
+            case 'session.status_terminated':
+            case 'session.deleted':
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('session terminated', {
+                    component: 'session-tool-runner',
+                    session_id: this.sessionId,
+                });
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").abort();
+                return true;
+            default:
+                return false;
+        }
+    }, _SessionToolRunner_routeToolEvent = 
+    // ===== confirmation gating (always_ask tools) =====
+    /**
+     * Dispatch `ev`, honoring its evaluated permission. A call the server gated
+     * (`evaluated_permission == "ask"`) is held until its `user.tool_confirmation`
+     * arrives. Fails closed: only an explicit `allow` verdict releases a gated
+     * call; a server-side `deny` overrides any recorded verdict; an unrecognized
+     * permission is held like `ask` and an unrecognized verdict is denied.
+     */
+    async function _SessionToolRunner_routeToolEvent(ev) {
+        // `getattr`-style read: today only `agent.tool_use` carries
+        // `evaluated_permission`, but if it ever lands on `agent.custom_tool_use`
+        // the gate must keep failing closed rather than dispatch by event type.
+        const permission = ev.evaluated_permission;
+        // A server-side `deny` overrides any (stray) recorded verdict.
+        const verdict = permission === 'deny' ? 'deny' : (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").get(ev.id);
+        if (verdict === undefined) {
+            if (permission === undefined || permission === 'allow') {
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_execute).call(this, ev, undefined);
+            }
+            else if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").has(ev.id)) {
+                // "ask" — or a permission this SDK does not recognize, which must not
+                // dispatch unconfirmed — waits for the user's verdict. (Already-held: a
+                // reconcile after reconnect re-routes the call; keep the existing hold.)
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call awaiting confirmation; holding', {
+                    component: 'session-tool-runner',
+                    session_id: this.sessionId,
+                    tool: ev.name,
+                    tool_use_id: ev.id,
+                });
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").set(ev.id, ev);
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").block(ev.id);
+            }
+            return;
+        }
+        await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, ev, verdict);
+    }, _SessionToolRunner_noteConfirmation = 
+    /** Record an allow/deny verdict and release the held call it gates, if any. */
+    async function _SessionToolRunner_noteConfirmation(ev) {
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").set(ev.tool_use_id, ev.result);
+        const held = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").get(ev.tool_use_id);
+        // Nothing held: the verdict gates a call this runner has not seen yet (or
+        // one it never gates, e.g. an `agent.mcp_tool_use`). Keeping it in
+        // `#confirmationVerdicts` lets a later route of that call resolve instantly.
+        if (held === undefined)
+            return;
+        await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, held, ev.result);
+    }, _SessionToolRunner_applyVerdict = 
+    /**
+     * Dispatch or resolve a gated call according to its verdict.
+     *
+     * The idle-clock blocker accounting lives here: a denial retires the held
+     * call's blocker, while an allow keeps one on the call — taking it now if the
+     * verdict was already known when the call was routed, so it was never held —
+     * until `#execute` has finished with it. The countdown must not run over
+     * gated work that is still in flight.
+     */
+    async function _SessionToolRunner_applyVerdict(ev, verdict) {
+        const wasHeld = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").delete(ev.id);
+        if (verdict === 'allow') {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call confirmed', {
                 component: 'session-tool-runner',
                 session_id: this.sessionId,
                 tool: ev.name,
                 tool_use_id: ev.id,
             });
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").set(ev.id, ev);
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").block(ev.id);
+            if (!wasHeld)
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").block(ev.id);
+            try {
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_execute).call(this, ev, 'allow');
+            }
+            finally {
+                // The approved call is fully disposed of (executed, or moot because it
+                // was answered elsewhere) — the sole place an allow's blocker retires.
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").unblock(ev.id);
+            }
+            return;
         }
-        return;
-    }
-    await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, ev, verdict);
-}, _SessionToolRunner_noteConfirmation = 
-/** Record an allow/deny verdict and release the held call it gates, if any. */
-async function _SessionToolRunner_noteConfirmation(ev) {
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_confirmationVerdicts, "f").set(ev.tool_use_id, ev.result);
-    const held = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").get(ev.tool_use_id);
-    // Nothing held: the verdict gates a call this runner has not seen yet (or
-    // one it never gates, e.g. an `agent.mcp_tool_use`). Keeping it in
-    // `#confirmationVerdicts` lets a later route of that call resolve instantly.
-    if (held === undefined)
-        return;
-    await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_applyVerdict).call(this, held, ev.result);
-}, _SessionToolRunner_applyVerdict = 
-/**
- * Dispatch or resolve a gated call according to its verdict.
- *
- * The idle-clock blocker accounting lives here: a denial retires the held
- * call's blocker, while an allow keeps one on the call — taking it now if the
- * verdict was already known when the call was routed, so it was never held —
- * until `#execute` has finished with it. The countdown must not run over
- * gated work that is still in flight.
- */
-async function _SessionToolRunner_applyVerdict(ev, verdict) {
-    const wasHeld = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").delete(ev.id);
-    if (verdict === 'allow') {
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call confirmed', {
+        // "deny" — or any value other than an explicit "allow" (fail closed). The
+        // denial resolves the call server-side, so mark it answered and yield it
+        // (nothing ran, nothing posted).
+        if (wasHeld)
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").unblock(ev.id);
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.id);
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call denied; not executing', {
             component: 'session-tool-runner',
             session_id: this.sessionId,
             tool: ev.name,
             tool_use_id: ev.id,
         });
-        if (!wasHeld)
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").block(ev.id);
-        try {
-            await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_execute).call(this, ev, 'allow');
-        }
-        finally {
-            // The approved call is fully disposed of (executed, or moot because it
-            // was answered elsewhere) — the sole place an allow's blocker retires.
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").unblock(ev.id);
-        }
-        return;
-    }
-    // "deny" — or any value other than an explicit "allow" (fail closed). The
-    // denial resolves the call server-side, so mark it answered and yield it
-    // (nothing ran, nothing posted).
-    if (wasHeld)
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").unblock(ev.id);
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(ev.id);
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool call denied; not executing', {
-        component: 'session-tool-runner',
-        session_id: this.sessionId,
-        tool: ev.name,
-        tool_use_id: ev.id,
-    });
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
-        event: ev,
-        toolUseId: ev.id,
-        name: ev.name,
-        isError: false,
-        posted: false,
-        confirmation: 'deny',
-    });
-}, _SessionToolRunner_surfaceCall = function _SessionToolRunner_surfaceCall(call) {
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_results, "f").push(call);
-}, _SessionToolRunner_execute = 
-// ===== tool execution =====
-async function _SessionToolRunner_execute(ev, confirmation) {
-    var _a, _b;
-    if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id))
-        return;
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('executing tool', {
-        component: 'session-tool-runner',
-        session_id: this.sessionId,
-        tool: ev.name,
-        tool_use_id: ev.id,
-    });
-    (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_inFlightCount, (_a = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f"), _a++, _a), "f");
-    try {
-        const tool = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_toolByName, "f").get(ev.name);
-        if (!tool) {
-            // Skip (split-client partial fulfilment): a name this runner
-            // is not registered for belongs to the other client servicing this
-            // session (typically the customer's app backend handling custom tools).
-            // Post NO result, do not mark it answered, and leave the tool_use_id
-            // pending for its owner — claiming it would corrupt the conversation.
-            // Still yield the call so the consumer can observe the unowned
-            // dispatch; nothing was sent, so `posted`/`isError` stay false and no
-            // `result` event is populated. The id stays unanswered, so reconcile
-            // keeps it out of the idle/end-turn accounting and re-surfaces it after
-            // a reconnect until its owner answers it.
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool not owned by this runner; leaving the tool_use_id pending for its owner', {
-                component: 'session-tool-runner',
-                session_id: this.sessionId,
-                tool: ev.name,
-                tool_use_id: ev.id,
-            });
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
-                event: ev,
-                toolUseId: ev.id,
-                name: ev.name,
-                isError: false,
-                posted: false,
-                confirmation,
-            });
-            return;
-        }
-        let content;
-        let isError;
-        // Per-tool controller: aborts on the runner's own signal *or* the
-        // per-tool timeout, so an in-flight tool stops promptly when the runner
-        // is aborted instead of running until the timeout.
-        const toolCtrl = new AbortController();
-        const detachTool = linkAbort((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").signal, toolCtrl);
-        const timer = setTimeout(() => toolCtrl.abort(), TOOL_TIMEOUT_MS);
-        try {
-            // Pass the source `agent.tool_use` / `agent.custom_tool_use` event
-            // straight through as the run context's `toolUse` — it is a union
-            // member of `BetaToolUse`, no Messages-block adapter needed.
-            const outcome = await runRunnableTool(tool, ev.input, {
-                toolUse: ev,
-                toolUseBlock: ev,
-                signal: toolCtrl.signal,
-            });
-            content = outcome.content;
-            isError = outcome.isError;
-        }
-        finally {
-            clearTimeout(timer);
-            detachTool();
-        }
-        // Answer with the result event that matches the call kind: a
-        // `user.tool_result` for an `agent.tool_use`, a `user.custom_tool_result`
-        // for an `agent.custom_tool_use`. Posting the wrong one leaves the call
-        // unanswered and the session stuck.
-        const result = buildResultEvent(ev, isError, toSessionContent(content));
-        const posted = await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_sendResult).call(this, result, ev.id);
         (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
             event: ev,
-            result,
             toolUseId: ev.id,
             name: ev.name,
-            isError,
-            posted,
-            confirmation,
+            isError: false,
+            posted: false,
+            confirmation: 'deny',
         });
-    }
-    finally {
-        (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_inFlightCount, (_b = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f"), _b--, _b), "f");
-        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") === 0)
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_onIdle, "f")?.call(this);
-    }
-}, _SessionToolRunner_sendResult = async function _SessionToolRunner_sendResult(result, toolUseId) {
-    const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
-    const start = Date.now();
-    let lastErr;
-    let attempt = 0;
-    while (true) {
-        attempt++;
-        // An abort throws to unwind the caller rather than returning a
-        // `posted: false` result the iterator would carry on past.
-        ctrl.signal.throwIfAborted();
+    }, _SessionToolRunner_surfaceCall = function _SessionToolRunner_surfaceCall(call) {
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_results, "f").push(call);
+    }, _SessionToolRunner_execute = 
+    // ===== tool execution =====
+    async function _SessionToolRunner_execute(ev, confirmation) {
+        var _a, _b;
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id))
+            return;
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('executing tool', {
+            component: 'session-tool-runner',
+            session_id: this.sessionId,
+            tool: ev.name,
+            tool_use_id: ev.id,
+        });
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_inFlightCount, (_a = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f"), _a++, _a), "f");
         try {
-            await this.client.beta.sessions.events.send(this.sessionId, { events: [result] }, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this));
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(toolUseId);
-            return true;
-        }
-        catch (e) {
-            lastErr = e;
-            // Only short-circuit on a permanent 4xx; 408/409/429 deserve the
-            // remaining retries (aligned with the core client's retry policy).
-            if ((0,utils_backoff/* isFatal4xx */.bs)(e))
-                break;
-            const remainingMs = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_sendRetryWindowMs, "f") - (Date.now() - start);
-            if (remainingMs <= 0)
-                break;
-            const waitMs = Math.min((0,utils_backoff/* applyJitter */.LX)((0,utils_backoff/* backoff */.JN)(attempt - 1, SEND_BACKOFF_START_MS, SEND_BACKOFF_CAP_MS)), remainingMs);
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('tool result send failed; retrying', {
-                tool_use_id: toolUseId,
-                attempt,
-                backoff_ms: waitMs,
-                error: String(e),
+            const tool = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_toolByName, "f").get(ev.name);
+            if (!tool) {
+                // Skip (split-client partial fulfilment): a name this runner
+                // is not registered for belongs to the other client servicing this
+                // session (typically the customer's app backend handling custom tools).
+                // Post NO result, do not mark it answered, and leave the tool_use_id
+                // pending for its owner — claiming it would corrupt the conversation.
+                // Still yield the call so the consumer can observe the unowned
+                // dispatch; nothing was sent, so `posted`/`isError` stay false and no
+                // `result` event is populated. The id stays unanswered, so reconcile
+                // keeps it out of the idle/end-turn accounting and re-surfaces it after
+                // a reconnect until its owner answers it.
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('tool not owned by this runner; leaving the tool_use_id pending for its owner', {
+                    component: 'session-tool-runner',
+                    session_id: this.sessionId,
+                    tool: ev.name,
+                    tool_use_id: ev.id,
+                });
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
+                    event: ev,
+                    toolUseId: ev.id,
+                    name: ev.name,
+                    isError: false,
+                    posted: false,
+                    confirmation,
+                });
+                return;
+            }
+            let content;
+            let isError;
+            // Per-tool controller: aborts on the runner's own signal *or* the
+            // per-tool timeout, so an in-flight tool stops promptly when the runner
+            // is aborted instead of running until the timeout.
+            const toolCtrl = new AbortController();
+            const detachTool = linkAbort((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").signal, toolCtrl);
+            const timer = setTimeout(() => toolCtrl.abort(), TOOL_TIMEOUT_MS);
+            try {
+                // Pass the source `agent.tool_use` / `agent.custom_tool_use` event
+                // straight through as the run context's `toolUse` — it is a union
+                // member of `BetaToolUse`, no Messages-block adapter needed.
+                const outcome = await runRunnableTool(tool, ev.input, {
+                    toolUse: ev,
+                    toolUseBlock: ev,
+                    signal: toolCtrl.signal,
+                });
+                content = outcome.content;
+                isError = outcome.isError;
+            }
+            finally {
+                clearTimeout(timer);
+                detachTool();
+            }
+            // Answer with the result event that matches the call kind: a
+            // `user.tool_result` for an `agent.tool_use`, a `user.custom_tool_result`
+            // for an `agent.custom_tool_use`. Posting the wrong one leaves the call
+            // unanswered and the session stuck.
+            const result = buildResultEvent(ev, isError, toSessionContent(content));
+            const posted = await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_sendResult).call(this, result, ev.id);
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
+                event: ev,
+                result,
+                toolUseId: ev.id,
+                name: ev.name,
+                isError,
+                posted,
+                confirmation,
             });
-            await sleep(waitMs, ctrl.signal);
         }
-    }
-    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").error('failed to send tool result', {
-        tool_use_id: toolUseId,
-        attempts: attempt,
-        error: String(lastErr),
-    });
-    return false;
-}, _SessionToolRunner_drain = 
-/** Wait (bounded) for in-flight tool executions to finish during teardown. */
-async function _SessionToolRunner_drain() {
-    if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") === 0)
-        return;
-    await Promise.race([new Promise((r) => ((0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_onIdle, r, "f"))), sleep(DRAIN_TIMEOUT_MS)]);
-    (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_onIdle, null, "f");
-    if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") > 0) {
-        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('drain timeout exceeded');
-    }
-};
+        finally {
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_inFlightCount, (_b = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f"), _b--, _b), "f");
+            if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") === 0)
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_onIdle, "f")?.call(this);
+        }
+    }, _SessionToolRunner_sendResult = async function _SessionToolRunner_sendResult(result, toolUseId) {
+        const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
+        const start = Date.now();
+        let lastErr;
+        let attempt = 0;
+        while (true) {
+            attempt++;
+            // An abort throws to unwind the caller rather than returning a
+            // `posted: false` result the iterator would carry on past.
+            ctrl.signal.throwIfAborted();
+            try {
+                await this.client.beta.sessions.events.send(this.sessionId, { events: [result] }, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this));
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").add(toolUseId);
+                return true;
+            }
+            catch (e) {
+                lastErr = e;
+                // Only short-circuit on a permanent 4xx; 408/409/429 deserve the
+                // remaining retries (aligned with the core client's retry policy).
+                if ((0,utils_backoff/* isFatal4xx */.bs)(e))
+                    break;
+                const remainingMs = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_sendRetryWindowMs, "f") - (Date.now() - start);
+                if (remainingMs <= 0)
+                    break;
+                const waitMs = Math.min((0,utils_backoff/* applyJitter */.LX)((0,utils_backoff/* backoff */.JN)(attempt - 1, SEND_BACKOFF_START_MS, SEND_BACKOFF_CAP_MS)), remainingMs);
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('tool result send failed; retrying', {
+                    tool_use_id: toolUseId,
+                    attempt,
+                    backoff_ms: waitMs,
+                    error: String(e),
+                });
+                await sleep(waitMs, ctrl.signal);
+            }
+        }
+        (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").error('failed to send tool result', {
+            tool_use_id: toolUseId,
+            attempts: attempt,
+            error: String(lastErr),
+        });
+        return false;
+    }, _SessionToolRunner_drain = 
+    /** Wait (bounded) for in-flight tool executions to finish during teardown. */
+    async function _SessionToolRunner_drain() {
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") === 0)
+            return;
+        await Promise.race([new Promise((r) => ((0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_onIdle, r, "f"))), sleep(DRAIN_TIMEOUT_MS)]);
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_onIdle, null, "f");
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_inFlightCount, "f") > 0) {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").warn('drain timeout exceeded');
+        }
+    };
+    return SessionToolRunner;
+})();
 /**
  * Build the result event that answers `ev`: a `user.tool_result` for a builtin
  * `agent.tool_use`, a `user.custom_tool_result` for a custom
@@ -69716,36 +69703,148 @@ var BetaMessageStream = /* @__PURE__ */ (() => {
     return BetaMessageStream;
 })();
 //# sourceMappingURL=BetaMessageStream.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/BetaToolRunnerStream.mjs
+var _BetaToolRunnerStream_instances, _BetaToolRunnerStream_onToolCall, _BetaToolRunnerStream_emitted, _BetaToolRunnerStream_readers, _BetaToolRunnerStream_toolCalls, _BetaToolRunnerStream_closed, _BetaToolRunnerStream_ready, _BetaToolRunnerStream_fallback, _BetaToolRunnerStream_track, _BetaToolRunnerStream_release, _BetaToolRunnerStream_removeReader;
+
+
+
+/**
+ * The stream a tool runner yields. It hands each `tool_use` call to `onToolCall` once the model has moved on
+ * from it, and the caller's listeners and `for await` loops over the stream have handled the event that shows it.
+ */
+var BetaToolRunnerStream = /* @__PURE__ */ (() => {
+    /**
+     * The stream a tool runner yields. It hands each `tool_use` call to `onToolCall` once the model has moved on
+     * from it, and the caller's listeners and `for await` loops over the stream have handled the event that shows it.
+     */
+    class BetaToolRunnerStream extends BetaMessageStream {
+        constructor(params, onToolCall) {
+            super(params);
+            _BetaToolRunnerStream_instances.add(this);
+            _BetaToolRunnerStream_onToolCall.set(this, void 0);
+            /** The number of stream events emitted so far */
+            _BetaToolRunnerStream_emitted.set(this, 0);
+            /** The `for await` loops over the stream that are still reading it */
+            _BetaToolRunnerStream_readers.set(this, []);
+            /** The `tool_use` blocks that have finished streaming, in the model's order */
+            _BetaToolRunnerStream_toolCalls.set(this, []);
+            /** The last `tool_use` block to close, until the model moves on from it */
+            _BetaToolRunnerStream_closed.set(this, void 0);
+            /** The calls the model has moved on from, in its order, until every reader has caught up with them */
+            _BetaToolRunnerStream_ready.set(this, []);
+            /** Whether a refusal has handed the reply to a fallback model */
+            _BetaToolRunnerStream_fallback.set(this, false);
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_onToolCall, onToolCall, "f");
+        }
+        /** The `tool_use` blocks that have finished streaming, in the model's order */
+        get toolCalls() {
+            return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_toolCalls, "f");
+        }
+        /** Sends the request as `client.beta.messages.stream()` does. */
+        static start(messages, params, options, onToolCall) {
+            const stream = new BetaToolRunnerStream({ ...params, stream: true }, onToolCall);
+            for (const message of params.messages) {
+                stream._addMessageParam(message);
+            }
+            stream._run(() => stream._createMessage(messages, { ...params, stream: true }, { ...options, headers: { ...options?.headers, [STAINLESS_HELPER_METHOD_HEADER]: 'stream' } }));
+            return stream;
+        }
+        _emit(event, ...args) {
+            var _a;
+            if (event !== 'streamEvent' || this.ended) {
+                super._emit(event, ...args);
+                return;
+            }
+            // Counted first, so that a reader created by a listener of this event starts after it.
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_emitted, (_a = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_emitted, "f"), _a++, _a), "f");
+            const [streamEvent, snapshot] = args;
+            const block = streamEvent.type === 'content_block_stop' ? snapshot.content[streamEvent.index] : undefined;
+            const closed = block?.type === 'tool_use' ? block : undefined;
+            if (closed) {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_toolCalls, "f").push(closed);
+            }
+            super._emit(event, ...args);
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_track).call(this, streamEvent, closed);
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_release).call(this);
+        }
+        [(_BetaToolRunnerStream_onToolCall = new WeakMap(), _BetaToolRunnerStream_emitted = new WeakMap(), _BetaToolRunnerStream_readers = new WeakMap(), _BetaToolRunnerStream_toolCalls = new WeakMap(), _BetaToolRunnerStream_closed = new WeakMap(), _BetaToolRunnerStream_ready = new WeakMap(), _BetaToolRunnerStream_fallback = new WeakMap(), _BetaToolRunnerStream_instances = new WeakSet(), Symbol.asyncIterator)]() {
+            const iterator = super[Symbol.asyncIterator]();
+            const reader = { handled: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_emitted, "f") };
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_readers, "f").push(reader);
+            let holdsEvent = false;
+            return {
+                next: async () => {
+                    // Asking for the next event is how a `for await` loop says it is done with the one it holds.
+                    if (holdsEvent) {
+                        holdsEvent = false;
+                        reader.handled++;
+                        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_release).call(this);
+                    }
+                    try {
+                        const result = await iterator.next();
+                        holdsEvent = !result.done;
+                        if (result.done) {
+                            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_removeReader).call(this, reader);
+                        }
+                        return result;
+                    }
+                    catch (error) {
+                        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_removeReader).call(this, reader);
+                        throw error;
+                    }
+                },
+                return: async () => {
+                    // Leaving the loop aborts the stream, which has to come first so that no call starts after it.
+                    const result = iterator.return?.();
+                    (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_removeReader).call(this, reader);
+                    return (await result) ?? { value: undefined, done: true };
+                },
+            };
+        }
+    }
+    _BetaToolRunnerStream_track = function _BetaToolRunnerStream_track(event, closed) {
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_fallback, "f")) {
+            return;
+        }
+        if (event.type === 'content_block_start' && event.content_block.type === 'fallback') {
+            // The refusal that led to the fallback may have cut the call before it off.
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_fallback, true, "f");
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_closed, undefined, "f");
+            return;
+        }
+        // A call's own `content_block_stop` isn't enough, because a reply that is cut off closes its last call too.
+        const movedOn = event.type === 'content_block_start' ||
+            (event.type === 'message_delta' && event.delta.stop_reason === 'tool_use');
+        if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_closed, "f") && movedOn) {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_ready, "f").push({ toolUse: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_closed, "f"), event: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_emitted, "f") });
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_closed, undefined, "f");
+        }
+        if (closed) {
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunnerStream_closed, closed, "f");
+        }
+    }, _BetaToolRunnerStream_release = function _BetaToolRunnerStream_release() {
+        // Events that were already read still arrive after the stream has failed or been aborted.
+        if (this.errored || this.controller.signal.aborted) {
+            return;
+        }
+        const handled = Math.min((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_emitted, "f"), ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_readers, "f").map((reader) => reader.handled));
+        while ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_ready, "f")[0] && (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_ready, "f")[0].event <= handled) {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_onToolCall, "f").call(this, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_ready, "f").shift().toolUse);
+        }
+    }, _BetaToolRunnerStream_removeReader = function _BetaToolRunnerStream_removeReader(reader) {
+        const index = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_readers, "f").indexOf(reader);
+        if (index >= 0) {
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_readers, "f").splice(index, 1);
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunnerStream_instances, "m", _BetaToolRunnerStream_release).call(this);
+        }
+    };
+    return BetaToolRunnerStream;
+})();
+//# sourceMappingURL=BetaToolRunnerStream.mjs.map
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/promise.mjs
 var promise = __nccwpck_require__(7793);
-;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/CompactionControl.mjs
-const DEFAULT_TOKEN_THRESHOLD = 100000;
-const DEFAULT_SUMMARY_PROMPT = `You have been working on the task described above but have not yet completed it. Write a continuation summary that will allow you (or another instance of yourself) to resume work efficiently in a future context window where the conversation history will be replaced with this summary. Your summary should be structured, concise, and actionable. Include:
-1. Task Overview
-The user's core request and success criteria
-Any clarifications or constraints they specified
-2. Current State
-What has been completed so far
-Files created, modified, or analyzed (with paths if relevant)
-Key outputs or artifacts produced
-3. Important Discoveries
-Technical constraints or requirements uncovered
-Decisions made and their rationale
-Errors encountered and how they were resolved
-What approaches were tried that didn't work (and why)
-4. Next Steps
-Specific actions needed to complete the task
-Any blockers or open questions to resolve
-Priority order if multiple steps remain
-5. Context to Preserve
-User preferences or style requirements
-Domain-specific details that aren't obvious
-Any promises made to the user
-Be concise but complete—err on the side of including information that would prevent duplicate work or repeated mistakes. Write in a way that enables immediate resumption of the task.
-Wrap your summary in <summary></summary> tags.`;
-//# sourceMappingURL=CompactionControl.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/BetaToolRunner.mjs
-var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_lastStopReason, _BetaToolRunner_toolOverrides, _BetaToolRunner_pendingToolChanges, _BetaToolRunner_checkAndCompact, _BetaToolRunner_send, _BetaToolRunner_compact, _BetaToolRunner_runnableTools, _BetaToolRunner_availableToolNames, _BetaToolRunner_recordRemovalsFromHistory, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse, _BetaToolRunner_flushPendingToolChanges, _BetaToolRunner_pendingToolChangesMessage;
+var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_calls, _BetaToolRunner_lastStopReason, _BetaToolRunner_toolOverrides, _BetaToolRunner_pendingToolChanges, _BetaToolRunner_send, _BetaToolRunner_streamThatStartsTools, _BetaToolRunner_startedCallsSettled, _BetaToolRunner_compact, _BetaToolRunner_runnableTools, _BetaToolRunner_availableToolNames, _BetaToolRunner_recordRemovalsFromHistory, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse, _BetaToolRunner_flushPendingToolChanges, _BetaToolRunner_pendingToolChangesMessage;
 
 
 
@@ -69759,14 +69858,16 @@ var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated
  * A ToolRunner handles the automatic conversation loop between the assistant and tools.
  *
  * A ToolRunner is an async iterable that yields either BetaMessage or BetaMessageStream objects
- * depending on the streaming configuration.
+ * depending on the streaming configuration. With `runToolsEagerly` it starts each tool call while the
+ * reply is still streaming, unless `deferToolCall()` holds the call.
  */
 var BetaToolRunner = /* @__PURE__ */ (() => {
     /**
      * A ToolRunner handles the automatic conversation loop between the assistant and tools.
      *
      * A ToolRunner is an async iterable that yields either BetaMessage or BetaMessageStream objects
-     * depending on the streaming configuration.
+     * depending on the streaming configuration. With `runToolsEagerly` it starts each tool call while the
+     * reply is still streaming, unless `deferToolCall()` holds the call.
      */
     class BetaToolRunner {
         constructor(client, params, options) {
@@ -69791,6 +69892,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             _BetaToolRunner_iterationCount.set(this, 0);
             /** A compaction scheduled with `compactBeforeNextTurn()`, in flight until its response has been handled */
             _BetaToolRunner_compaction.set(this, { status: 'idle' });
+            /** The tool calls of the current reply that are held or have started, by `tool_use` id. See `runToolsEagerly`. */
+            _BetaToolRunner_calls.set(this, void 0);
             /** The last turn's stop reason, or `null` once the history has been replaced since */
             _BetaToolRunner_lastStopReason.set(this, null);
             /**
@@ -69803,6 +69906,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             /** Changes queued by `addTools()` / `removeTools()`, in call order, for the next request */
             _BetaToolRunner_pendingToolChanges.set(this, []);
             rejectCompactionParam(params);
+            rejectCompactionControl(params);
+            rejectRunToolsEagerlyWithoutStream(params);
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_state, {
                 params: {
                     // You can't clone the entire params since there are functions as handlers.
@@ -69827,86 +69932,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                 ]),
             }, "f");
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_completion, (0,promise/* promiseWithResolvers */.n)(), "f");
-            if (params.compactionControl?.enabled) {
-                console.warn('Anthropic: The `compactionControl` parameter is deprecated and will be removed in a future version. ' +
-                    'Use server-side compaction instead by passing `edits: [{ type: "compact_20260112" }]` in the params passed to `toolRunner()`. ' +
-                    'See https://platform.claude.com/docs/en/build-with-claude/compaction');
-            }
         }
-        async *[(_BetaToolRunner_consumed = new WeakMap(), _BetaToolRunner_mutated = new WeakMap(), _BetaToolRunner_state = new WeakMap(), _BetaToolRunner_options = new WeakMap(), _BetaToolRunner_message = new WeakMap(), _BetaToolRunner_stream = new WeakMap(), _BetaToolRunner_toolResponse = new WeakMap(), _BetaToolRunner_completion = new WeakMap(), _BetaToolRunner_iterationCount = new WeakMap(), _BetaToolRunner_compaction = new WeakMap(), _BetaToolRunner_lastStopReason = new WeakMap(), _BetaToolRunner_toolOverrides = new WeakMap(), _BetaToolRunner_pendingToolChanges = new WeakMap(), _BetaToolRunner_instances = new WeakSet(), _BetaToolRunner_checkAndCompact = async function _BetaToolRunner_checkAndCompact() {
-            const compactionControl = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.compactionControl;
-            if (!compactionControl || !compactionControl.enabled) {
-                return false;
-            }
-            let tokensUsed = 0;
-            if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f") !== undefined) {
-                try {
-                    const message = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
-                    const totalInputTokens = message.usage.input_tokens +
-                        (message.usage.cache_creation_input_tokens ?? 0) +
-                        (message.usage.cache_read_input_tokens ?? 0);
-                    tokensUsed = totalInputTokens + message.usage.output_tokens;
-                }
-                catch {
-                    // If we can't get the message, skip compaction
-                    return false;
-                }
-            }
-            const threshold = compactionControl.contextTokenThreshold ?? DEFAULT_TOKEN_THRESHOLD;
-            if (tokensUsed < threshold) {
-                return false;
-            }
-            const model = compactionControl.model ?? (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.model;
-            const summaryPrompt = compactionControl.summaryPrompt ?? DEFAULT_SUMMARY_PROMPT;
-            const messages = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages;
-            if (messages[messages.length - 1].role === 'assistant') {
-                // Remove tool_use blocks from the last message to avoid 400 error
-                // (tool_use requires tool_result, which we don't have yet)
-                const lastMessage = messages[messages.length - 1];
-                if (Array.isArray(lastMessage.content)) {
-                    const nonToolBlocks = lastMessage.content.filter((block) => block.type !== 'tool_use');
-                    if (nonToolBlocks.length === 0) {
-                        // If all blocks were tool_use, just remove the message entirely
-                        messages.pop();
-                    }
-                    else {
-                        lastMessage.content = nonToolBlocks;
-                    }
-                }
-            }
-            const response = await this.client.beta.messages.create({
-                model,
-                messages: [
-                    ...messages,
-                    {
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: summaryPrompt,
-                            },
-                        ],
-                    },
-                ],
-                max_tokens: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.max_tokens,
-            }, {
-                signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f").signal,
-                headers: buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f").headers, helperHeader('compaction')]),
-            });
-            if (response.content[0]?.type !== 'text') {
-                throw new core_error/* AnthropicError */.pJ('Expected text response for compaction');
-            }
-            // Must run before the history is replaced: a removal the caller wrote into it is known only from it.
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_recordRemovalsFromHistory).call(this);
-            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, null, "f");
-            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages = [
-                {
-                    role: 'user',
-                    content: asContentParam(response.content),
-                },
-            ];
-            return true;
-        }, Symbol.asyncIterator)]() {
+        async *[(_BetaToolRunner_consumed = new WeakMap(), _BetaToolRunner_mutated = new WeakMap(), _BetaToolRunner_state = new WeakMap(), _BetaToolRunner_options = new WeakMap(), _BetaToolRunner_message = new WeakMap(), _BetaToolRunner_stream = new WeakMap(), _BetaToolRunner_toolResponse = new WeakMap(), _BetaToolRunner_completion = new WeakMap(), _BetaToolRunner_iterationCount = new WeakMap(), _BetaToolRunner_compaction = new WeakMap(), _BetaToolRunner_calls = new WeakMap(), _BetaToolRunner_lastStopReason = new WeakMap(), _BetaToolRunner_toolOverrides = new WeakMap(), _BetaToolRunner_pendingToolChanges = new WeakMap(), _BetaToolRunner_instances = new WeakSet(), Symbol.asyncIterator)]() {
             var _a;
             if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_consumed, "f")) {
                 throw new core_error/* AnthropicError */.pJ('Cannot iterate over a consumed stream');
@@ -69932,49 +69959,46 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, undefined, "f");
                         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_iterationCount, (_a = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_iterationCount, "f"), _a++, _a), "f");
                         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_message, undefined, "f");
-                        const { max_iterations, compactionControl, ...params } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
+                        const { max_iterations, runToolsEagerly, ...params } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
                         yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_send).call(this, params);
-                        const isCompacted = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_checkAndCompact).call(this);
-                        if (!isCompacted) {
-                            if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_mutated, "f")) {
-                                const message = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
-                                const nextStep = determineNextStepFromStopReason(message.stop_reason);
-                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, message.stop_reason, "f");
-                                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push({
-                                    role: message.role,
-                                    content: asContentParam(message.content),
-                                });
-                                // Container-bound server tools reject a follow-up request that omits the container the
-                                // previous turn ran in, so carry its id forward unless the caller pinned one themselves.
-                                const { container } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
-                                if (message.container) {
-                                    if (container == null) {
-                                        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.container = message.container.id;
-                                    }
-                                    else if (typeof container === 'object' && container.id == null) {
-                                        (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.container = { ...container, id: message.container.id };
-                                    }
+                        if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_mutated, "f")) {
+                            const message = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
+                            const nextStep = determineNextStepFromStopReason(message.stop_reason);
+                            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, message.stop_reason, "f");
+                            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push({
+                                role: message.role,
+                                content: asContentParam(message.content),
+                            });
+                            // Container-bound server tools reject a follow-up request that omits the container the
+                            // previous turn ran in, so carry its id forward unless the caller pinned one themselves.
+                            const { container } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
+                            if (message.container) {
+                                if (container == null) {
+                                    (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.container = message.container.id;
                                 }
-                                if (nextStep === 'stop') {
-                                    yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_compactAfterFinalTurn).call(this);
-                                    break;
-                                }
-                                if (nextStep === 'resume') {
-                                    continue;
+                                else if (typeof container === 'object' && container.id == null) {
+                                    (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.container = { ...container, id: message.container.id };
                                 }
                             }
-                            else {
-                                // The caller has taken over the history, so the last response no longer says how it ends.
-                                (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, null, "f");
-                            }
-                            const toolMessage = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_generateToolResponse).call(this, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.at(-1));
-                            if (toolMessage) {
-                                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push(toolMessage);
-                            }
-                            else if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_mutated, "f")) {
+                            if (nextStep === 'stop') {
                                 yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_compactAfterFinalTurn).call(this);
                                 break;
                             }
+                            if (nextStep === 'resume') {
+                                continue;
+                            }
+                        }
+                        else {
+                            // The caller has taken over the history, so the last response no longer says how it ends.
+                            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_lastStopReason, null, "f");
+                        }
+                        const toolMessage = await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_generateToolResponse).call(this, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.at(-1));
+                        if (toolMessage) {
+                            (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.messages.push(toolMessage);
+                        }
+                        else if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_mutated, "f")) {
+                            yield* (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_compactAfterFinalTurn).call(this);
+                            break;
                         }
                     }
                     finally {
@@ -69982,6 +70006,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_stream, undefined, "f");
                     }
                 }
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_startedCallsSettled).call(this);
                 if (!(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f")) {
                     throw new core_error/* AnthropicError */.pJ('ToolRunner concluded without a message from the server');
                 }
@@ -69999,6 +70024,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         setMessagesParams(paramsOrMutator) {
             const params = typeof paramsOrMutator === 'function' ? paramsOrMutator((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params) : paramsOrMutator;
             rejectCompactionParam(params);
+            rejectRunToolsEagerlyWithoutStream(params);
             if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_compaction, "f").status !== 'idle') {
                 rejectCompactionEdit(params);
             }
@@ -70021,7 +70047,9 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         }
         /**
          * Get the tool response for the last message from the assistant.
-         * Avoids redundant tool executions by caching results.
+         * Avoids redundant tool executions by caching results. With `runToolsEagerly`, it reuses the calls of
+         * the reply that have started and runs the rest, including the ones `deferToolCall()` is holding, so that no
+         * call runs twice.
          *
          * @returns A promise that resolves to a BetaMessageParam containing tool results, or null if no tools need to be executed
          *
@@ -70037,6 +70065,65 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                 return null;
             }
             return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_generateToolResponse).call(this, message, signal);
+        }
+        /**
+         * Hold a tool call of the current reply until you are done with the reply, which is when it runs without
+         * streaming: at the end of the loop body, or when you call `generateToolResponse()`.
+         *
+         * With `runToolsEagerly` the runner otherwise starts each call while the reply streams, as soon as
+         * the model has moved on from it: when the next block starts, or the reply stops with `tool_use`. A call
+         * never starts before your stream listeners and any `for await` over the stream have handled that event, so
+         * you can call this from either once you have seen the call. The other calls of the reply still start early.
+         * It does nothing for a call that has started, outside the loop body, and without `runToolsEagerly`.
+         *
+         * @param toolUse - The `tool_use` block of the call, or its id
+         *
+         * @example
+         * for await (const stream of runner) {
+         *   stream.on('contentBlock', (block) => {
+         *     if (block.type === 'tool_use' && block.name === 'delete_file') {
+         *       runner.deferToolCall(block);
+         *     }
+         *   });
+         *   await stream.finalMessage();
+         *   // No `delete_file` call has started yet.
+         * }
+         */
+        deferToolCall(toolUse) {
+            const id = typeof toolUse === 'string' ? toolUse : toolUse.id;
+            if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f") && !(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f").has(id)) {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f").set(id, { status: 'held' });
+            }
+        }
+        /**
+         * The tool calls of the current reply that `deferToolCall()` is holding, in the model's order, as their
+         * `tool_use` blocks. A call is in the list once its block has finished streaming, so read the list when you
+         * are done with the stream. A call that has started is not in it. It is empty without
+         * `runToolsEagerly`.
+         *
+         * Held calls are listed whatever the reply's `stop_reason`, because `generateToolResponse()` runs them
+         * whatever it is. After `max_tokens` the input of the last call can be cut off.
+         *
+         * @example
+         * for await (const stream of runner) {
+         *   stream.on('contentBlock', (block) => {
+         *     if (block.type === 'tool_use' && block.name === 'delete_file') {
+         *       runner.deferToolCall(block);
+         *     }
+         *   });
+         *   await stream.finalMessage();
+         *
+         *   const held = runner.deferredToolCalls;
+         *   if (held.length > 0 && !(await confirm(held))) break;
+         * }
+         */
+        get deferredToolCalls() {
+            const stream = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_stream, "f");
+            const calls = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f");
+            if (!(stream instanceof BetaToolRunnerStream) || !calls) {
+                return [];
+            }
+            return stream.toolCalls.filter((toolUse) => calls.get(toolUse.id)?.status === 'held');
         }
         /**
          * Wait for the async iterator to complete. This works even if the async iterator hasn't yet started, and
@@ -70142,9 +70229,9 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          *
          * Each tool's whole definition is sent in a `tool_addition` block with the next request, and a
          * runnable tool replaces a runnable tool of the same name straight away, even for a call already in
-         * the message being handled. A raw definition is only sent: the runner never runs it, and stops
-         * running a tool of the same name. Requires the `inline-tools-2026-09-15` beta, which the runner does
-         * not add for you.
+         * the message being handled. A call that started while the reply streamed keeps the old one. A raw
+         * definition is only sent: the runner never runs it, and stops running a tool of the same name.
+         * Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
          *
          * @param tools - Runnable tools (for example from `betaZodTool()`) or raw tool definitions
          *
@@ -70164,8 +70251,9 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          * Take tools away from the model without changing `params.tools`, which would miss the prompt cache.
          *
          * The tools stop being run straight away: a call to one of them, even one in the message being
-         * handled, gets the same "not found" error result as a call to an unknown tool. The model is told
-         * in a `tool_removal` block with the next request. Use {@link addTools} to bring a tool back.
+         * handled, gets the same "not found" error result as a call to an unknown tool. A call that started
+         * while the reply streamed finishes as usual. The model is told in a `tool_removal` block with the
+         * next request. Use {@link addTools} to bring a tool back.
          * Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
          *
          * @param tools - The tools to remove, or their names
@@ -70195,8 +70283,12 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
      * end of the iteration.
      */
     async function* _BetaToolRunner_send(params) {
+        await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_startedCallsSettled).call(this);
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_calls, undefined, "f");
         if (params.stream) {
-            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_stream, this.client.beta.messages.stream({ ...params }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f")), "f");
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_stream, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.runToolsEagerly ?
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_streamThatStartsTools).call(this, params)
+                : this.client.beta.messages.stream({ ...params }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f")), "f");
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_message, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_stream, "f").finalMessage(), "f");
             // Make sure that this promise doesn't throw before we get the option to do something about it.
             // Error will be caught when we call await this.#message ultimately
@@ -70207,9 +70299,28 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_message, this.client.beta.messages.create({ ...params, stream: false }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f")), "f");
             yield (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_message, "f");
         }
+    }, _BetaToolRunner_streamThatStartsTools = function _BetaToolRunner_streamThatStartsTools(params) {
+        const calls = new Map();
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_calls, calls, "f");
+        return BetaToolRunnerStream.start(this.client.beta.messages, params, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), (toolUse) => {
+            // Held, or started by `generateToolResponse()` before a reader that is behind got to the call.
+            if (calls.has(toolUse.id)) {
+                return;
+            }
+            // The call looks its tool up now, so a later `addTools()` or `removeTools()` doesn't change it.
+            const result = runToolCall((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), toolUse, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"));
+            // Marks a rejection as handled until the results are collected.
+            result.catch(() => { });
+            calls.set(toolUse.id, { status: 'started', result });
+        });
+    }, _BetaToolRunner_startedCallsSettled = 
+    /** Waits for the calls of the last streamed reply that have started, whether or not their results were sent. */
+    async function _BetaToolRunner_startedCallsSettled() {
+        const started = [...((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f")?.values() ?? [])].filter((call) => call.status === 'started');
+        await Promise.allSettled(started.map((call) => call.result));
     }, _BetaToolRunner_compact = async function* _BetaToolRunner_compact(compaction) {
         rejectCompactionEdit((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params);
-        const { max_iterations, compactionControl, ...requestParams } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
+        const { max_iterations, runToolsEagerly, ...requestParams } = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params;
         const params = withoutCompactionIncompatibleParams(requestParams);
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_compaction, { status: 'in_flight' }, "f");
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, undefined, "f");
@@ -70291,7 +70402,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f") !== undefined) {
             return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
         }
-        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), lastMessage, { ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), signal }), "f");
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), lastMessage, { ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), signal }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f")), "f");
         return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
     }, _BetaToolRunner_flushPendingToolChanges = function _BetaToolRunner_flushPendingToolChanges() {
         // A paused turn has to go back as the last message, so the changes wait for the request after it.
@@ -70327,6 +70438,19 @@ function rejectCompactionParam(params) {
             'Call `runner.compactBeforeNextTurn()` when the conversation should be compacted instead.');
     }
 }
+function rejectCompactionControl(params) {
+    // No longer in the params type, so only untyped callers reach this; forwarding it would be an opaque API 400.
+    if ('compactionControl' in params && params.compactionControl != null) {
+        throw new core_error/* AnthropicError */.pJ('`compactionControl` has been removed from the tool runner. Use server-side compaction instead: ' +
+            'call `runner.compactBeforeNextTurn()` when the conversation should be compacted.');
+    }
+}
+function rejectRunToolsEagerlyWithoutStream(params) {
+    if (params.runToolsEagerly && !params.stream) {
+        throw new TypeError("`runToolsEagerly: true` needs `stream: true` in the tool runner's params, because a reply that " +
+            "isn't streamed arrives whole.");
+    }
+}
 function rejectCompactionEdit(params) {
     // The compaction request is sent without `context_management`, so the API can't refuse the pair there:
     // it would run and bill the compaction, then refuse the next request.
@@ -70355,7 +70479,7 @@ function withoutCompactionIncompatibleParams(params) {
     }
     return kept;
 }
-async function generateToolResponse(runnable, available, lastMessage, requestOptions) {
+async function generateToolResponse(runnable, available, lastMessage, requestOptions, calls) {
     // Only process if the last message is from the assistant and has tool use blocks
     if (!lastMessage ||
         lastMessage.role !== 'assistant' ||
@@ -70367,44 +70491,53 @@ async function generateToolResponse(runnable, available, lastMessage, requestOpt
     if (toolUseBlocks.length === 0) {
         return null;
     }
-    const toolResults = await Promise.all(toolUseBlocks.map(async (toolUse) => {
-        // A `tool_removal` is only a hint to the model, which may still emit a tool_use for a
-        // withdrawn tool — treat those exactly like a tool that was never defined.
-        const tool = available.has(toolUse.name) ? runnable.get(toolUse.name) : undefined;
-        if (!tool) {
-            return toolNotFoundResult(toolUse);
+    const toolResults = await Promise.all(toolUseBlocks.map((toolUse) => {
+        const call = calls?.get(toolUse.id);
+        if (call?.status === 'started') {
+            return call.result;
         }
-        try {
-            let input = toolUse.input;
-            if ('parse' in tool && tool.parse) {
-                input = tool.parse(input);
-            }
-            const result = await tool.run(input, {
-                toolUse: toolUse,
-                toolUseBlock: toolUse,
-                signal: requestOptions?.signal,
-            });
-            return {
-                type: 'tool_result',
-                tool_use_id: toolUse.id,
-                content: result,
-            };
-        }
-        catch (error) {
-            return {
-                type: 'tool_result',
-                tool_use_id: toolUse.id,
-                content: error instanceof ToolError/* ToolError */.v ?
-                    error.content
-                    : `Error: ${error instanceof Error ? error.message : String(error)}`,
-                is_error: true,
-            };
-        }
+        const result = runToolCall(runnable, available, toolUse, requestOptions);
+        calls?.set(toolUse.id, { status: 'started', result });
+        return result;
     }));
     return {
         role: 'user',
         content: toolResults,
     };
+}
+async function runToolCall(runnable, available, toolUse, requestOptions) {
+    // A `tool_removal` is only a hint to the model, which may still emit a tool_use for a
+    // withdrawn tool — treat those exactly like a tool that was never defined.
+    const tool = available.has(toolUse.name) ? runnable.get(toolUse.name) : undefined;
+    if (!tool) {
+        return toolNotFoundResult(toolUse);
+    }
+    try {
+        let input = toolUse.input;
+        if ('parse' in tool && tool.parse) {
+            input = tool.parse(input);
+        }
+        const result = await tool.run(input, {
+            toolUse: toolUse,
+            toolUseBlock: toolUse,
+            signal: requestOptions?.signal,
+        });
+        return {
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: result,
+        };
+    }
+    catch (error) {
+        return {
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: error instanceof ToolError/* ToolError */.v ?
+                error.content
+                : `Error: ${error instanceof Error ? error.message : String(error)}`,
+            is_error: true,
+        };
+    }
 }
 /**
  * Response content is sent back as request content unchanged. The generated request type of the
@@ -70636,6 +70769,24 @@ function transformOutputFormat(params) {
         },
     };
 }
+const BETA_CLIENT_TOOL_UNION_KEYS = (/* unused pure expression or super */ null && ([
+    'input_schema',
+    'name',
+    'allowed_callers',
+    'cache_control',
+    'defer_loading',
+    'description',
+    'eager_input_streaming',
+    'input_examples',
+    'strict',
+    'type',
+    'configs',
+    'display_height_px',
+    'display_width_px',
+    'display_number',
+    'enable_zoom',
+    'max_characters',
+]));
 
 
 //# sourceMappingURL=messages.mjs.map
@@ -71903,11 +72054,13 @@ class Members extends APIResource {
 
 class rate_limits_RateLimits extends APIResource {
     /**
-     * List rate-limit overrides configured for a workspace.
+     * List a workspace's rate limits.
      *
-     * Returns only the groups and limiter types that have a workspace-level override.
-     * Groups without overrides inherit the organization limits and are not listed; use
-     * `GET /v1/organizations/rate_limits` to see those.
+     * By default, returns only the groups and limiter types that have a
+     * workspace-level override. With `include_inherited=true`, returns every group
+     * with organization-level limits the workspace can see, listing for each the
+     * values it inherits from the organization as well as its own overrides. Each
+     * value's `source` says which it is.
      *
      * When `limit` is omitted, every matching entry is returned in a single page; when
      * `limit` truncates the result, follow `next_page` to fetch the remaining entries.
@@ -74715,7 +74868,13 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
                 (0,utils_values/* validatePositiveInteger */.wQ)('timeout', options.timeout);
             options.timeout = options.timeout ?? this.timeout;
             const { bodyHeaders, body } = this.buildBody({ options });
-            const reqHeaders = await this.buildHeaders({ options: inputOptions, method, bodyHeaders, retryCount });
+            const reqHeaders = await this.buildHeaders({
+                options: inputOptions,
+                method,
+                bodyHeaders,
+                retryCount,
+                timeout: options.timeout,
+            });
             const req = {
                 method,
                 headers: reqHeaders,
@@ -74728,13 +74887,13 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
             };
             return { req, url, timeout: options.timeout };
         }
-        async buildHeaders({ options, method, bodyHeaders, retryCount, }) {
+        async buildHeaders({ options, method, bodyHeaders, retryCount, timeout, }) {
             const headers = buildHeaders([
                 {
                     Accept: 'application/json',
                     'User-Agent': this.getUserAgent(),
                     'X-Stainless-Retry-Count': String(retryCount),
-                    ...(options.timeout ? { 'X-Stainless-Timeout': String(Math.trunc(options.timeout / 1000)) } : {}),
+                    'X-Stainless-Timeout': String(Math.trunc(timeout / 1000)),
                     ...getPlatformHeaders(),
                     ...(this._options.dangerouslyAllowBrowser ?
                         { 'anthropic-dangerous-direct-browser-access': 'true' }
@@ -74809,8 +74968,6 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
         return this.baseURL !== 'https://api.anthropic.com';
     };
     BaseAnthropic.Anthropic = _a;
-    BaseAnthropic.HUMAN_PROMPT = HUMAN_PROMPT;
-    BaseAnthropic.AI_PROMPT = AI_PROMPT;
     BaseAnthropic.DEFAULT_TIMEOUT = 600000; // 10 minutes
     BaseAnthropic.AnthropicError = core_error/* AnthropicError */.pJ;
     BaseAnthropic.APIError = core_error/* APIError */.LG;
@@ -74826,6 +74983,8 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
     BaseAnthropic.PermissionDeniedError = core_error/* PermissionDeniedError */.Ll;
     BaseAnthropic.UnprocessableEntityError = core_error/* UnprocessableEntityError */.Is;
     BaseAnthropic.toFile = toFile;
+    BaseAnthropic.HUMAN_PROMPT = HUMAN_PROMPT;
+    BaseAnthropic.AI_PROMPT = AI_PROMPT;
     return BaseAnthropic;
 })();
 /**
@@ -104280,7 +104439,7 @@ async function* streaming_iterSSEMessages(response, controller) {
     let failed = false;
     try {
         source.start();
-        for await (const sseChunk of streaming_iterSSEChunks(source.iterator)) {
+        for await (const sseChunk of iterSSEChunks(source.iterator)) {
             if (signal.aborted) {
                 return;
             }
@@ -104334,7 +104493,7 @@ const DOUBLE_NEWLINE_DELIMITER_MAX_OVERLAP_BYTES = 3;
  *
  * @yields {Uint8Array} A complete SSE chunk.
  */
-async function* streaming_iterSSEChunks(iterator) {
+async function* iterSSEChunks(iterator) {
     let data = new Uint8Array();
     let dataStart = 0;
     let dataEnd = 0;
