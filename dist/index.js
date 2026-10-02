@@ -104684,7 +104684,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.23.0'; // x-release-please-version
+const openai_version_VERSION = '7.25.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -116709,7 +116709,7 @@ class Speech extends resource_APIResource {
      * const speech = await client.audio.speech.create({
      *   input: 'input',
      *   model: 'tts-1',
-     *   voice: 'alloy',
+     *   voice: 'ash',
      * });
      *
      * const content = await speech.blob();
@@ -117862,13 +117862,16 @@ class sessions_events_Events extends resource_APIResource {
      *   {
      *     events: [
      *       {
-     *         input: [
-     *           {
-     *             content: [{ text: 'text', type: 'input_text' }],
-     *             role: 'user',
-     *           },
-     *         ],
-     *         type: 'agent.session.input.message',
+     *         request_id: 'request_id',
+     *         response: {
+     *           action: 'submit',
+     *           fields: [
+     *             { field_id: 'field_id', value: 'value' },
+     *           ],
+     *           type: 'browser_authentication',
+     *         },
+     *         type:
+     *           'agent.session.input.computer_use_approval_request_result',
      *       },
      *     ],
      *   },
@@ -118627,8 +118630,7 @@ class credentials_Credentials extends resource_APIResource {
         })));
     }
     /**
-     * Rotates a vault credential's write-only secret and returns only credential
-     * metadata. See
+     * Updates credential metadata or rotates its write-only secret. See
      * [vaults](https://developers.openai.com/api/docs/guides/agents-api/tools/vaults).
      *
      * @example
@@ -118636,10 +118638,7 @@ class credentials_Credentials extends resource_APIResource {
      * const credential =
      *   await client.beta.agents.vaults.credentials.update(
      *     'credential_id',
-     *     {
-     *       vault_id: 'vault_id',
-     *       auth: { type: 'mcp_oauth' },
-     *     },
+     *     { vault_id: 'vault_id', metadata: {} },
      *   );
      * ```
      */
@@ -123244,8 +123243,59 @@ class ClientSecrets extends resource_APIResource {
     }
 }
 //# sourceMappingURL=client-secrets.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/realtime/translations/client-secrets.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+function translations_client_secrets_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+class client_secrets_ClientSecrets extends resource_APIResource {
+    /**
+     * Create a Realtime translation client secret with an associated translation
+     * session configuration.
+     *
+     * Client secrets are short-lived tokens that can be passed to a client app, such
+     * as a web frontend or mobile client, which grants access to the Realtime
+     * Translation API without leaking your main API key. You can configure a custom
+     * TTL for each client secret.
+     *
+     * Returns the created client secret and the effective translation session object.
+     * The client secret is a string that looks like `ek_1234`.
+     *
+     * @example
+     * ```ts
+     * const realtimeTranslationClientSecretCreateResponse =
+     *   await client.realtime.translations.clientSecrets.create(
+     *     { session: { model: 'model' } },
+     *   );
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/realtime/translations/client_secrets', translations_client_secrets_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=client-secrets.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/realtime/translations/translations.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+class translations_Translations extends resource_APIResource {
+    constructor() {
+        super(...arguments);
+        this.clientSecrets = new client_secrets_ClientSecrets(this._client);
+    }
+}
+translations_Translations.ClientSecrets = client_secrets_ClientSecrets;
+//# sourceMappingURL=translations.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/realtime/realtime.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
 
 
 
@@ -123256,10 +123306,12 @@ class realtime_Realtime extends resource_APIResource {
         super(...arguments);
         this.clientSecrets = new ClientSecrets(this._client);
         this.calls = new Calls(this._client);
+        this.translations = new translations_Translations(this._client);
     }
 }
 realtime_Realtime.ClientSecrets = ClientSecrets;
 realtime_Realtime.Calls = Calls;
+realtime_Realtime.Translations = translations_Translations;
 //# sourceMappingURL=realtime.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/ResponsesParser.mjs
 
@@ -123558,6 +123610,10 @@ function getOutputText(context, output) {
     return text;
 }
 function ensureCanonicalOutputText(context, snapshot) {
+    if (context.deferOutputText) {
+        context.canonicalSnapshot = undefined;
+        return;
+    }
     if (context.canonicalSnapshot === snapshot) {
         return;
     }
@@ -123590,6 +123646,9 @@ function cloneResponse(context, response) {
     return snapshot;
 }
 function updateCachedOutputTextLength(context, output, outputIndex, previousText, nextText) {
+    if (context.deferOutputText) {
+        return;
+    }
     const length = context.outputTextLengths.get(output);
     if (length !== undefined) {
         const nextLength = length - previousText.length + nextText.length;
@@ -123633,6 +123692,10 @@ function updateOutputText(context, snapshot, outputIndex, previousText, nextText
     if (previousText === nextText) {
         return;
     }
+    if (context.deferOutputText) {
+        context.outputTextDirty = true;
+        return;
+    }
     const output = snapshot.output[outputIndex];
     if (outputIndex === snapshot.output.length - 1 &&
         (contentIndex === undefined || (output?.type === 'message' && contentIndex === output.content.length - 1))) {
@@ -123652,6 +123715,7 @@ function updateOutputText(context, snapshot, outputIndex, previousText, nextText
 }
 //# sourceMappingURL=canonical-output-text.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/responses/response-accumulator.mjs
+
 
 
 
@@ -124035,7 +124099,12 @@ function accumulateOutputItemEvent(event, snapshot, context) {
                 context.outputTextIndex.append(text.length);
             }
             if (text) {
-                snapshot.output_text += text;
+                if (context.deferOutputText) {
+                    context.outputTextDirty = true;
+                }
+                else {
+                    snapshot.output_text += text;
+                }
             }
             return true;
         }
@@ -124124,6 +124193,42 @@ function accumulateContentPartDoneEvent(event, snapshot, context) {
         }
     }
 }
+// Streamed logprobs have a looser type than final output: bytes and even the
+// top token fields may be missing. Do not fabricate them in typed SSE snapshots.
+function isLogprobWithBytes(value) {
+    return (isObj(value) &&
+        typeof value['token'] === 'string' &&
+        typeof value['logprob'] === 'number' &&
+        Array.isArray(value['bytes']) &&
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- This boundary checks each byte against the generated final-output contract before exposing a typed SSE snapshot.
+        value['bytes'].every((byte) => typeof byte === 'number'));
+}
+function isOutputLogprobs(value) {
+    return (Array.isArray(value) &&
+        value.every((entry) => isLogprobWithBytes(entry) &&
+            'top_logprobs' in entry &&
+            Array.isArray(entry.top_logprobs) &&
+            entry.top_logprobs.every(isLogprobWithBytes)));
+}
+function accumulateOutputLogprobs(content, event) {
+    const logprobs = structuredClone(event.logprobs);
+    if (!isOutputLogprobs(logprobs)) {
+        return;
+    }
+    if (event.type === 'response.output_text.done') {
+        if (logprobs.length > 0 || (Array.isArray(content.logprobs) && content.logprobs.length > 0)) {
+            content.logprobs = logprobs;
+        }
+    }
+    else if (logprobs.length > 0) {
+        if (!Array.isArray(content.logprobs)) {
+            content.logprobs = [];
+        }
+        for (const logprob of logprobs) {
+            content.logprobs.push(logprob);
+        }
+    }
+}
 function accumulateOutputTextEvent(event, snapshot, context) {
     switch (event.type) {
         case 'response.output_text.delta': {
@@ -124133,13 +124238,21 @@ function accumulateOutputTextEvent(event, snapshot, context) {
                 if (content.type !== 'output_text') {
                     throw new error_OpenAIError(`expected content to be 'output_text', got ${content.type}`);
                 }
+                accumulateOutputLogprobs(content, event);
                 const previousText = content.text;
                 ensureCanonicalOutputText(context, snapshot);
                 content.text = previousText + event.delta;
                 updateCachedOutputTextLength(context, output, event.output_index, previousText, content.text);
                 if (event.output_index === snapshot.output.length - 1 &&
                     event.content_index === output.content.length - 1) {
-                    snapshot.output_text += event.delta;
+                    if (context.deferOutputText) {
+                        if (event.delta !== '') {
+                            context.outputTextDirty = true;
+                        }
+                    }
+                    else {
+                        snapshot.output_text += event.delta;
+                    }
                 }
                 else {
                     updateOutputText(context, snapshot, event.output_index, previousText, content.text, event.content_index);
@@ -124154,6 +124267,7 @@ function accumulateOutputTextEvent(event, snapshot, context) {
                 if (content.type !== 'output_text') {
                     throw new error_OpenAIError(`expected content to be 'output_text', got ${content.type}`);
                 }
+                accumulateOutputLogprobs(content, event);
                 const previousText = content.text;
                 ensureCanonicalOutputText(context, snapshot);
                 content.text = event.text;
@@ -124539,6 +124653,57 @@ function isIgnoredResponseEvent(event) {
 function createResponseContext() {
     return createCanonicalResponseContext();
 }
+function accumulateResponseOutput(dispatchEvent, snapshot, context, rejectInvalidShellTargets) {
+    validateOutputItemIdentity(dispatchEvent, snapshot, rejectInvalidShellTargets);
+    if (accumulateOutputItemEvent(dispatchEvent, snapshot, context)) {
+        return true;
+    }
+    if (accumulateContentPartAddedEvent(dispatchEvent, snapshot, context)) {
+        return true;
+    }
+    if (accumulateContentPartDoneEvent(dispatchEvent, snapshot, context)) {
+        return true;
+    }
+    if (accumulateOutputTextEvent(dispatchEvent, snapshot, context)) {
+        return true;
+    }
+    if (accumulateRefusalAndArgumentsEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (accumulateShellEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (accumulateReasoningEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (accumulateCodeInterpreterEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (accumulateSearchStatusEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (accumulateImageAndMcpStatusEvent(dispatchEvent, snapshot)) {
+        return true;
+    }
+    if (isIgnoredResponseEvent(dispatchEvent)) {
+        return true;
+    }
+    return false;
+}
+/** Matches shared events that can change output. Validation still occurs before mutation. */
+function isResponseOutputEvent(event) {
+    // SAFETY: Membership of the existing SSE tag set is checked before using shared output validators.
+    return (supportedResponseEventTypes.has(event.type) &&
+        !isResponseLifecycleEvent(event) &&
+        !isIgnoredResponseEvent(event));
+}
+/** Applies the same strict output validation and mutations without requiring response metadata. */
+function accumulateWebSocketOutput(event, snapshot, context) {
+    const dispatchEvent = sanitizeResponseEvent(event);
+    if (!accumulateResponseOutput(dispatchEvent, snapshot, context, true)) {
+        throw new OpenAIError('Unsupported WebSocket output event');
+    }
+}
 function accumulateResponseWithContext(event, snapshot, context, rejectInvalidShellTargets = false, onSanitizedEvent) {
     const dispatchEvent = sanitizeResponseEvent(event);
     if (onSanitizedEvent && dispatchEvent.type !== 'keepalive') {
@@ -124550,42 +124715,11 @@ function accumulateResponseWithContext(event, snapshot, context, rejectInvalidSh
         }
         return cloneValidatedResponse(context, dispatchEvent.response);
     }
-    validateOutputItemIdentity(dispatchEvent, snapshot, rejectInvalidShellTargets);
-    if (accumulateOutputItemEvent(dispatchEvent, snapshot, context)) {
-        return snapshot;
-    }
-    if (accumulateContentPartAddedEvent(dispatchEvent, snapshot, context)) {
-        return snapshot;
-    }
-    if (accumulateContentPartDoneEvent(dispatchEvent, snapshot, context)) {
-        return snapshot;
-    }
-    if (accumulateOutputTextEvent(dispatchEvent, snapshot, context)) {
-        return snapshot;
-    }
-    if (accumulateRefusalAndArgumentsEvent(dispatchEvent, snapshot)) {
-        return snapshot;
-    }
-    if (accumulateShellEvent(dispatchEvent, snapshot)) {
-        return snapshot;
-    }
-    if (accumulateReasoningEvent(dispatchEvent, snapshot)) {
-        return snapshot;
-    }
-    if (accumulateCodeInterpreterEvent(dispatchEvent, snapshot)) {
-        return snapshot;
-    }
-    if (accumulateSearchStatusEvent(dispatchEvent, snapshot)) {
-        return snapshot;
-    }
-    if (accumulateImageAndMcpStatusEvent(dispatchEvent, snapshot)) {
+    if (accumulateResponseOutput(dispatchEvent, snapshot, context, rejectInvalidShellTargets)) {
         return snapshot;
     }
     if (isResponseLifecycleEvent(dispatchEvent)) {
         return cloneValidatedResponse(context, dispatchEvent.response);
-    }
-    if (isIgnoredResponseEvent(dispatchEvent)) {
-        return snapshot;
     }
     return response_accumulator_assertNever(dispatchEvent);
 }
@@ -127085,16 +127219,54 @@ class OpenAI {
     }
     buildURL(path, query, defaultBaseURL) {
         const baseURL = (!__classPrivateFieldGet(this, _OpenAI_instances, "m", _OpenAI_baseURLOverridden).call(this) && defaultBaseURL) || this.baseURL;
-        const url = isAbsoluteURL(path)
-            ? new URL(path)
-            : new URL(baseURL + (baseURL.endsWith('/') && path.startsWith('/') ? path.slice(1) : path));
+        let url;
+        let baseQuery = {};
+        let baseParams;
+        if (isAbsoluteURL(path)) {
+            url = new URL(path);
+        }
+        else if (baseURL.includes('?')) {
+            const base = new URL(baseURL);
+            baseParams = new URLSearchParams(base.search);
+            baseQuery = Object.fromEntries(baseParams);
+            base.search = '';
+            base.hash = '';
+            url = new URL(base.toString() + (base.pathname.endsWith('/') && path.startsWith('/') ? path.slice(1) : path));
+        }
+        else {
+            url = new URL(baseURL + (baseURL.endsWith('/') && path.startsWith('/') ? path.slice(1) : path));
+        }
         const defaultQuery = this.defaultQuery();
         const pathQuery = Object.fromEntries(url.searchParams);
-        if (!isEmptyObj(defaultQuery) || !isEmptyObj(pathQuery)) {
-            query = { ...pathQuery, ...defaultQuery, ...query };
+        let overridingQuery;
+        if (!isEmptyObj(baseQuery) || !isEmptyObj(defaultQuery) || !isEmptyObj(pathQuery)) {
+            overridingQuery = { ...pathQuery, ...defaultQuery, ...query };
+            query = { ...baseQuery, ...overridingQuery };
         }
         if (typeof query === 'object' && query && !Array.isArray(query)) {
             url.search = this.stringifyQuery(query);
+            if (baseParams && overridingQuery) {
+                const seen = new Set();
+                const repeated = new Set();
+                for (const key of baseParams.keys()) {
+                    if (seen.has(key) && !values_hasOwn(overridingQuery, key)) {
+                        repeated.add(key);
+                    }
+                    seen.add(key);
+                }
+                if (repeated.size) {
+                    const merged = new URLSearchParams();
+                    for (const [key, value] of url.searchParams) {
+                        if (!repeated.has(key))
+                            merged.append(key, value);
+                    }
+                    for (const [key, value] of baseParams) {
+                        if (repeated.has(key))
+                            merged.append(key, value);
+                    }
+                    url.search = merged.toString();
+                }
+            }
         }
         return url.toString();
     }
