@@ -60013,7 +60013,7 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/errors.mjs
 var errors = __nccwpck_require__(2533);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/version.mjs
-const sdk_version_VERSION = '0.129.0'; // x-release-please-version
+const sdk_version_VERSION = '0.131.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
 
@@ -62794,6 +62794,9 @@ class PageCursor extends AbstractPage {
     getPaginatedItems() {
         return this.data ?? [];
     }
+    hasNextPage() {
+        return this.nextPageRequestOptions() != null;
+    }
     nextPageRequestOptions() {
         const cursor = this.next_page;
         if (!cursor) {
@@ -62817,6 +62820,9 @@ class BidirectionalPageCursor extends AbstractPage {
     }
     getPaginatedItems() {
         return this.data ?? [];
+    }
+    hasNextPage() {
+        return this.nextPageRequestOptions() != null;
     }
     nextPageRequestOptions() {
         const cursor = this.next_page;
@@ -64625,7 +64631,7 @@ var Messages = /* @__PURE__ */ (() => {
          * @example
          * ```ts
          * const message = await client.messages.parse({
-         *   model: 'claude-sonnet-4-5-20250929',
+         *   model: 'claude-sonnet-5-5',
          *   max_tokens: 1024,
          *   messages: [{ role: 'user', content: 'What is 2+2?' }],
          *   output_config: {
@@ -64648,7 +64654,7 @@ var Messages = /* @__PURE__ */ (() => {
          * @example
          * ```ts
          * const stream = client.messages.stream({
-         *   model: 'claude-sonnet-4-5-20250929',
+         *   model: 'claude-sonnet-5-5',
          *   max_tokens: 1024,
          *   messages: [{ role: 'user', content: 'What is 2+2?' }],
          *   output_config: {
@@ -64699,7 +64705,10 @@ var Messages = /* @__PURE__ */ (() => {
     Messages.Batches = Batches;
     return Messages;
 })();
-const DEPRECATED_MODELS = {};
+const DEPRECATED_MODELS = {
+    'claude-sonnet-4-5': 'November 30th, 2026',
+    'claude-sonnet-4-5-20250929': 'November 30th, 2026',
+};
 const MODELS_TO_WARN_WITH_THINKING_ENABLED = ['claude-mythos-preview', 'claude-opus-4-6'];
 //# sourceMappingURL=messages.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/models.mjs
@@ -65074,6 +65083,1450 @@ var Skills = /* @__PURE__ */ (() => {
     return Skills;
 })();
 //# sourceMappingURL=skills.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/api-keys.mjs
+
+
+
+class APIKeys extends APIResource {
+    /**
+     * Get API Key
+     *
+     * @example
+     * ```ts
+     * const apiKey = await client.organization.apiKeys.retrieve(
+     *   'api_key_id',
+     * );
+     * ```
+     */
+    retrieve(apiKeyID, options) {
+        return this._client.get(path_path `/v1/organizations/api_keys/${apiKeyID}`, options);
+    }
+    /**
+     * Update API Key
+     *
+     * @example
+     * ```ts
+     * const apiKey = await client.organization.apiKeys.update(
+     *   'api_key_id',
+     * );
+     * ```
+     */
+    update(apiKeyID, body, options) {
+        return this._client.post(path_path `/v1/organizations/api_keys/${apiKeyID}`, { body, ...options });
+    }
+    /**
+     * List API Keys
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const apiKey of client.organization.apiKeys.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/api_keys', (Page), { query, ...options });
+    }
+}
+//# sourceMappingURL=api-keys.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/compliance-settings.mjs
+
+class ComplianceSettings extends APIResource {
+    /**
+     * Retrieve your organization's Compliance Settings.
+     *
+     * Compliance Settings is a singleton resource: there is exactly one per
+     * organization, addressed without an identifier. The `state` field reflects
+     * whether the Compliance API is enabled. An organization with a parent
+     * organization reads the state inherited from the parent's configuration.
+     *
+     * @example
+     * ```ts
+     * const organizationComplianceSettings =
+     *   await client.organization.complianceSettings.retrieve();
+     * ```
+     */
+    retrieve(options) {
+        return this._client.get('/v1/organizations/compliance_settings', options);
+    }
+    /**
+     * Update your organization's Compliance Settings.
+     *
+     * Setting `state` to `enabled` turns on the Compliance API and begins capturing
+     * organization activity events. Setting it to `disabled` turns both off. `state`
+     * reflects whether the Compliance API is enabled.
+     *
+     * A request that sets `state` to its current value succeeds and leaves the
+     * resource unchanged. A `disabled` request stays in effect until a later `enabled`
+     * request or the organization's next provisioning action that enables Access
+     * Transparency: enabling Access Transparency also enables the Compliance API,
+     * which serves its activity events, so such provisioning (including re-runs)
+     * re-enables the Compliance API even after a `disabled` request. Automated
+     * provisioning never disables compliance settings.
+     *
+     * @example
+     * ```ts
+     * const organizationComplianceSettings =
+     *   await client.organization.complianceSettings.update({
+     *     state: { type: 'enabled' },
+     *   });
+     * ```
+     */
+    update(body, options) {
+        return this._client.post('/v1/organizations/compliance_settings', { body, ...options });
+    }
+}
+//# sourceMappingURL=compliance-settings.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/external-keys.mjs
+
+
+
+class ExternalKeys extends APIResource {
+    /**
+     * Create an external key config owned by the caller's organization.
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.organization.externalKeys.create({
+     *     provider_config: {
+     *       kms_arn:
+     *         'arn:aws:kms:us-east-1:111122223333:key/abcd1234-5678-90ab-cdef-000011112222',
+     *       type: 'aws',
+     *     },
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/v1/organizations/external_keys', { body, ...options });
+    }
+    /**
+     * Retrieve a single external key config in the caller's organization by ID.
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.organization.externalKeys.retrieve(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    retrieve(externalKeyID, options) {
+        return this._client.get(path_path `/v1/organizations/external_keys/${externalKeyID}`, options);
+    }
+    /**
+     * Partially update an external key config. Omitted fields are left unchanged.
+     *
+     * `display_name` is always editable. `geo` and `provider_config` cannot be changed
+     * once any workspace references this config, because previously encrypted data
+     * requires the original key identity to decrypt.
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.organization.externalKeys.update(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    update(externalKeyID, body, options) {
+        return this._client.post(path_path `/v1/organizations/external_keys/${externalKeyID}`, { body, ...options });
+    }
+    /**
+     * List external key configs in the caller's organization.
+     *
+     * Results are ordered by creation time (newest first). Use the `next_page` cursor
+     * from the response to fetch subsequent pages.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const externalKey of client.organization.externalKeys.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/external_keys', (PageCursor), {
+            query,
+            ...options,
+        });
+    }
+    /**
+     * Delete an external key config.
+     *
+     * The request is rejected if any workspace still references this config.
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.organization.externalKeys.delete(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    delete(externalKeyID, options) {
+        return this._client.delete(path_path `/v1/organizations/external_keys/${externalKeyID}`, options);
+    }
+    /**
+     * Validate an external key config against the customer's KMS.
+     *
+     * Anthropic performs an encrypt/decrypt roundtrip against the configured KMS key
+     * and waits up to 30 seconds for the result. The response status is `success` if
+     * the roundtrip succeeded, or `failure` with an error message if it failed or
+     * timed out.
+     *
+     * @example
+     * ```ts
+     * const response =
+     *   await client.organization.externalKeys.validate(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    validate(externalKeyID, options) {
+        return this._client.post(path_path `/v1/organizations/external_keys/${externalKeyID}/validate`, options);
+    }
+}
+//# sourceMappingURL=external-keys.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/invites.mjs
+
+
+
+class Invites extends APIResource {
+    /**
+     * Invite a user to join the organization by email.
+     *
+     * On plans that draw members from a finite pool of purchased seats, the invite
+     * automatically consumes a seat from the lowest tier with availability; there is
+     * no seat-tier parameter. When no seat is free the request fails with a 400 error
+     * rather than purchasing a seat.
+     *
+     * @example
+     * ```ts
+     * const organizationInvite =
+     *   await client.organization.invites.create({
+     *     email: 'user@emaildomain.com',
+     *     role: 'user',
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/v1/organizations/invites', { body, ...options });
+    }
+    /**
+     * Retrieve an invite by ID.
+     *
+     * @example
+     * ```ts
+     * const organizationInvite =
+     *   await client.organization.invites.retrieve('invite_id');
+     * ```
+     */
+    retrieve(inviteID, options) {
+        return this._client.get(path_path `/v1/organizations/invites/${inviteID}`, options);
+    }
+    /**
+     * List the organization's invites.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const organizationInvite of client.organization.invites.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/invites', (Page), {
+            query,
+            ...options,
+        });
+    }
+    /**
+     * Delete a pending invite.
+     *
+     * @example
+     * ```ts
+     * const invite = await client.organization.invites.delete(
+     *   'invite_id',
+     * );
+     * ```
+     */
+    delete(inviteID, options) {
+        return this._client.delete(path_path `/v1/organizations/invites/${inviteID}`, options);
+    }
+}
+//# sourceMappingURL=invites.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/rate-limits.mjs
+
+
+class RateLimits extends APIResource {
+    /**
+     * List Messages API rate limits for your organization.
+     *
+     * Each entry corresponds to one rate-limit group (either a model family or an
+     * API-surface category such as the Files API or Message Batches) and contains the
+     * set of limiter values that apply to it.
+     *
+     * When `limit` is omitted, every matching entry is returned in a single page; when
+     * `limit` truncates the result, follow `next_page` to fetch the remaining entries.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const organizationRateLimit of client.organization.rateLimits.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/rate_limits', (PageCursor), {
+            query,
+            ...options,
+        });
+    }
+}
+//# sourceMappingURL=rate-limits.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/users.mjs
+
+
+
+class Users extends APIResource {
+    /**
+     * Retrieve a member of the organization by user ID.
+     *
+     * @example
+     * ```ts
+     * const organizationUser =
+     *   await client.organization.users.retrieve('user_id');
+     * ```
+     */
+    retrieve(userID, options) {
+        return this._client.get(path_path `/v1/organizations/users/${userID}`, options);
+    }
+    /**
+     * Update a member's organization role.
+     *
+     * @example
+     * ```ts
+     * const organizationUser =
+     *   await client.organization.users.update('user_id', {
+     *     role: 'user',
+     *   });
+     * ```
+     */
+    update(userID, body, options) {
+        return this._client.post(path_path `/v1/organizations/users/${userID}`, { body, ...options });
+    }
+    /**
+     * List the organization's members.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const organizationUser of client.organization.users.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/users', (Page), { query, ...options });
+    }
+    /**
+     * Remove a member from the organization.
+     *
+     * @example
+     * ```ts
+     * const user = await client.organization.users.remove(
+     *   'user_id',
+     * );
+     * ```
+     */
+    remove(userID, options) {
+        return this._client.delete(path_path `/v1/organizations/users/${userID}`, options);
+    }
+}
+//# sourceMappingURL=users.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/federation/issuers.mjs
+
+
+
+class Issuers extends APIResource {
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Register an OIDC issuer that Anthropic will trust for workload identity
+     * federation in your organization.
+     *
+     * The `jwks` field controls how the issuer's signing keys are obtained and takes
+     * one of three shapes selected by `type`: `discovery` (resolve keys through OIDC
+     * discovery), `explicit_url` (fetch keys from a fixed JWKS URL), or `inline`
+     * (provide a static key set). When `jwks.type` is `discovery` and no
+     * `discovery_base` is set, the issuer URL must be publicly reachable over HTTPS so
+     * Anthropic can fetch the discovery document; for `explicit_url` and `inline`
+     * modes the issuer URL is only matched as the JWT's `iss` claim and is not
+     * fetched.
+     *
+     * @example
+     * ```ts
+     * const federationIssuer =
+     *   await client.organization.federation.issuers.create({
+     *     issuer_url: 'x',
+     *     name: 'x',
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/v1/organizations/federation_issuers', { body, ...options });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Retrieve a federation issuer by its ID (`fdis_...`).
+     *
+     * @example
+     * ```ts
+     * const federationIssuer =
+     *   await client.organization.federation.issuers.retrieve(
+     *     'federation_issuer_id',
+     *   );
+     * ```
+     */
+    retrieve(federationIssuerID, options) {
+        return this._client.get(path_path `/v1/organizations/federation_issuers/${federationIssuerID}`, options);
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Partially update a federation issuer.
+     *
+     * Setting `jwks` replaces the full JWKS shape at once. Archived issuers cannot be
+     * updated; this returns 400. Create a new issuer instead.
+     *
+     * Updating an issuer that backs a rule with a scope outside `workspace:developer`
+     * or `workspace:inference` requires a Console session.
+     *
+     * @example
+     * ```ts
+     * const federationIssuer =
+     *   await client.organization.federation.issuers.update(
+     *     'federation_issuer_id',
+     *   );
+     * ```
+     */
+    update(federationIssuerID, body, options) {
+        return this._client.post(path_path `/v1/organizations/federation_issuers/${federationIssuerID}`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * List federation issuers in your organization.
+     *
+     * Archived issuers are excluded unless `include_archived=true`.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const federationIssuer of client.organization.federation.issuers.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/federation_issuers', (PageCursor), {
+            query,
+            ...options,
+        });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Archive a federation issuer.
+     *
+     * Idempotent; re-archiving returns the issuer with its original `archived_at`.
+     * Rejected with 400 if any live (non-archived) federation rule still references
+     * the issuer; archive those rules first (a rule's issuer cannot be changed), or
+     * recreate them against another issuer.
+     *
+     * @example
+     * ```ts
+     * const federationIssuer =
+     *   await client.organization.federation.issuers.archive(
+     *     'federation_issuer_id',
+     *   );
+     * ```
+     */
+    archive(federationIssuerID, options) {
+        return this._client.post(path_path `/v1/organizations/federation_issuers/${federationIssuerID}/archive`, options);
+    }
+}
+//# sourceMappingURL=issuers.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/federation/rules/workspaces.mjs
+
+
+
+class Workspaces extends APIResource {
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * List workspaces where this federation rule is enabled.
+     *
+     * Returns all workspace enablements in a single response; the `limit` and `page`
+     * parameters are accepted but have no effect, and `next_page` is always `null`.
+     * Returns explicit per-workspace enablements only; for rules with
+     * `applies_to_all_workspaces` or a legacy single `workspace_id`, check those
+     * fields on the rule itself.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const federationRuleWorkspace of client.organization.federation.rules.workspaces.list(
+     *   'federation_rule_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(federationRuleID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/federation_rules/${federationRuleID}/workspaces`, (PageCursor), { query, ...options });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Enable a federation rule for a workspace.
+     *
+     * Idempotent; re-enabling returns the existing enablement. The rule and workspace
+     * must both belong to your organization. Membership of the rule's target service
+     * account in this workspace is not checked at enablement: token exchange into this
+     * workspace is rejected unless the target is a member (it is implicitly a member
+     * of the default workspace). Archived rules are rejected with 400. OAuth callers
+     * may only manage rules whose `oauth_scope` is `workspace:developer` or
+     * `workspace:inference`; other scopes require a Console session.
+     *
+     * @example
+     * ```ts
+     * const federationRuleWorkspace =
+     *   await client.organization.federation.rules.workspaces.add(
+     *     'federation_rule_id',
+     *     { workspace_id: 'workspace_id' },
+     *   );
+     * ```
+     */
+    add(federationRuleID, body, options) {
+        return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}/workspaces`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Disable a federation rule for a workspace.
+     *
+     * Idempotent; succeeds even if the enablement was already removed. OAuth callers
+     * may only manage rules whose `oauth_scope` is `workspace:developer` or
+     * `workspace:inference`; other scopes require a Console session.
+     *
+     * @example
+     * ```ts
+     * const workspace =
+     *   await client.organization.federation.rules.workspaces.remove(
+     *     'workspace_id',
+     *     { federation_rule_id: 'federation_rule_id' },
+     *   );
+     * ```
+     */
+    remove(workspaceID, params, options) {
+        const { federation_rule_id } = params;
+        return this._client.delete(path_path `/v1/organizations/federation_rules/${federation_rule_id}/workspaces/${workspaceID}`, options);
+    }
+}
+//# sourceMappingURL=workspaces.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/federation/rules/rules.mjs
+
+
+
+
+
+var Rules = /* @__PURE__ */ (() => {
+    class Rules extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.workspaces = new Workspaces(this._client);
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Create a federation rule owned by your organization.
+         *
+         * The referenced issuer and the target service account must already exist in the
+         * same organization; invalid references are rejected with a 400 error. The
+         * workspace reference is validated. Membership is not checked at rule creation:
+         * token exchange resolves a single enabled workspace per call and is rejected
+         * unless the target service account is a member of that workspace (it is
+         * implicitly a member of the default workspace). Rules on well-known shared
+         * issuers (GitHub Actions, GitLab, Buildkite, Terraform Cloud, Google) must
+         * constrain tenant identity via an identity-bearing claim, a tenant-pinning
+         * subject prefix (such as `repo:YOUR_ORG/...`), or a CEL condition referencing one
+         * of those identity claims (e.g. `claims.repository_owner`). OAuth callers may
+         * only manage rules whose `oauth_scope` is `workspace:developer` or
+         * `workspace:inference`; other scopes require a Console session.
+         *
+         * @example
+         * ```ts
+         * const federationRule =
+         *   await client.organization.federation.rules.create({
+         *     issuer_id: 'issuer_id',
+         *     match: {},
+         *     name: 'x',
+         *     oauth_scope: 'x',
+         *     target: {
+         *       service_account_id: 'svac_01SDCCSbTxrXDpWc1phhtcfK',
+         *       type: 'service_account',
+         *     },
+         *   });
+         * ```
+         */
+        create(body, options) {
+            return this._client.post('/v1/organizations/federation_rules', { body, ...options });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Retrieve a federation rule by its ID (`fdrl_...`).
+         *
+         * @example
+         * ```ts
+         * const federationRule =
+         *   await client.organization.federation.rules.retrieve(
+         *     'federation_rule_id',
+         *   );
+         * ```
+         */
+        retrieve(federationRuleID, options) {
+            return this._client.get(path_path `/v1/organizations/federation_rules/${federationRuleID}`, options);
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Partially update a federation rule.
+         *
+         * `issuer_id` is immutable. `match` and `target` are replaced as whole objects
+         * when set. Referenced service accounts and workspaces must exist in your
+         * organization; invalid references are rejected with a 400 error. Archived rules
+         * cannot be updated; this returns 400. Create a new rule instead. Rules on
+         * well-known shared issuers (GitHub Actions, GitLab, Buildkite, Terraform Cloud,
+         * Google) must constrain tenant identity via an identity-bearing claim, a
+         * tenant-pinning subject prefix (such as `repo:YOUR_ORG/...`), or a CEL condition
+         * referencing one of those identity claims (e.g. `claims.repository_owner`). On
+         * these issuers the requirement is re-checked on every update; if an existing
+         * rule's stored match does not yet constrain tenant identity, any update (even a
+         * rename or description change) must also supply a conforming `match` in the same
+         * request. OAuth callers may only manage rules whose `oauth_scope` is
+         * `workspace:developer` or `workspace:inference`; other scopes require a Console
+         * session.
+         *
+         * @example
+         * ```ts
+         * const federationRule =
+         *   await client.organization.federation.rules.update(
+         *     'federation_rule_id',
+         *   );
+         * ```
+         */
+        update(federationRuleID, body, options) {
+            return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}`, {
+                body,
+                ...options,
+            });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * List federation rules in your organization.
+         *
+         * Optionally filter by issuer with `issuer_id`. Archived rules are excluded unless
+         * `include_archived=true`.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const federationRule of client.organization.federation.rules.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(query = {}, options) {
+            return this._client.getAPIList('/v1/organizations/federation_rules', (PageCursor), {
+                query,
+                ...options,
+            });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Archive a federation rule.
+         *
+         * Token exchange through this rule stops immediately. Idempotent; re-archiving
+         * returns the rule with its original `archived_at`. Archiving clears the rule's
+         * workspace targeting (`workspace_id` and `workspace_ids` are emptied). Tokens
+         * already minted before archive remain valid until they expire. OAuth callers may
+         * only manage rules whose `oauth_scope` is `workspace:developer` or
+         * `workspace:inference`; other scopes require a Console session.
+         *
+         * @example
+         * ```ts
+         * const federationRule =
+         *   await client.organization.federation.rules.archive(
+         *     'federation_rule_id',
+         *   );
+         * ```
+         */
+        archive(federationRuleID, options) {
+            return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}/archive`, options);
+        }
+    }
+    Rules.Workspaces = Workspaces;
+    return Rules;
+})();
+//# sourceMappingURL=rules.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/federation/federation.mjs
+
+
+
+
+
+var Federation = /* @__PURE__ */ (() => {
+    class Federation extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.issuers = new Issuers(this._client);
+            this.rules = new Rules(this._client);
+        }
+    }
+    Federation.Issuers = Issuers;
+    Federation.Rules = Rules;
+    return Federation;
+})();
+//# sourceMappingURL=federation.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/service-accounts/workspaces.mjs
+
+
+
+class workspaces_Workspaces extends APIResource {
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * List the workspaces a service account is a member of.
+     *
+     * Each entry includes the service account's `workspace_role` in that workspace.
+     * Use `limit` and the `next_page` cursor to paginate. When the service account has
+     * no explicit default-workspace membership, the implicit (`implicit: true`)
+     * membership is returned as the first entry on the first page; with `limit=1` the
+     * first page may return up to 2 entries (the implicit entry plus one explicit
+     * membership) so a pagination cursor can be derived. Memberships are returned only
+     * while the service account is active. Without a `page` cursor, an archived
+     * service account returns an empty list. A `page` cursor that does not match an
+     * active membership returns a 400 invalid-request error. A cursor stops matching
+     * when the membership is removed, the workspace is deleted, or the service account
+     * is archived. Restart pagination from the first page to recover.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const serviceAccountWorkspaceMember of client.organization.serviceAccounts.workspaces.list(
+     *   'service_account_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(serviceAccountID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/service_accounts/${serviceAccountID}/workspaces`, (PageCursor), { query, ...options });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Add a service account to a workspace with the given `workspace_role`.
+     *
+     * Mirror of `POST /workspaces/{workspace_id}/service_accounts`, addressed from the
+     * service-account side; both create the same membership. If the service account is
+     * already an explicit member of the workspace, its `workspace_role` is replaced
+     * with the value supplied here. Archived workspaces return 400. Archived service
+     * accounts cannot be added and are rejected.
+     *
+     * @example
+     * ```ts
+     * const serviceAccountWorkspaceMember =
+     *   await client.organization.serviceAccounts.workspaces.add(
+     *     'service_account_id',
+     *     {
+     *       workspace_id: 'workspace_id',
+     *       workspace_role: 'workspace_admin',
+     *     },
+     *   );
+     * ```
+     */
+    add(serviceAccountID, body, options) {
+        return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}/workspaces`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Remove a service account from a workspace.
+     *
+     * Mirror of
+     * `DELETE /workspaces/{workspace_id}/service_accounts/{service_account_id}`,
+     * addressed from the service-account side. Removal is idempotent (returns 200 even
+     * if the membership was already removed). A DELETE against the implicit
+     * default-workspace membership returns 200 but is a no-op and the membership
+     * persists; deleting an explicit default-workspace row reverts to the implicit
+     * `workspace_user` membership. Archived workspaces return 400.
+     *
+     * @example
+     * ```ts
+     * const workspace =
+     *   await client.organization.serviceAccounts.workspaces.remove(
+     *     'workspace_id',
+     *     { service_account_id: 'service_account_id' },
+     *   );
+     * ```
+     */
+    remove(workspaceID, params, options) {
+        const { service_account_id } = params;
+        return this._client.delete(path_path `/v1/organizations/service_accounts/${service_account_id}/workspaces/${workspaceID}`, options);
+    }
+}
+//# sourceMappingURL=workspaces.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/service-accounts/service-accounts.mjs
+
+
+
+
+
+var ServiceAccounts = /* @__PURE__ */ (() => {
+    class ServiceAccounts extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.workspaces = new workspaces_Workspaces(this._client);
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Create a service account.
+         *
+         * A service account is a named workload identity that federation rules target.
+         * `organization_role` is `developer` (default) or `admin`; a rule may only be
+         * created or retargeted to grant `org:admin` scope when the target's
+         * `organization_role` is `admin`. Creating an `admin`-role service account
+         * requires an interactive credential (a user OAuth token or a Console session) — a
+         * workload may only create `developer`-role service accounts.
+         *
+         * @example
+         * ```ts
+         * const serviceAccount =
+         *   await client.organization.serviceAccounts.create({
+         *     name: 'ci-deploy-bot',
+         *   });
+         * ```
+         */
+        create(body, options) {
+            return this._client.post('/v1/organizations/service_accounts', { body, ...options });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Retrieve a service account by its ID (`svac_...`).
+         *
+         * @example
+         * ```ts
+         * const serviceAccount =
+         *   await client.organization.serviceAccounts.retrieve(
+         *     'service_account_id',
+         *   );
+         * ```
+         */
+        retrieve(serviceAccountID, options) {
+            return this._client.get(path_path `/v1/organizations/service_accounts/${serviceAccountID}`, options);
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Update a service account.
+         *
+         * Only `description` and `organization_role` are mutable; `name` cannot be
+         * changed. Archived service accounts cannot be updated; this returns 400. Setting
+         * `organization_role` to `admin` (even when unchanged) requires an interactive
+         * credential (a user OAuth token or a Console session).
+         *
+         * @example
+         * ```ts
+         * const serviceAccount =
+         *   await client.organization.serviceAccounts.update(
+         *     'service_account_id',
+         *   );
+         * ```
+         */
+        update(serviceAccountID, body, options) {
+            return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}`, {
+                body,
+                ...options,
+            });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * List service accounts in the caller's organization.
+         *
+         * Results are ordered by creation time, newest first. Use `limit` and the
+         * `next_page` cursor to paginate; set `include_archived=true` to include archived
+         * service accounts.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const serviceAccount of client.organization.serviceAccounts.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(query = {}, options) {
+            return this._client.getAPIList('/v1/organizations/service_accounts', (PageCursor), {
+                query,
+                ...options,
+            });
+        }
+        /**
+         * **Requires an OAuth access token with the `org:admin` scope**, from
+         * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+         * API keys are not accepted. See
+         * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+         *
+         * Archive a service account.
+         *
+         * Idempotent; re-archiving returns the service account with its original
+         * `archived_at`. Rejected with 400 if any live (non-archived) federation rule
+         * still targets this service account, same as issuer archival; archive those rules
+         * first or change their target to another service account.
+         *
+         * @example
+         * ```ts
+         * const serviceAccount =
+         *   await client.organization.serviceAccounts.archive(
+         *     'service_account_id',
+         *   );
+         * ```
+         */
+        archive(serviceAccountID, options) {
+            return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}/archive`, options);
+        }
+    }
+    ServiceAccounts.Workspaces = workspaces_Workspaces;
+    return ServiceAccounts;
+})();
+//# sourceMappingURL=service-accounts.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/workspaces/members.mjs
+
+
+
+class Members extends APIResource {
+    /**
+     * Get Workspace Member
+     *
+     * @example
+     * ```ts
+     * const workspaceMember =
+     *   await client.organization.workspaces.members.retrieve(
+     *     'user_id',
+     *     { workspace_id: 'workspace_id' },
+     *   );
+     * ```
+     */
+    retrieve(userID, params, options) {
+        const { workspace_id } = params;
+        return this._client.get(path_path `/v1/organizations/workspaces/${workspace_id}/members/${userID}`, options);
+    }
+    /**
+     * Update Workspace Member
+     *
+     * @example
+     * ```ts
+     * const workspaceMember =
+     *   await client.organization.workspaces.members.update(
+     *     'user_id',
+     *     {
+     *       workspace_id: 'workspace_id',
+     *       workspace_role: 'workspace_admin',
+     *     },
+     *   );
+     * ```
+     */
+    update(userID, params, options) {
+        const { workspace_id, ...body } = params;
+        return this._client.post(path_path `/v1/organizations/workspaces/${workspace_id}/members/${userID}`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * List Workspace Members
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const workspaceMember of client.organization.workspaces.members.list(
+     *   'workspace_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(workspaceID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/workspaces/${workspaceID}/members`, (Page), { query, ...options });
+    }
+    /**
+     * Create Workspace Member
+     *
+     * @example
+     * ```ts
+     * const workspaceMember =
+     *   await client.organization.workspaces.members.add(
+     *     'workspace_id',
+     *     {
+     *       user_id: 'user_01WCz1FkmYMm4gnmykNKUu3Q',
+     *       workspace_role: 'workspace_admin',
+     *     },
+     *   );
+     * ```
+     */
+    add(workspaceID, body, options) {
+        return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}/members`, { body, ...options });
+    }
+    /**
+     * Delete Workspace Member
+     *
+     * @example
+     * ```ts
+     * const member =
+     *   await client.organization.workspaces.members.remove(
+     *     'user_id',
+     *     { workspace_id: 'workspace_id' },
+     *   );
+     * ```
+     */
+    remove(userID, params, options) {
+        const { workspace_id } = params;
+        return this._client.delete(path_path `/v1/organizations/workspaces/${workspace_id}/members/${userID}`, options);
+    }
+}
+//# sourceMappingURL=members.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/workspaces/rate-limits.mjs
+
+
+
+class rate_limits_RateLimits extends APIResource {
+    /**
+     * List a workspace's rate limits.
+     *
+     * By default, returns only the groups and limiter types that have a
+     * workspace-level override. With `include_inherited=true`, returns every group
+     * with organization-level limits the workspace can see, listing for each the
+     * values it inherits from the organization as well as its own overrides. Each
+     * value's `source` says which it is.
+     *
+     * When `limit` is omitted, every matching entry is returned in a single page; when
+     * `limit` truncates the result, follow `next_page` to fetch the remaining entries.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const workspaceRateLimit of client.organization.workspaces.rateLimits.list(
+     *   'workspace_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(workspaceID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/workspaces/${workspaceID}/rate_limits`, (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=rate-limits.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/workspaces/service-accounts.mjs
+
+
+
+class service_accounts_ServiceAccounts extends APIResource {
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Retrieve a service account's membership in a workspace.
+     *
+     * Returns the membership record, including the service account's `workspace_role`
+     * in this workspace. Archived workspaces return 400. For the default workspace,
+     * returns the implicit (`implicit: true`) membership when no explicit membership
+     * exists; an explicitly added membership is returned with its assigned role. An
+     * archived service account returns 404.
+     *
+     * @example
+     * ```ts
+     * const serviceAccountWorkspaceMember =
+     *   await client.organization.workspaces.serviceAccounts.retrieve(
+     *     'service_account_id',
+     *     { workspace_id: 'workspace_id' },
+     *   );
+     * ```
+     */
+    retrieve(serviceAccountID, params, options) {
+        const { workspace_id } = params;
+        return this._client.get(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}`, options);
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Change a service account's role in a workspace.
+     *
+     * The new `workspace_role` replaces the current one. Only explicit memberships can
+     * be updated; to set a role on the implicit default-workspace membership, add the
+     * service account explicitly with
+     * `POST /workspaces/{workspace_id}/service_accounts`. Archived workspaces
+     * return 400. Archived service accounts cannot be updated and are rejected.
+     *
+     * @example
+     * ```ts
+     * const serviceAccountWorkspaceMember =
+     *   await client.organization.workspaces.serviceAccounts.update(
+     *     'service_account_id',
+     *     {
+     *       workspace_id: 'workspace_id',
+     *       workspace_role: 'workspace_admin',
+     *     },
+     *   );
+     * ```
+     */
+    update(serviceAccountID, params, options) {
+        const { workspace_id, ...body } = params;
+        return this._client.post(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}`, { body, ...options });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * List the service accounts that are members of a workspace.
+     *
+     * Each entry includes the service account's `workspace_role`. Use `limit` and the
+     * `next_page` cursor to paginate. Archived workspaces return 400; use
+     * `GET /service_accounts/{id}/workspaces` to audit memberships of an archived
+     * workspace. The implicit default-workspace membership is not included in this
+     * list. Memberships of archived service accounts are omitted from the results.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const serviceAccountWorkspaceMember of client.organization.workspaces.serviceAccounts.list(
+     *   'workspace_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(workspaceID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/workspaces/${workspaceID}/service_accounts`, (PageCursor), { query, ...options });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Add a service account to a workspace with the given `workspace_role`.
+     *
+     * The role determines what the service account can do in the workspace and which
+     * workspace-scoped permissions it can be granted when authenticating through
+     * federation. Every service account is already an implicit `workspace_user` member
+     * of the default workspace; adding it explicitly assigns a chosen role. If the
+     * service account is already an explicit member of the workspace, its
+     * `workspace_role` is replaced with the value supplied here. Archived workspaces
+     * return 400. Archived service accounts cannot be added and are rejected.
+     *
+     * @example
+     * ```ts
+     * const serviceAccountWorkspaceMember =
+     *   await client.organization.workspaces.serviceAccounts.add(
+     *     'workspace_id',
+     *     {
+     *       service_account_id: 'service_account_id',
+     *       workspace_role: 'workspace_admin',
+     *     },
+     *   );
+     * ```
+     */
+    add(workspaceID, body, options) {
+        return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}/service_accounts`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * **Requires an OAuth access token with the `org:admin` scope**, from
+     * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
+     * API keys are not accepted. See
+     * [Manage WIF with the Admin API](/docs/en/manage-claude/wif-admin-api).
+     *
+     * Remove a service account from a workspace.
+     *
+     * Removal is idempotent (returns 200 even if the membership was already removed).
+     * A DELETE against the implicit default-workspace membership returns 200 but is a
+     * no-op and the membership persists; deleting an explicit default-workspace row
+     * reverts to the implicit `workspace_user` membership. Archived workspaces
+     * return 400.
+     *
+     * @example
+     * ```ts
+     * const serviceAccount =
+     *   await client.organization.workspaces.serviceAccounts.remove(
+     *     'service_account_id',
+     *     { workspace_id: 'workspace_id' },
+     *   );
+     * ```
+     */
+    remove(serviceAccountID, params, options) {
+        const { workspace_id } = params;
+        return this._client.delete(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}`, options);
+    }
+}
+//# sourceMappingURL=service-accounts.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/workspaces/workspaces.mjs
+
+
+
+
+
+
+
+
+
+var workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
+    class Workspaces extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.rateLimits = new rate_limits_RateLimits(this._client);
+            this.members = new Members(this._client);
+            this.serviceAccounts = new service_accounts_ServiceAccounts(this._client);
+        }
+        /**
+         * Create Workspace
+         *
+         * @example
+         * ```ts
+         * const workspace =
+         *   await client.organization.workspaces.create({
+         *     name: 'x',
+         *   });
+         * ```
+         */
+        create(body, options) {
+            return this._client.post('/v1/organizations/workspaces', { body, ...options });
+        }
+        /**
+         * Get Workspace
+         *
+         * @example
+         * ```ts
+         * const workspace =
+         *   await client.organization.workspaces.retrieve(
+         *     'workspace_id',
+         *   );
+         * ```
+         */
+        retrieve(workspaceID, options) {
+            return this._client.get(path_path `/v1/organizations/workspaces/${workspaceID}`, options);
+        }
+        /**
+         * Update Workspace
+         *
+         * @example
+         * ```ts
+         * const workspace =
+         *   await client.organization.workspaces.update(
+         *     'workspace_id',
+         *   );
+         * ```
+         */
+        update(workspaceID, body, options) {
+            return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}`, { body, ...options });
+        }
+        /**
+         * List Workspaces
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const workspace of client.organization.workspaces.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(query = {}, options) {
+            return this._client.getAPIList('/v1/organizations/workspaces', (Page), { query, ...options });
+        }
+        /**
+         * Archive Workspace
+         *
+         * @example
+         * ```ts
+         * const workspace =
+         *   await client.organization.workspaces.archive(
+         *     'workspace_id',
+         *   );
+         * ```
+         */
+        archive(workspaceID, options) {
+            return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}/archive`, options);
+        }
+    }
+    Workspaces.RateLimits = rate_limits_RateLimits;
+    Workspaces.Members = Members;
+    Workspaces.ServiceAccounts = service_accounts_ServiceAccounts;
+    return Workspaces;
+})();
+//# sourceMappingURL=workspaces.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/organization/organization.mjs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var Organization = /* @__PURE__ */ (() => {
+    class Organization extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.apiKeys = new APIKeys(this._client);
+            this.externalKeys = new ExternalKeys(this._client);
+            this.federation = new Federation(this._client);
+            this.invites = new Invites(this._client);
+            this.serviceAccounts = new ServiceAccounts(this._client);
+            this.users = new Users(this._client);
+            this.workspaces = new workspaces_workspaces_Workspaces(this._client);
+            this.rateLimits = new RateLimits(this._client);
+            this.complianceSettings = new ComplianceSettings(this._client);
+        }
+        /**
+         * Retrieve information about the organization associated with the authenticated
+         * API key.
+         *
+         * @example
+         * ```ts
+         * const organizationInfo =
+         *   await client.organization.retrieve();
+         * ```
+         */
+        retrieve(options) {
+            return this._client.get('/v1/organizations/me', options);
+        }
+    }
+    Organization.APIKeys = APIKeys;
+    Organization.ExternalKeys = ExternalKeys;
+    Organization.Federation = Federation;
+    Organization.Invites = Invites;
+    Organization.ServiceAccounts = ServiceAccounts;
+    Organization.Users = Users;
+    Organization.Workspaces = workspaces_workspaces_Workspaces;
+    Organization.RateLimits = RateLimits;
+    Organization.ComplianceSettings = ComplianceSettings;
+    return Organization;
+})();
+//# sourceMappingURL=organization.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/deployment-runs.mjs
 
 
@@ -66564,16 +68017,23 @@ const SEND_BACKOFF_CAP_MS = 30000;
 const SEND_RETRY_WINDOW_MS = 5 * 60000;
 /** Default {@link SessionToolRunnerOptions.maxIdleMs}: 60 seconds. */
 const DEFAULT_MAX_IDLE_MS = 60000;
-/** Returns true if `ev` is a `session.status_idle` with `stop_reason` `end_turn`. */
-function isEndTurnIdle(ev) {
-    return ev.type === 'session.status_idle' && ev.stop_reason?.type === 'end_turn';
+/**
+ * Whether `ev` is a `session.status_idle` whose turn is over. Only
+ * `requires_action` leaves the turn open: the session resumes once a client
+ * resolves the events it names. Every other stop reason ends the turn, including
+ * one newer than this SDK's types.
+ */
+function endsTurn(ev) {
+    if (ev.type !== 'session.status_idle')
+        return false;
+    return ev.stop_reason?.type !== 'requires_action';
 }
 var IdleClock = /* @__PURE__ */ (() => {
     /**
      * The `maxIdleMs` stop-countdown, including its deferral. {@link noteEvent}
-     * arms on `session.status_idle` with `stop_reason: end_turn` and disarms on
-     * anything else. Gated tool work registered via {@link block} — a call held for
-     * user confirmation, or a user-approved call still dispatching — keeps
+     * arms on an idle that ends the turn and disarms on anything else. Gated tool
+     * work registered via {@link block} — a call held for user confirmation, or a
+     * user-approved call still dispatching — keeps
      * {@link arm} pending until {@link unblock} retires the last blocker, at which
      * point the countdown starts. Event-driven — there is no polling watchdog.
      */
@@ -66590,7 +68050,7 @@ var IdleClock = /* @__PURE__ */ (() => {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _IdleClock_onExpire, onExpire, "f");
         }
         /**
-         * Arm on `status_idle{end_turn}`; disarm otherwise. `user.tool_confirmation`
+         * Arm on an idle that ends the turn; disarm otherwise. `user.tool_confirmation`
          * is neutral: it signals neither agent activity nor an idle, and its effect
          * on the clock flows through {@link block} / {@link unblock} instead —
          * disarming here would discard the pending arm the verdict is about to
@@ -66599,7 +68059,7 @@ var IdleClock = /* @__PURE__ */ (() => {
         noteEvent(ev) {
             if (ev.type === 'user.tool_confirmation')
                 return;
-            if (isEndTurnIdle(ev))
+            if (endsTurn(ev))
                 this.arm();
             else
                 this.disarm();
@@ -66677,17 +68137,17 @@ var IdleClock = /* @__PURE__ */ (() => {
  * executed and posts nothing (the denial resolves the call server-side), but is
  * still yielded (`confirmation="deny"`, `posted=false`, `result=undefined`) so
  * the consumer can observe it. A held call — and a user-approved one still
- * dispatching — defers the `maxIdleMs` countdown, so an `end_turn` idle
- * observed in the meantime cannot stop the runner: it waits until the verdict
- * arrives, the session terminates, or the abort signal fires — pass
+ * dispatching — defers the `maxIdleMs` countdown, so an idle observed in the
+ * meantime cannot stop the runner: it waits until the verdict arrives, the
+ * session terminates, or the abort signal fires — pass
  * `AbortSignal.timeout(...)` for a wall-clock bound.
  *
  * Iteration ends when the session terminates (`session.status_terminated` /
  * `session.deleted`), when the consumer `break`s out of the loop or aborts the
- * supplied signal, or — once the session has gone idle with
- * `stop_reason.type === "end_turn"` — when `maxIdleMs` elapses with no new
- * event (any new event resets that countdown; it re-arms on the next `end_turn`
- * idle; `maxIdleMs <= 0` disables it). The `finally` branch drains any in-flight
+ * supplied signal, or — once the session has gone idle with any `stop_reason.type`
+ * but `"requires_action"` — when `maxIdleMs` elapses with no new event (any
+ * new event resets that countdown; it re-arms on the next such idle;
+ * `maxIdleMs <= 0` disables it). The `finally` branch drains any in-flight
  * tool calls and runs each tool's `close()` cleanup hook. It does *not* touch
  * the work-item lease — wrap it in an `EnvironmentWorker` if you need
  * heartbeating / force-stop.
@@ -66721,17 +68181,17 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
      * executed and posts nothing (the denial resolves the call server-side), but is
      * still yielded (`confirmation="deny"`, `posted=false`, `result=undefined`) so
      * the consumer can observe it. A held call — and a user-approved one still
-     * dispatching — defers the `maxIdleMs` countdown, so an `end_turn` idle
-     * observed in the meantime cannot stop the runner: it waits until the verdict
-     * arrives, the session terminates, or the abort signal fires — pass
+     * dispatching — defers the `maxIdleMs` countdown, so an idle observed in the
+     * meantime cannot stop the runner: it waits until the verdict arrives, the
+     * session terminates, or the abort signal fires — pass
      * `AbortSignal.timeout(...)` for a wall-clock bound.
      *
      * Iteration ends when the session terminates (`session.status_terminated` /
      * `session.deleted`), when the consumer `break`s out of the loop or aborts the
-     * supplied signal, or — once the session has gone idle with
-     * `stop_reason.type === "end_turn"` — when `maxIdleMs` elapses with no new
-     * event (any new event resets that countdown; it re-arms on the next `end_turn`
-     * idle; `maxIdleMs <= 0` disables it). The `finally` branch drains any in-flight
+     * supplied signal, or — once the session has gone idle with any `stop_reason.type`
+     * but `"requires_action"` — when `maxIdleMs` elapses with no new event (any
+     * new event resets that countdown; it re-arms on the next such idle;
+     * `maxIdleMs <= 0` disables it). The `finally` branch drains any in-flight
      * tool calls and runs each tool's `close()` cleanup hook. It does *not* touch
      * the work-item lease — wrap it in an `EnvironmentWorker` if you need
      * heartbeating / force-stop.
@@ -66782,7 +68242,7 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_detachExternal, linkAbort(opts.signal, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f")), "f");
             (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_requestOpts, opts.requestOptions, "f");
             (0,tslib/* __classPrivateFieldSet */.G)(this, _SessionToolRunner_idleClock, new IdleClock(this.maxIdleMs, () => {
-                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('session idle after end_turn; stopping', {
+                (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_logger, "f").info('session idle after its turn ended; stopping', {
                     component: 'session-tool-runner',
                     session_id: this.sessionId,
                     max_idle_ms: this.maxIdleMs,
@@ -66922,11 +68382,14 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
     async function _SessionToolRunner_reconcile() {
         const ctrl = (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f");
         const pending = [];
-        let lastWasEndTurn = false;
+        let lastEndedTurn = false;
         try {
             for await (const ev of this.client.beta.sessions.events.list(this.sessionId, { limit: 1000 }, (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_requestOptions).call(this))) {
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_ingestHistory).call(this, ev, pending);
-                lastWasEndTurn = isEndTurnIdle(ev);
+                // Neutral here as in `IdleClock.noteEvent`: a verdict is neither agent
+                // activity nor an idle.
+                if (ev.type !== 'user.tool_confirmation')
+                    lastEndedTurn = endsTurn(ev);
             }
         }
         catch (e) {
@@ -66958,13 +68421,13 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
         }
         // Routing resolves denied calls in place (marking them answered) and holds
         // ask-gated calls for their `user.tool_confirmation`. If the most recent
-        // event in history is an `end_turn` idle and no tool work is outstanding,
+        // event in history ends the turn and no tool work is outstanding,
         // the session is done — arm the idle clock so the runner stops even if that
-        // `end_turn` arrived during a disconnect. A held call is not outstanding
+        // idle arrived during a disconnect. A held call is not outstanding
         // here: it blocks the clock, so this arm stays pending until the verdict
         // (and, for an allow, the dispatch it releases) resolves it.
         const outstanding = unanswered.filter((ev) => !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_answered, "f").has(ev.id) && !(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_awaitingConfirmation, "f").has(ev.id));
-        if (lastWasEndTurn && outstanding.length === 0)
+        if (lastEndedTurn && outstanding.length === 0)
             (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").arm();
         else
             (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").disarm();
@@ -67156,6 +68619,10 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
                     tool: ev.name,
                     tool_use_id: ev.id,
                 });
+                // The approval kept the idle countdown pending on this call. Drop it
+                // instead of starting it: the owner still has to answer.
+                if (confirmation === 'allow')
+                    (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_idleClock, "f").disarm();
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_instances, "m", _SessionToolRunner_surfaceCall).call(this, {
                     event: ev,
                     toolUseId: ev.id,
@@ -69854,6 +71321,7 @@ var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated
 
 
 
+
 /**
  * A ToolRunner handles the automatic conversation loop between the assistant and tools.
  *
@@ -69916,7 +71384,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                     ...params,
                     // Not structuredClone(): it throws on a function, and a runnable tool written by value into a
                     // `tool_addition` block has `run`. A JSON copy is the messages as they are sent, which drops it.
-                    messages: JSON.parse(JSON.stringify(params.messages)),
+                    messages: JSON.parse(JSON.stringify(withToolDefinitions(params.messages))),
                 },
             }, "f");
             // Cloning drops symbol-keyed properties, so collect helper marks
@@ -70285,6 +71753,11 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
     async function* _BetaToolRunner_send(params) {
         await (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_startedCallsSettled).call(this);
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_calls, undefined, "f");
+        params = {
+            ...params,
+            ...(params.tools && { tools: params.tools.map(toolDefinition) }),
+            messages: withToolDefinitions(params.messages),
+        };
         if (params.stream) {
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_stream, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.runToolsEagerly ?
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_streamThatStartsTools).call(this, params)
@@ -70420,12 +71893,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                 content.push({ type: 'tool_removal', tool: { type: 'tool_reference', name: change.name } });
                 continue;
             }
-            // The functions stay out of the definition that is sent.
-            let definition = change.tool;
-            if ('run' in change.tool) {
-                const { run, parse, close, ...rest } = change.tool;
-                definition = rest;
-            }
+            const definition = toolDefinition(change.tool);
             content.push({ type: 'tool_addition', tool: { type: 'tool_definition', definition } });
         }
         return { role: 'system', content };
@@ -70478,6 +71946,27 @@ function withoutCompactionIncompatibleParams(params) {
             : fallback);
     }
     return kept;
+}
+function toolDefinition(tool) {
+    if (!('run' in tool)) {
+        return tool;
+    }
+    const apiKeys = BETA_CLIENT_TOOL_UNION_KEYS;
+    return {
+        ...Object.fromEntries(Object.entries(tool).filter(([key]) => apiKeys.includes(key))),
+        ...(wasCreatedByStainlessHelper(tool) && { [SDK_HELPER_SYMBOL]: tool[SDK_HELPER_SYMBOL] }),
+    };
+}
+function withToolDefinitions(messages) {
+    return messages.map((message) => {
+        if (message.role !== 'system' || typeof message.content === 'string') {
+            return message;
+        }
+        const content = message.content.map((block) => block.type === 'tool_addition' && block.tool.type === 'tool_definition' ?
+            { ...block, tool: { ...block.tool, definition: toolDefinition(block.tool.definition) } }
+            : block);
+        return { ...message, content };
+    });
 }
 async function generateToolResponse(runnable, available, lastMessage, requestOptions, calls) {
     // Only process if the last message is from the assistant and has tool use blocks
@@ -70629,7 +72118,10 @@ function determineNextStepFromStopReason(stopReason) {
 
 
 
-const messages_DEPRECATED_MODELS = {};
+const messages_DEPRECATED_MODELS = {
+    'claude-sonnet-4-5': 'November 30th, 2026',
+    'claude-sonnet-4-5-20250929': 'November 30th, 2026',
+};
 const messages_MODELS_TO_WARN_WITH_THINKING_ENABLED = ['claude-mythos-preview', 'claude-opus-4-6'];
 var messages_Messages = /* @__PURE__ */ (() => {
     class Messages extends APIResource {
@@ -70769,7 +72261,7 @@ function transformOutputFormat(params) {
         },
     };
 }
-const BETA_CLIENT_TOOL_UNION_KEYS = (/* unused pure expression or super */ null && ([
+const BETA_CLIENT_TOOL_UNION_KEYS = [
     'input_schema',
     'name',
     'allowed_callers',
@@ -70786,7 +72278,7 @@ const BETA_CLIENT_TOOL_UNION_KEYS = (/* unused pure expression or super */ null 
     'display_number',
     'enable_zoom',
     'max_characters',
-]));
+];
 
 
 //# sourceMappingURL=messages.mjs.map
@@ -70794,7 +72286,7 @@ const BETA_CLIENT_TOOL_UNION_KEYS = (/* unused pure expression or super */ null 
 
 
 
-class APIKeys extends APIResource {
+class api_keys_APIKeys extends APIResource {
     /**
      * Get API Key
      *
@@ -70844,7 +72336,7 @@ class APIKeys extends APIResource {
 //# sourceMappingURL=api-keys.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/compliance-settings.mjs
 
-class ComplianceSettings extends APIResource {
+class compliance_settings_ComplianceSettings extends APIResource {
     /**
      * Retrieve your organization's Compliance Settings.
      *
@@ -70894,7 +72386,7 @@ class ComplianceSettings extends APIResource {
 
 
 
-class ExternalKeys extends APIResource {
+class external_keys_ExternalKeys extends APIResource {
     /**
      * Create an external key config owned by the caller's organization.
      *
@@ -71009,7 +72501,7 @@ class ExternalKeys extends APIResource {
 
 
 
-class Invites extends APIResource {
+class invites_Invites extends APIResource {
     /**
      * Invite a user to join the organization by email.
      *
@@ -71077,10 +72569,236 @@ class Invites extends APIResource {
     }
 }
 //# sourceMappingURL=invites.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/plugin-marketplaces.mjs
+
+
+
+
+
+class PluginMarketplaces extends APIResource {
+    /**
+     * Retrieve a plugin marketplace by ID.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginMarketplace =
+     *   await client.beta.organization.pluginMarketplaces.retrieve(
+     *     'marketplace_id',
+     *   );
+     * ```
+     */
+    retrieve(marketplaceID, params = {}, options) {
+        const { betas, ...query } = params ?? {};
+        return this._client.get(path_path `/v1/organizations/plugin_marketplaces/${marketplaceID}?beta=true`, {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * Set the default installation setting of one of the organization's own plugin
+     * marketplaces. Every Plugin in it without a setting of its own gets this default
+     * as its organization-wide setting, including Plugins added later.
+     *
+     * Pass it as `default_installation_preference`. A member's personal marketplace
+     * cannot be updated here (403).
+     *
+     * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginMarketplace =
+     *   await client.beta.organization.pluginMarketplaces.update(
+     *     'marketplace_id',
+     *     { default_installation_preference: 'available' },
+     *   );
+     * ```
+     */
+    update(marketplaceID, params, options) {
+        const { betas, ...body } = params;
+        return this._client.post(path_path `/v1/organizations/plugin_marketplaces/${marketplaceID}?beta=true`, {
+            body,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * List the plugin marketplaces Plugins live in, newest first: the organization's
+     * own and its members' personal ones.
+     *
+     * Plugin marketplaces are created, connected to a repository and deleted in
+     * claude.ai, not through this API. The organization's library marketplace, the
+     * organization-owned `manual` marketplace that uploads go to when no marketplace
+     * is named, is created the first time something is put in it and is listed from
+     * then on.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaPluginMarketplace of client.beta.organization.pluginMarketplaces.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(params = {}, options) {
+        const { betas, ...query } = params ?? {};
+        return this._client.getAPIList('/v1/organizations/plugin_marketplaces?beta=true', (PageCursor), {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * Check whether a plugin marketplace, uploaded as a `.zip` of the marketplace
+     * directory, would synchronize into claude.ai, without connecting or storing it.
+     *
+     * To check a public GitHub repository instead, use Validate Plugin Marketplace
+     * Repository.
+     *
+     * The report says whether `marketplace.json` is well-formed, which plugins a
+     * synchronization would skip and why, and which plugins would synchronize only in
+     * part, with some files left out. An archive that cannot be read as a marketplace
+     * is reported, not refused: the response is a report with `valid: false`. Plugin
+     * sources outside the marketplace are fetched anonymously from GitHub, so a
+     * private one is reported as not found; a source on any other host is not fetched
+     * here, and the report notes that it will be checked when the marketplace actually
+     * synchronizes.
+     *
+     * Nothing is recorded on the Compliance API activity feed.
+     *
+     * For a worked example, see
+     * [Validate marketplace content](/docs/en/manage-claude/plugins-api#validate-marketplace-content)
+     * in the Plugins API guide.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `write:plugins` scope; `read:org_audit` and `read:compliance_org_data` do not
+     * grant it.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginMarketplaceValidationReport =
+     *   await client.beta.organization.pluginMarketplaces.validateArchive(
+     *     { archive: fs.createReadStream('path/to/file') },
+     *   );
+     * ```
+     */
+    validateArchive(params, options) {
+        const { betas, ...body } = params;
+        return this._client.post('/v1/organizations/plugin_marketplaces/validate_archive?beta=true', multipartFormRequestOptions({
+            body,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        }, this._client));
+    }
+    /**
+     * Check whether a plugin marketplace held in a public GitHub repository would
+     * synchronize into claude.ai, without connecting or storing it.
+     *
+     * To check a `.zip` of the marketplace directory instead, use Validate Plugin
+     * Marketplace Archive.
+     *
+     * The report says whether `marketplace.json` is well-formed, which plugins a
+     * synchronization would skip and why, and which plugins would synchronize only in
+     * part, with some files left out. A repository that is missing, private, or has no
+     * such branch or commit is reported, not refused: the response is a report with
+     * `valid: false`. Plugin sources outside the marketplace are fetched anonymously
+     * from GitHub, so a private one is reported as not found; a source on any other
+     * host is not fetched here, and the report notes that it will be checked when the
+     * marketplace actually synchronizes.
+     *
+     * Nothing is recorded on the Compliance API activity feed.
+     *
+     * For a worked example, see
+     * [Validate marketplace content](/docs/en/manage-claude/plugins-api#validate-marketplace-content)
+     * in the Plugins API guide.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `write:plugins` scope; `read:org_audit` and `read:compliance_org_data` do not
+     * grant it.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginMarketplaceValidationReport =
+     *   await client.beta.organization.pluginMarketplaces.validateRepository(
+     *     {
+     *       repository_url:
+     *         'https://github.com/example-org/example-marketplace',
+     *     },
+     *   );
+     * ```
+     */
+    validateRepository(params, options) {
+        const { betas, ...body } = params;
+        return this._client.post('/v1/organizations/plugin_marketplaces/validate_repository?beta=true', {
+            body,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+}
+//# sourceMappingURL=plugin-marketplaces.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rate-limits.mjs
 
 
-class RateLimits extends APIResource {
+class organization_rate_limits_RateLimits extends APIResource {
     /**
      * List Messages API rate limits for your organization.
      *
@@ -71108,7 +72826,7 @@ class RateLimits extends APIResource {
 
 
 
-class Users extends APIResource {
+class users_Users extends APIResource {
     /**
      * Retrieve a member of the organization by user ID.
      *
@@ -71167,12 +72885,406 @@ class Users extends APIResource {
     }
 }
 //# sourceMappingURL=users.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/artifacts.mjs
+
+
+class Artifacts extends APIResource {
+    /**
+     * Get artifact-creation activity for a given day, broken out by MIME type.
+     *
+     * Returns the full (`artifact_type`, `is_shared`) cube for the organization;
+     * `next_page` is null except for grouped queries, which paginate. The cube can be
+     * broken out per product, per member, or per RBAC group via `group_by[]`, and
+     * scoped via `filter[]`. Requires an API key with the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsArtifactActivity of client.beta.organization.analytics.artifacts.list(
+     *   { date: '2019-12-27' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/artifacts?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=artifacts.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/connectors.mjs
+
+
+class Connectors extends APIResource {
+    /**
+     * Get per-connector usage for a given day, with cursor-based pagination.
+     *
+     * Returns connector usage metrics for the organization, sorted by connector name.
+     * Connector names are normalized from their various sources — for example,
+     * "Atlassian MCP server" and "mcp-atlassian" both appear as "atlassian". Use
+     * `group_by[]` to break usage out per member, per RBAC group, or per product
+     * surface, and `filter[]` to scope results; the parameter descriptions list the
+     * supported dimensions. Available to organizations on a Claude Enterprise plan.
+     * Requires an API key with the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsConnectorActivity of client.beta.organization.analytics.connectors.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/connectors?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=connectors.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/cost-report.mjs
+
+
+class CostReport extends APIResource {
+    /**
+     * Get cost in USD over time across a date range.
+     *
+     * Returns cost bucketed by minute, hour, or day, optionally broken down by
+     * product, model, context window, inference region, speed, cost type, or token
+     * type. Available to organizations on a Claude Enterprise plan. Requires an API
+     * key with the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsCostReportTimeBucket of client.beta.organization.analytics.costReport.list(
+     *   { starting_at: '2019-12-27T18:11:19.117Z' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/cost_report?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=cost-report.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/plugins.mjs
+
+
+class Plugins extends APIResource {
+    /**
+     * Get per-plugin install + invocation usage for a given day, with pagination.
+     *
+     * Returns plugin usage metrics for the organization across Cowork and Claude Code,
+     * sorted by plugin name. The `plugin_name` value `third-party` is an aggregate
+     * bucket, not a plugin: it collects plugin activity, from either surface, for
+     * which the reporting client did not provide a plugin name — so an organization's
+     * own plugins can contribute both to their own named rows and to this bucket. Use
+     * `group_by[]` to break usage out per member, per RBAC group, or per product
+     * surface (Cowork / Claude Code), and `filter[]` to scope results; the parameter
+     * descriptions list the supported dimensions. Requires an API key with the
+     * `read:analytics` scope. `starting_date` / `ending_date` select range-rollup mode
+     * like `/skills`.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsPluginActivity of client.beta.organization.analytics.plugins.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/plugins?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=plugins.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/skills.mjs
+
+
+class skills_Skills extends APIResource {
+    /**
+     * Get per-skill usage for a given day, with cursor-based pagination.
+     *
+     * Returns skill usage metrics for the organization, sorted by skill name. Use
+     * `group_by[]` to break usage out per member, per RBAC group, or per product
+     * surface, and `filter[]` to scope results; the parameter descriptions list the
+     * supported dimensions. Available to organizations on a Claude Enterprise plan.
+     * Requires an API key with the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsSkillActivity of client.beta.organization.analytics.skills.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/skills?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=skills.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/summaries.mjs
+
+
+class Summaries extends APIResource {
+    /**
+     * Get organization-wide activity summaries for a date range.
+     *
+     * Returns one entry per day from `starting_date` (inclusive) to `ending_date`
+     * (exclusive) in `data`, the same `data` / `next_page` envelope as the other
+     * analytics list endpoints; the series is currently returned in full, so
+     * `next_page` is always null (`summaries` is a deprecated alias of `data`). Data
+     * is typically available with a 1-day lag and may be revised by a few percent over
+     * the following days: when `ending_date` is omitted it defaults to the most recent
+     * available day + 1, so the last entry covers the most recent available day. The
+     * series can be scoped to an RBAC group via `filter[]=rbac_group_id:{id}`.
+     * Available to organizations on a Claude Enterprise plan. Requires an API key with
+     * the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsSingleDayActivitySummary of client.beta.organization.analytics.summaries.list(
+     *   { starting_date: '2019-12-27' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/summaries?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=summaries.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/usage-report.mjs
+
+
+class UsageReport extends APIResource {
+    /**
+     * Get token usage over time across a date range.
+     *
+     * Returns token usage bucketed by minute, hour, or day, optionally broken down by
+     * product, model, context window, inference region, or speed. Available to
+     * organizations on a Claude Enterprise plan. Requires an API key with the
+     * `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsUsageReportTimeBucket of client.beta.organization.analytics.usageReport.list(
+     *   { starting_at: '2019-12-27T18:11:19.117Z' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/usage_report?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=usage-report.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/user-cost-report.mjs
+
+
+class UserCostReport extends APIResource {
+    /**
+     * Get per-user cost in USD across a date range.
+     *
+     * Returns one row per user, ranked by spend. Use this to see which users account
+     * for the most cost. Only cost attributable to a seat user is included; for
+     * organization-wide totals including direct API-key and automation traffic, use
+     * the bucketed `/v1/organizations/analytics/cost_report` endpoint. Available to
+     * organizations on a Claude Enterprise plan. Requires an API key with the
+     * `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsCostUsersItem of client.beta.organization.analytics.userCostReport.list(
+     *   { starting_at: '2019-12-27T18:11:19.117Z' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/user_cost_report?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=user-cost-report.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/user-usage-report.mjs
+
+
+class UserUsageReport extends APIResource {
+    /**
+     * Get per-user token usage across a date range.
+     *
+     * Returns one row per user, ranked by the chosen token metric. Use this to see
+     * which users consume the most tokens. Only usage attributable to a seat user is
+     * included; for organization-wide totals including direct API-key and automation
+     * traffic, use the bucketed `/v1/organizations/analytics/usage_report` endpoint.
+     * Available to organizations on a Claude Enterprise plan. Requires an API key with
+     * the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsUsageUsersItem of client.beta.organization.analytics.userUsageReport.list(
+     *   { starting_at: '2019-12-27T18:11:19.117Z' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/user_usage_report?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=user-usage-report.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/users.mjs
+
+
+class analytics_users_Users extends APIResource {
+    /**
+     * Get per-user activity for a given day, with cursor-based pagination.
+     *
+     * Returns activity metrics for each user in the organization, sorted by email
+     * address. Use `group_by[]` for per-RBAC-group aggregates, or `filter[]` to scope
+     * results to specific members, groups, or a chat project. Available to
+     * organizations on a Claude Enterprise plan. Requires an API key with the
+     * `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsUserActivity of client.beta.organization.analytics.users.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/users?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=users.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/apps/chat/projects.mjs
+
+
+class Projects extends APIResource {
+    /**
+     * Get per-project activity for a given day, with cursor-based pagination.
+     *
+     * Returns activity metrics for each project in the organization, sorted by project
+     * ID. Use `group_by[]` to break projects out per member or per RBAC group, and
+     * `filter[]` to scope results; the parameter descriptions list the supported
+     * dimensions. Available to organizations on a Claude Enterprise plan. Requires an
+     * API key with the `read:analytics` scope.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaAnalyticsProjectActivity of client.beta.organization.analytics.apps.chat.projects.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/analytics/apps/chat/projects?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=projects.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/apps/chat/chat.mjs
+
+
+
+var Chat = /* @__PURE__ */ (() => {
+    class Chat extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.projects = new Projects(this._client);
+        }
+    }
+    Chat.Projects = Projects;
+    return Chat;
+})();
+//# sourceMappingURL=chat.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/apps/apps.mjs
+
+
+
+var Apps = /* @__PURE__ */ (() => {
+    class Apps extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.chat = new Chat(this._client);
+        }
+    }
+    Apps.Chat = Chat;
+    return Apps;
+})();
+//# sourceMappingURL=apps.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/analytics/analytics.mjs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var Analytics = /* @__PURE__ */ (() => {
+    class Analytics extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.summaries = new Summaries(this._client);
+            this.users = new analytics_users_Users(this._client);
+            this.apps = new Apps(this._client);
+            this.connectors = new Connectors(this._client);
+            this.plugins = new Plugins(this._client);
+            this.skills = new skills_Skills(this._client);
+            this.artifacts = new Artifacts(this._client);
+            this.usageReport = new UsageReport(this._client);
+            this.userUsageReport = new UserUsageReport(this._client);
+            this.costReport = new CostReport(this._client);
+            this.userCostReport = new UserCostReport(this._client);
+        }
+    }
+    Analytics.Summaries = Summaries;
+    Analytics.Users = analytics_users_Users;
+    Analytics.Apps = Apps;
+    Analytics.Connectors = Connectors;
+    Analytics.Plugins = Plugins;
+    Analytics.Skills = skills_Skills;
+    Analytics.Artifacts = Artifacts;
+    Analytics.UsageReport = UsageReport;
+    Analytics.UserUsageReport = UserUsageReport;
+    Analytics.CostReport = CostReport;
+    Analytics.UserCostReport = UserCostReport;
+    return Analytics;
+})();
+//# sourceMappingURL=analytics.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/federation/issuers.mjs
 
 
 
 
-class Issuers extends APIResource {
+class issuers_Issuers extends APIResource {
     /**
      * **Requires an OAuth access token with the `org:admin` scope**, from
      * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
@@ -71337,7 +73449,7 @@ class Issuers extends APIResource {
 
 
 
-class Workspaces extends APIResource {
+class rules_workspaces_Workspaces extends APIResource {
     /**
      * **Requires an OAuth access token with the `org:admin` scope**, from
      * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
@@ -71449,11 +73561,11 @@ class Workspaces extends APIResource {
 
 
 
-var Rules = /* @__PURE__ */ (() => {
+var rules_Rules = /* @__PURE__ */ (() => {
     class Rules extends APIResource {
         constructor() {
             super(...arguments);
-            this.workspaces = new Workspaces(this._client);
+            this.workspaces = new rules_workspaces_Workspaces(this._client);
         }
         /**
          * **Requires an OAuth access token with the `org:admin` scope**, from
@@ -71634,7 +73746,7 @@ var Rules = /* @__PURE__ */ (() => {
             });
         }
     }
-    Rules.Workspaces = Workspaces;
+    Rules.Workspaces = rules_workspaces_Workspaces;
     return Rules;
 })();
 //# sourceMappingURL=rules.mjs.map
@@ -71644,25 +73756,914 @@ var Rules = /* @__PURE__ */ (() => {
 
 
 
-var Federation = /* @__PURE__ */ (() => {
+var federation_Federation = /* @__PURE__ */ (() => {
     class Federation extends APIResource {
         constructor() {
             super(...arguments);
-            this.issuers = new Issuers(this._client);
-            this.rules = new Rules(this._client);
+            this.issuers = new issuers_Issuers(this._client);
+            this.rules = new rules_Rules(this._client);
         }
     }
-    Federation.Issuers = Issuers;
-    Federation.Rules = Rules;
+    Federation.Issuers = issuers_Issuers;
+    Federation.Rules = rules_Rules;
     return Federation;
 })();
 //# sourceMappingURL=federation.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/plugins/installation-settings.mjs
+
+
+
+
+class InstallationSettings extends APIResource {
+    /**
+     * List an organization-owned Plugin's installation settings, which say which
+     * members it is for, most recently created first.
+     *
+     * The list holds the Plugin's own organization-wide setting (absent while the
+     * Plugin inherits its marketplace's default) and each RBAC Group's own setting. A
+     * member-owned Plugin has shares instead, so this path returns 404 for one.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaPluginInstallationSetting of client.beta.organization.plugins.installationSettings.list(
+     *   'plugin_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(pluginID, params = {}, options) {
+        const { betas, ...query } = params ?? {};
+        return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/installation_settings?beta=true`, (PageCursor), {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * Remove an organization-owned Plugin's own installation setting for the whole
+     * organization or for one RBAC Group.
+     *
+     * Removing the `organization` target returns the Plugin to its marketplace's
+     * default installation setting and leaves the groups' settings in place. Removing
+     * a group's setting makes the group's members fall back to the Plugin's
+     * organization-wide setting or to the settings of their other groups.
+     *
+     * A target that holds no setting of its own returns 404 (a Plugin that already
+     * inherits its marketplace's default holds no `organization` setting), and so does
+     * a member-owned Plugin.
+     *
+     * A removal counts as one of the Plugin's installation-setting writes: send all of
+     * those writes one at a time. If several arrive for the same Plugin at the same
+     * time, the server handles them one after another and can answer some of them with
+     * `503` and `x-should-retry: true` instead of applying them; wait a second or two
+     * and send the removal again. A `404` on the repeat means the setting is already
+     * gone.
+     *
+     * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaDeletedPluginInstallationSetting =
+     *   await client.beta.organization.plugins.installationSettings.remove(
+     *     'target',
+     *     { plugin_id: 'plugin_id' },
+     *   );
+     * ```
+     */
+    remove(target, params, options) {
+        const { plugin_id, betas } = params;
+        return this._client.delete(path_path `/v1/organizations/plugins/${plugin_id}/installation_settings/${target}?beta=true`, {
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * Set or change an organization-owned Plugin's installation setting for the whole
+     * organization or for one RBAC Group.
+     *
+     * Writing the value a target already holds of its own changes nothing.
+     *
+     * A member-owned Plugin has shares instead of installation settings, so this path
+     * returns 404 for one.
+     *
+     * Send a Plugin's installation-setting writes one at a time. If several writes for
+     * the same Plugin arrive at the same time, the server handles them one after
+     * another and can answer some of them with `503` instead of applying them. That
+     * `503` carries `x-should-retry: true`, and the write is safe to repeat: wait a
+     * second or two, then send it again.
+     *
+     * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginInstallationSetting =
+     *   await client.beta.organization.plugins.installationSettings.set(
+     *     'target',
+     *     {
+     *       plugin_id: 'plugin_id',
+     *       installation_preference: 'required',
+     *     },
+     *   );
+     * ```
+     */
+    set(target, params, options) {
+        const { plugin_id, betas, ...body } = params;
+        return this._client.post(path_path `/v1/organizations/plugins/${plugin_id}/installation_settings/${target}?beta=true`, {
+            body,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+}
+//# sourceMappingURL=installation-settings.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/plugins/shares.mjs
+
+
+
+
+class Shares extends APIResource {
+    /**
+     * List the shares the owner of a member-owned Plugin has given — to every member
+     * of the organization, to an RBAC Group, or to one member — most recently granted
+     * first.
+     *
+     * Shares are read-only in this API: members give and withdraw them in claude.ai,
+     * and who gave a share is recorded on the Compliance API activity feed rather than
+     * on the share. An organization-owned Plugin has installation settings instead, so
+     * this path returns 404 for one.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaPluginShare of client.beta.organization.plugins.shares.list(
+     *   'plugin_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(pluginID, params = {}, options) {
+        const { betas, ...query } = params ?? {};
+        return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/shares?beta=true`, (PageCursor), {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+}
+//# sourceMappingURL=shares.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/plugins/versions.mjs
+
+
+
+
+
+class plugins_versions_Versions extends APIResource {
+    /**
+     * Add a version to an organization-owned Plugin by uploading the new version's
+     * files; it becomes the version served to members unless the Plugin's served
+     * version has been pinned.
+     *
+     * The upload is the same `multipart/form-data` as creating a Plugin: the version's
+     * files (`files`, each part sent as `files[]`) and optional `release_notes`. The
+     * uploaded manifest's `name` must equal the Plugin's `name`. Returns the stored
+     * version; read the Plugin back to see which version it serves.
+     *
+     * Only a Plugin in a `manual` marketplace takes uploads; a Plugin synchronized
+     * from a repository gets its versions from the repository. When the Plugin is in
+     * the organization's library marketplace, a version that adds a skill with the
+     * name of an organization skill (a skill an administrator uploaded for the whole
+     * organization in claude.ai) is refused with a 409: `error_code`
+     * `skill_name_taken`, with that name in `details.skill_name`. A 503 with
+     * `error_code` `registration_pending` means the version was stored but is not yet
+     * usable; a later version create on the Plugin completes it.
+     *
+     * For a worked example, see
+     * [Create a version](/docs/en/manage-claude/plugins-api#create-a-version) in the
+     * Plugins API guide.
+     *
+     * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginVersion =
+     *   await client.beta.organization.plugins.versions.create(
+     *     'plugin_id',
+     *     { files: [fs.createReadStream('path/to/file')] },
+     *   );
+     * ```
+     */
+    create(pluginID, params, options) {
+        const { betas, ...body } = params;
+        return this._client.post(path_path `/v1/organizations/plugins/${pluginID}/versions?beta=true`, multipartFormRequestOptions({
+            body,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        }, this._client));
+    }
+    /**
+     * Retrieve one version of a Plugin by its ID, or the Plugin's newest version.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const betaPluginVersion =
+     *   await client.beta.organization.plugins.versions.retrieve(
+     *     'version',
+     *     { plugin_id: 'plugin_id' },
+     *   );
+     * ```
+     */
+    retrieve(version, params, options) {
+        const { plugin_id, betas, ...query } = params;
+        return this._client.get(path_path `/v1/organizations/plugins/${plugin_id}/versions/${version}?beta=true`, {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * List a Plugin's versions, newest first.
+     *
+     * The first item of the first page is the version the Plugin's `latest_version_id`
+     * refers to.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaPluginVersion of client.beta.organization.plugins.versions.list(
+     *   'plugin_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(pluginID, params = {}, options) {
+        const { betas, ...query } = params ?? {};
+        return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/versions?beta=true`, (PageCursor), {
+            query,
+            ...options,
+            headers: buildHeaders([
+                { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                options?.headers,
+            ]),
+        });
+    }
+    /**
+     * Download one version's `.zip` archive, exactly as stored. Each download of a
+     * Plugin from a member's personal plugin marketplace is recorded on the Compliance
+     * API activity feed.
+     *
+     * The response body is the archive (`Content-Type: application/zip`), sent as an
+     * attachment whose filename is derived from the Plugin's name; name saved files
+     * from the IDs in the request path, since that filename is not unique.
+     *
+     * **Accepted credentials:** an Admin API key with the `read:plugins` or
+     * `read:org_audit` scope, or a Compliance Access Key with the
+     * `read:compliance_org_data` scope.
+     *
+     * Every read scope above (`read:plugins`, `read:org_audit`, and
+     * `read:compliance_org_data`) can download the files of plugins in members'
+     * personal marketplaces, including files that claude.ai's admin settings do not
+     * show, and a `read:org_audit` or `read:compliance_org_data` key created for all
+     * of your parent organization's linked organizations can do this in any
+     * organization under it that has access to this API, by passing `organization_id`.
+     * Each such download records a `claude_plugin_archive_accessed` event on the
+     * Compliance API activity feed, identifying the key, the plugin, the version, and
+     * the member. Downloads of organization-owned plugins are not recorded.
+     *
+     * Every request must include the beta header
+     * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+     * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+     * available to Claude Enterprise organizations only. It is not available to Claude
+     * Platform (Claude Console) organizations, or to organizations with HIPAA
+     * readiness enabled.
+     *
+     * @example
+     * ```ts
+     * const response =
+     *   await client.beta.organization.plugins.versions.download(
+     *     'version',
+     *     { plugin_id: 'plugin_id' },
+     *   );
+     *
+     * const content = await response.blob();
+     * console.log(content);
+     * ```
+     */
+    download(version, params, options) {
+        const { plugin_id, betas, ...query } = params;
+        return this._client.get(path_path `/v1/organizations/plugins/${plugin_id}/versions/${version}/content?beta=true`, {
+            query,
+            ...options,
+            headers: buildHeaders([
+                {
+                    'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString(),
+                    Accept: 'application/binary',
+                },
+                options?.headers,
+            ]),
+            __binaryResponse: true,
+        });
+    }
+}
+//# sourceMappingURL=versions.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/plugins/plugins.mjs
+
+
+
+
+
+
+
+
+
+
+
+var plugins_Plugins = /* @__PURE__ */ (() => {
+    class Plugins extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.versions = new plugins_versions_Versions(this._client);
+            this.installationSettings = new InstallationSettings(this._client);
+            this.shares = new Shares(this._client);
+        }
+        /**
+         * Create an organization-owned Plugin and its first version by uploading the
+         * version's files.
+         *
+         * The upload is `multipart/form-data`: the version's files (`files`, each part
+         * sent as `files[]`), with an optional `marketplace_id` and `release_notes`. The
+         * manifest's `name` becomes the Plugin's `name`, and `display_name`, `description`
+         * and `manifest_version` come from the manifest too.
+         *
+         * `name` may contain lowercase letters (from any alphabet), digits, and hyphens,
+         * up to 64 characters. Uppercase letters, spaces, underscores, and other
+         * punctuation are rejected.
+         *
+         * The `name` must be unique within the marketplace: a name already taken returns a
+         * 409 with `error_code` `plugin_name_taken` and, when a Plugin holds it, that
+         * Plugin's ID in `details.plugin_id`. A Plugin going into the organization's
+         * library marketplace is also refused with a 409 when one of its skills has the
+         * name of an organization skill (a skill an administrator uploaded for the whole
+         * organization in claude.ai): `error_code` `skill_name_taken`, with that name in
+         * `details.skill_name`; rename the skill, or remove the organization skill in
+         * claude.ai. A 503 with `error_code` `registration_pending` means the Plugin and
+         * its version were stored (their IDs are in `details`) but are not yet usable in
+         * claude.ai: do not retry the create (the retry would return `plugin_name_taken`);
+         * create a version on the stored Plugin instead, which completes it.
+         *
+         * For a worked example, see
+         * [Create a plugin](/docs/en/manage-claude/plugins-api#create-a-plugin) in the
+         * Plugins API guide.
+         *
+         * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+         *
+         * Every request must include the beta header
+         * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+         * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+         * available to Claude Enterprise organizations only. It is not available to Claude
+         * Platform (Claude Console) organizations, or to organizations with HIPAA
+         * readiness enabled.
+         *
+         * @example
+         * ```ts
+         * const betaPlugin =
+         *   await client.beta.organization.plugins.create({
+         *     files: [fs.createReadStream('path/to/file')],
+         *   });
+         * ```
+         */
+        create(params, options) {
+            const { betas, ...body } = params;
+            return this._client.post('/v1/organizations/plugins?beta=true', multipartFormRequestOptions({
+                body,
+                ...options,
+                headers: buildHeaders([
+                    { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                    options?.headers,
+                ]),
+            }, this._client));
+        }
+        /**
+         * Retrieve a Plugin by ID.
+         *
+         * **Accepted credentials:** an Admin API key with the `read:plugins` or
+         * `read:org_audit` scope, or a Compliance Access Key with the
+         * `read:compliance_org_data` scope.
+         *
+         * Every request must include the beta header
+         * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+         * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+         * available to Claude Enterprise organizations only. It is not available to Claude
+         * Platform (Claude Console) organizations, or to organizations with HIPAA
+         * readiness enabled.
+         *
+         * @example
+         * ```ts
+         * const betaPlugin =
+         *   await client.beta.organization.plugins.retrieve(
+         *     'plugin_id',
+         *   );
+         * ```
+         */
+        retrieve(pluginID, params = {}, options) {
+            const { betas, ...query } = params ?? {};
+            return this._client.get(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
+                query,
+                ...options,
+                headers: buildHeaders([
+                    { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                    options?.headers,
+                ]),
+            });
+        }
+        /**
+         * Change which stored version of an organization-owned Plugin is served to
+         * members, for example to roll back to an earlier one. This pins the served
+         * version: later uploads are stored but no longer change what is served, and
+         * pinning cannot currently be undone, here or in claude.ai.
+         *
+         * Pass the version as `served_version_id`: an earlier one to roll back, a later
+         * one to start serving a version that was stored without being served, or the one
+         * already served to pin it without changing what is served. No new version is
+         * created.
+         *
+         * When the organization has content scanning enabled, a version whose scan is
+         * still running is refused with a 409 (`error_code` `scan_pending`; retry once the
+         * scan finishes) and one whose scan failed, errored or reached no verdict with a
+         * 400 (`scan_failed`; a `warn` is accepted). When the Plugin is in the
+         * organization's library marketplace, a version other than the one served is also
+         * refused with a 409 when one of its skills has a name that an organization skill
+         * (one an administrator uploaded for the whole organization in claude.ai) has
+         * since taken: `error_code` `skill_name_taken`, with that name in
+         * `details.skill_name`. A member-owned Plugin cannot be updated here (403).
+         *
+         * This endpoint does not write installation settings; they are written at
+         * `/v1/organizations/plugins/{plugin_id}/installation_settings/{target}`.
+         *
+         * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+         *
+         * Every request must include the beta header
+         * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+         * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+         * available to Claude Enterprise organizations only. It is not available to Claude
+         * Platform (Claude Console) organizations, or to organizations with HIPAA
+         * readiness enabled.
+         *
+         * @example
+         * ```ts
+         * const betaPlugin =
+         *   await client.beta.organization.plugins.update(
+         *     'plugin_id',
+         *     {
+         *       served_version_id:
+         *         'pluginver_01KaZmQpRsTuVwXyZ2b4c6d8',
+         *     },
+         *   );
+         * ```
+         */
+        update(pluginID, params, options) {
+            const { betas, ...body } = params;
+            return this._client.post(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
+                body,
+                ...options,
+                headers: buildHeaders([
+                    { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                    options?.headers,
+                ]),
+            });
+        }
+        /**
+         * List the Plugins created under the organization, newest first: those in the
+         * organization's own plugin marketplaces and those in members' personal plugin
+         * marketplaces.
+         *
+         * Plugins in members' personal marketplaces are listed with the same detail as the
+         * organization's own, and their files can be downloaded through the version
+         * archive endpoint, which records each such download on the Compliance API
+         * activity feed.
+         *
+         * **Accepted credentials:** an Admin API key with the `read:plugins` or
+         * `read:org_audit` scope, or a Compliance Access Key with the
+         * `read:compliance_org_data` scope.
+         *
+         * Every request must include the beta header
+         * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+         * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+         * available to Claude Enterprise organizations only. It is not available to Claude
+         * Platform (Claude Console) organizations, or to organizations with HIPAA
+         * readiness enabled.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const betaPlugin of client.beta.organization.plugins.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(params = {}, options) {
+            const { betas, ...query } = params ?? {};
+            return this._client.getAPIList('/v1/organizations/plugins?beta=true', (PageCursor), {
+                query,
+                ...options,
+                headers: buildHeaders([
+                    { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                    options?.headers,
+                ]),
+            });
+        }
+        /**
+         * Permanently delete a Plugin and every version it holds, exactly as when an
+         * administrator deletes it in claude.ai. The Plugin may belong to the organization
+         * or to a member, including a member who has since left the organization.
+         *
+         * An organization-owned Plugin's installation settings go with it; a member-owned
+         * Plugin's shares are withdrawn and its owner no longer has it.
+         *
+         * To take an organization-owned Plugin out of use reversibly, set its
+         * organization-wide installation setting to `not_available` instead (and remove or
+         * change any group settings, which override it for their members). Only a Plugin
+         * in a `manual` marketplace can be deleted here; one synchronized from a
+         * repository is removed by removing it from the repository (400).
+         *
+         * **Accepted credentials:** an Admin API key with the `write:plugins` scope.
+         *
+         * Every request must include the beta header
+         * `anthropic-beta: ce-plugins-2026-09-01`. A request without it returns `404`,
+         * exactly as if the endpoint did not exist. The Plugins API is in beta and is
+         * available to Claude Enterprise organizations only. It is not available to Claude
+         * Platform (Claude Console) organizations, or to organizations with HIPAA
+         * readiness enabled.
+         *
+         * @example
+         * ```ts
+         * const betaDeletedPlugin =
+         *   await client.beta.organization.plugins.delete(
+         *     'plugin_id',
+         *   );
+         * ```
+         */
+        delete(pluginID, params = {}, options) {
+            const { betas } = params ?? {};
+            return this._client.delete(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
+                ...options,
+                headers: buildHeaders([
+                    { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
+                    options?.headers,
+                ]),
+            });
+        }
+    }
+    Plugins.Versions = plugins_versions_Versions;
+    Plugins.InstallationSettings = InstallationSettings;
+    Plugins.Shares = Shares;
+    return Plugins;
+})();
+//# sourceMappingURL=plugins.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rbac-groups/members.mjs
+
+
+
+class members_Members extends APIResource {
+    /**
+     * List members of an RBAC Group.
+     *
+     * The RBAC Groups API is available to Claude Enterprise organizations only.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaRBACGroupMember of client.beta.organization.rbacGroups.members.list(
+     *   'rbac_group_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(rbacGroupID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/rbac_groups/${rbacGroupID}/members?beta=true`, (PageCursor), { query, ...options });
+    }
+    /**
+     * Add a User to an RBAC Group. Membership of groups provisioned by an identity
+     * provider (source type `"scim"`) cannot be modified via the API while an
+     * organization in the tenant uses SCIM provisioning.
+     *
+     * The RBAC Groups API is available to Claude Enterprise organizations only.
+     *
+     * @example
+     * ```ts
+     * const betaRBACGroupMember =
+     *   await client.beta.organization.rbacGroups.members.add(
+     *     'rbac_group_id',
+     *     { user_id: 'user_01WCz1FkmYMm4gnmykNKUu3Q' },
+     *   );
+     * ```
+     */
+    add(rbacGroupID, body, options) {
+        return this._client.post(path_path `/v1/organizations/rbac_groups/${rbacGroupID}/members?beta=true`, {
+            body,
+            ...options,
+        });
+    }
+    /**
+     * Remove a User from an RBAC Group. Membership of groups provisioned by an
+     * identity provider (source type `"scim"`) cannot be modified via the API while an
+     * organization in the tenant uses SCIM provisioning.
+     *
+     * The RBAC Groups API is available to Claude Enterprise organizations only.
+     *
+     * @example
+     * ```ts
+     * const member =
+     *   await client.beta.organization.rbacGroups.members.remove(
+     *     'user_id',
+     *     { rbac_group_id: 'rbac_group_id' },
+     *   );
+     * ```
+     */
+    remove(userID, params, options) {
+        const { rbac_group_id } = params;
+        return this._client.delete(path_path `/v1/organizations/rbac_groups/${rbac_group_id}/members/${userID}?beta=true`, options);
+    }
+}
+//# sourceMappingURL=members.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rbac-groups/rbac-groups.mjs
+
+
+
+
+
+var RBACGroups = /* @__PURE__ */ (() => {
+    class RBACGroups extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.members = new members_Members(this._client);
+        }
+        /**
+         * Create an RBAC Group in the Claude Enterprise tenant. Groups created via the API
+         * have source type `"direct"`.
+         *
+         * The RBAC Groups API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * const betaRBACGroup =
+         *   await client.beta.organization.rbacGroups.create({
+         *     name: 'Engineering',
+         *   });
+         * ```
+         */
+        create(body, options) {
+            return this._client.post('/v1/organizations/rbac_groups?beta=true', { body, ...options });
+        }
+        /**
+         * Retrieve an RBAC Group by ID.
+         *
+         * The RBAC Groups API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * const betaRBACGroup =
+         *   await client.beta.organization.rbacGroups.retrieve(
+         *     'rbac_group_id',
+         *   );
+         * ```
+         */
+        retrieve(rbacGroupID, options) {
+            return this._client.get(path_path `/v1/organizations/rbac_groups/${rbacGroupID}?beta=true`, options);
+        }
+        /**
+         * Update an RBAC Group's name. Groups provisioned by an identity provider (source
+         * type `"scim"`) cannot be modified via the API while an organization in the
+         * tenant uses SCIM provisioning.
+         *
+         * The RBAC Groups API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * const betaRBACGroup =
+         *   await client.beta.organization.rbacGroups.update(
+         *     'rbac_group_id',
+         *   );
+         * ```
+         */
+        update(rbacGroupID, body, options) {
+            return this._client.post(path_path `/v1/organizations/rbac_groups/${rbacGroupID}?beta=true`, {
+                body,
+                ...options,
+            });
+        }
+        /**
+         * List RBAC Groups in the Claude Enterprise tenant.
+         *
+         * The RBAC Groups API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const betaRBACGroup of client.beta.organization.rbacGroups.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(query = {}, options) {
+            return this._client.getAPIList('/v1/organizations/rbac_groups?beta=true', (PageCursor), {
+                query,
+                ...options,
+            });
+        }
+        /**
+         * Delete an RBAC Group. Groups provisioned by an identity provider (source type
+         * `"scim"`) cannot be deleted via the API while an organization in the tenant uses
+         * SCIM provisioning.
+         *
+         * The RBAC Groups API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * const rbacGroup =
+         *   await client.beta.organization.rbacGroups.delete(
+         *     'rbac_group_id',
+         *   );
+         * ```
+         */
+        delete(rbacGroupID, options) {
+            return this._client.delete(path_path `/v1/organizations/rbac_groups/${rbacGroupID}?beta=true`, options);
+        }
+    }
+    RBACGroups.Members = members_Members;
+    return RBACGroups;
+})();
+//# sourceMappingURL=rbac-groups.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rbac-roles/permissions.mjs
+
+
+
+class Permissions extends APIResource {
+    /**
+     * List the permissions an RBAC Role grants.
+     *
+     * The RBAC Roles API is available to Claude Enterprise organizations only.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaRBACRolePermission of client.beta.organization.rbacRoles.permissions.list(
+     *   'rbac_role_id',
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(rbacRoleID, query = {}, options) {
+        return this._client.getAPIList(path_path `/v1/organizations/rbac_roles/${rbacRoleID}/permissions?beta=true`, (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=permissions.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/rbac-roles/rbac-roles.mjs
+
+
+
+
+
+var RBACRoles = /* @__PURE__ */ (() => {
+    class RBACRoles extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.permissions = new Permissions(this._client);
+        }
+        /**
+         * Retrieve an RBAC Role by ID.
+         *
+         * The RBAC Roles API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * const betaRBACRole =
+         *   await client.beta.organization.rbacRoles.retrieve(
+         *     'rbac_role_id',
+         *   );
+         * ```
+         */
+        retrieve(rbacRoleID, options) {
+            return this._client.get(path_path `/v1/organizations/rbac_roles/${rbacRoleID}?beta=true`, options);
+        }
+        /**
+         * List RBAC Roles in the organization.
+         *
+         * The RBAC Roles API is available to Claude Enterprise organizations only.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const betaRBACRole of client.beta.organization.rbacRoles.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(query = {}, options) {
+            return this._client.getAPIList('/v1/organizations/rbac_roles?beta=true', (PageCursor), {
+                query,
+                ...options,
+            });
+        }
+    }
+    RBACRoles.Permissions = Permissions;
+    return RBACRoles;
+})();
+//# sourceMappingURL=rbac-roles.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/service-accounts/workspaces.mjs
 
 
 
 
-class workspaces_Workspaces extends APIResource {
+class service_accounts_workspaces_Workspaces extends APIResource {
     /**
      * **Requires an OAuth access token with the `org:admin` scope**, from
      * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
@@ -71785,11 +74786,11 @@ class workspaces_Workspaces extends APIResource {
 
 
 
-var ServiceAccounts = /* @__PURE__ */ (() => {
+var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
     class ServiceAccounts extends APIResource {
         constructor() {
             super(...arguments);
-            this.workspaces = new workspaces_Workspaces(this._client);
+            this.workspaces = new service_accounts_workspaces_Workspaces(this._client);
         }
         /**
          * **Requires an OAuth access token with the `org:admin` scope**, from
@@ -71946,15 +74947,224 @@ var ServiceAccounts = /* @__PURE__ */ (() => {
             });
         }
     }
-    ServiceAccounts.Workspaces = workspaces_Workspaces;
+    ServiceAccounts.Workspaces = service_accounts_workspaces_Workspaces;
     return ServiceAccounts;
 })();
 //# sourceMappingURL=service-accounts.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/spend-limits/effective.mjs
+
+
+class Effective extends APIResource {
+    /**
+     * List each member's effective spend limit and period-to-date spend.
+     *
+     * Returns one row per (member, period) the member resolves a spend limit for, with
+     * the `source` scope the spend limit was inherited from. Paginates by member, so a
+     * member's periods never split across pages.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaSpendSummary of client.beta.organization.spendLimits.effective.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/spend_limits/effective?beta=true', (PageCursor), { query, ...options });
+    }
+}
+//# sourceMappingURL=effective.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/spend-limits/increase-requests.mjs
+
+
+
+class IncreaseRequests extends APIResource {
+    /**
+     * Retrieve a spend limit increase request.
+     *
+     * While `pending`, the response includes a live `spend_summary` for the requester
+     * at the request's period.
+     *
+     * @example
+     * ```ts
+     * const betaSpendLimitIncreaseRequest =
+     *   await client.beta.organization.spendLimits.increaseRequests.retrieve(
+     *     'spend_limit_increase_request_id',
+     *   );
+     * ```
+     */
+    retrieve(spendLimitIncreaseRequestID, options) {
+        return this._client.get(path_path `/v1/organizations/spend_limit_increase_requests/${spendLimitIncreaseRequestID}?beta=true`, options);
+    }
+    /**
+     * List spend limit increase requests, most recent first.
+     *
+     * Pending requests include a live `spend_summary` for the requester. Requests
+     * whose requester is no longer a member are excluded.
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const betaSpendLimitIncreaseRequest of client.beta.organization.spendLimits.increaseRequests.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/organizations/spend_limit_increase_requests?beta=true', (PageCursor), { query, ...options });
+    }
+    /**
+     * Approve a pending spend limit increase request.
+     *
+     * Writes a per-user spend limit at `amount` for the requester and transitions the
+     * request to `approved`. `period` defaults to the period the member was blocked
+     * on. Anthropic emails the requester unless `suppress_notification` is set.
+     *
+     * @example
+     * ```ts
+     * const response =
+     *   await client.beta.organization.spendLimits.increaseRequests.approve(
+     *     'spend_limit_increase_request_id',
+     *     { amount: '50000' },
+     *   );
+     * ```
+     */
+    approve(spendLimitIncreaseRequestID, body, options) {
+        return this._client.post(path_path `/v1/organizations/spend_limit_increase_requests/${spendLimitIncreaseRequestID}/approve?beta=true`, { body, ...options });
+    }
+    /**
+     * Deny a pending spend limit increase request.
+     *
+     * Idempotent on `denied`; denying an already-`approved` request returns 400.
+     * Anthropic emails the requester unless `suppress_notification` is set.
+     *
+     * @example
+     * ```ts
+     * const betaSpendLimitIncreaseRequest =
+     *   await client.beta.organization.spendLimits.increaseRequests.deny(
+     *     'spend_limit_increase_request_id',
+     *   );
+     * ```
+     */
+    deny(spendLimitIncreaseRequestID, body, options) {
+        return this._client.post(path_path `/v1/organizations/spend_limit_increase_requests/${spendLimitIncreaseRequestID}/deny?beta=true`, { body, ...options });
+    }
+}
+//# sourceMappingURL=increase-requests.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/spend-limits/spend-limits.mjs
+
+
+
+
+
+
+
+
+var SpendLimits = /* @__PURE__ */ (() => {
+    class SpendLimits extends APIResource {
+        constructor() {
+            super(...arguments);
+            this.effective = new Effective(this._client);
+            this.increaseRequests = new IncreaseRequests(this._client);
+        }
+        /**
+         * Retrieve a spend limit by ID.
+         *
+         * @example
+         * ```ts
+         * const betaSpendLimit =
+         *   await client.beta.organization.spendLimits.retrieve(
+         *     'spend_limit_id',
+         *   );
+         * ```
+         */
+        retrieve(spendLimitID, options) {
+            return this._client.get(path_path `/v1/organizations/spend_limits/${spendLimitID}?beta=true`, options);
+        }
+        /**
+         * List the organization's spend limits.
+         *
+         * A Claude Console organization's limits come in an order that is stable across
+         * pages. A Claude Enterprise organization's are grouped by scope type, in the
+         * order `organization`, `seat_tier`, `rbac_group`, `organization_service`, `user`;
+         * within a type they come in a fixed order that is not creation order.
+         *
+         * @example
+         * ```ts
+         * // Automatically fetches more pages as needed.
+         * for await (const betaSpendLimit of client.beta.organization.spendLimits.list()) {
+         *   // ...
+         * }
+         * ```
+         */
+        list(params = {}, options) {
+            const { betas, ...query } = params ?? {};
+            return this._client.getAPIList('/v1/organizations/spend_limits?beta=true', (PageCursor), {
+                query,
+                ...options,
+                headers: buildHeaders([
+                    { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
+                    options?.headers,
+                ]),
+            });
+        }
+        /**
+         * Delete a spend limit.
+         *
+         * For a Claude Enterprise organization, this deletes a per-user override, and the
+         * member falls back to any inherited spend limit at that period. Its seat-tier,
+         * group, and organization-level rows cannot be deleted via this endpoint. A Claude
+         * Console organization deletes its organization and workspace limits. Deleting
+         * them through the API is in an early access preview.
+         *
+         * @example
+         * ```ts
+         * const spendLimit =
+         *   await client.beta.organization.spendLimits.delete(
+         *     'spend_limit_id',
+         *   );
+         * ```
+         */
+        delete(spendLimitID, options) {
+            return this._client.delete(path_path `/v1/organizations/spend_limits/${spendLimitID}?beta=true`, options);
+        }
+        /**
+         * Set a spend limit.
+         *
+         * Upsert keyed on (scope, period): setting a limit that already exists overwrites
+         * it in place. A Claude Enterprise organization sets `user` limits. Its seat-tier,
+         * group, and organization-level defaults are configured in claude.ai. A Claude
+         * Console organization sets `organization` and `workspace` limits, which are
+         * monthly and always carry an amount. Setting those limits is in an early access
+         * preview. To request access, contact your Anthropic account team.
+         *
+         * @example
+         * ```ts
+         * const betaSpendLimit =
+         *   await client.beta.organization.spendLimits.set({
+         *     amount: '50000',
+         *     scope: {
+         *       type: 'user',
+         *       user_id: 'user_01WCz1FkmYMm4gnmykNKUu3Q',
+         *     },
+         *   });
+         * ```
+         */
+        set(body, options) {
+            return this._client.post('/v1/organizations/spend_limits?beta=true', { body, ...options });
+        }
+    }
+    SpendLimits.Effective = Effective;
+    SpendLimits.IncreaseRequests = IncreaseRequests;
+    return SpendLimits;
+})();
+//# sourceMappingURL=spend-limits.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/resources/beta/organization/workspaces/members.mjs
 
 
 
-class Members extends APIResource {
+class workspaces_members_Members extends APIResource {
     /**
      * Get Workspace Member
      *
@@ -72052,7 +75262,7 @@ class Members extends APIResource {
 
 
 
-class rate_limits_RateLimits extends APIResource {
+class workspaces_rate_limits_RateLimits extends APIResource {
     /**
      * List a workspace's rate limits.
      *
@@ -72085,7 +75295,7 @@ class rate_limits_RateLimits extends APIResource {
 
 
 
-class service_accounts_ServiceAccounts extends APIResource {
+class workspaces_service_accounts_ServiceAccounts extends APIResource {
     /**
      * **Requires an OAuth access token with the `org:admin` scope**, from
      * `ant auth login --scope org:admin` or a workload identity federation rule; Admin
@@ -72276,13 +75486,13 @@ class service_accounts_ServiceAccounts extends APIResource {
 
 
 
-var workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
+var organization_workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
     class Workspaces extends APIResource {
         constructor() {
             super(...arguments);
-            this.rateLimits = new rate_limits_RateLimits(this._client);
-            this.members = new Members(this._client);
-            this.serviceAccounts = new service_accounts_ServiceAccounts(this._client);
+            this.rateLimits = new workspaces_rate_limits_RateLimits(this._client);
+            this.members = new workspaces_members_Members(this._client);
+            this.serviceAccounts = new workspaces_service_accounts_ServiceAccounts(this._client);
         }
         /**
          * Create Workspace
@@ -72369,9 +75579,9 @@ var workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}/archive?beta=true`, options);
         }
     }
-    Workspaces.RateLimits = rate_limits_RateLimits;
-    Workspaces.Members = Members;
-    Workspaces.ServiceAccounts = service_accounts_ServiceAccounts;
+    Workspaces.RateLimits = workspaces_rate_limits_RateLimits;
+    Workspaces.Members = workspaces_members_Members;
+    Workspaces.ServiceAccounts = workspaces_service_accounts_ServiceAccounts;
     return Workspaces;
 })();
 //# sourceMappingURL=workspaces.mjs.map
@@ -72395,19 +75605,37 @@ var workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
 
 
 
-var Organization = /* @__PURE__ */ (() => {
+
+
+
+
+
+
+
+
+
+
+
+
+var organization_Organization = /* @__PURE__ */ (() => {
     class Organization extends APIResource {
         constructor() {
             super(...arguments);
-            this.apiKeys = new APIKeys(this._client);
-            this.externalKeys = new ExternalKeys(this._client);
-            this.federation = new Federation(this._client);
-            this.invites = new Invites(this._client);
-            this.serviceAccounts = new ServiceAccounts(this._client);
-            this.users = new Users(this._client);
-            this.workspaces = new workspaces_workspaces_Workspaces(this._client);
-            this.rateLimits = new RateLimits(this._client);
-            this.complianceSettings = new ComplianceSettings(this._client);
+            this.apiKeys = new api_keys_APIKeys(this._client);
+            this.externalKeys = new external_keys_ExternalKeys(this._client);
+            this.federation = new federation_Federation(this._client);
+            this.invites = new invites_Invites(this._client);
+            this.serviceAccounts = new service_accounts_service_accounts_ServiceAccounts(this._client);
+            this.users = new users_Users(this._client);
+            this.workspaces = new organization_workspaces_workspaces_Workspaces(this._client);
+            this.rateLimits = new organization_rate_limits_RateLimits(this._client);
+            this.complianceSettings = new compliance_settings_ComplianceSettings(this._client);
+            this.analytics = new Analytics(this._client);
+            this.spendLimits = new SpendLimits(this._client);
+            this.rbacGroups = new RBACGroups(this._client);
+            this.rbacRoles = new RBACRoles(this._client);
+            this.plugins = new plugins_Plugins(this._client);
+            this.pluginMarketplaces = new PluginMarketplaces(this._client);
         }
         /**
          * Retrieve information about the organization associated with the authenticated
@@ -72423,15 +75651,21 @@ var Organization = /* @__PURE__ */ (() => {
             return this._client.get('/v1/organizations/me?beta=true', options);
         }
     }
-    Organization.APIKeys = APIKeys;
-    Organization.ExternalKeys = ExternalKeys;
-    Organization.Federation = Federation;
-    Organization.Invites = Invites;
-    Organization.ServiceAccounts = ServiceAccounts;
-    Organization.Users = Users;
-    Organization.Workspaces = workspaces_workspaces_Workspaces;
-    Organization.RateLimits = RateLimits;
-    Organization.ComplianceSettings = ComplianceSettings;
+    Organization.APIKeys = api_keys_APIKeys;
+    Organization.ExternalKeys = external_keys_ExternalKeys;
+    Organization.Federation = federation_Federation;
+    Organization.Invites = invites_Invites;
+    Organization.ServiceAccounts = service_accounts_service_accounts_ServiceAccounts;
+    Organization.Users = users_Users;
+    Organization.Workspaces = organization_workspaces_workspaces_Workspaces;
+    Organization.RateLimits = organization_rate_limits_RateLimits;
+    Organization.ComplianceSettings = compliance_settings_ComplianceSettings;
+    Organization.Analytics = Analytics;
+    Organization.SpendLimits = SpendLimits;
+    Organization.RBACGroups = RBACGroups;
+    Organization.RBACRoles = RBACRoles;
+    Organization.Plugins = plugins_Plugins;
+    Organization.PluginMarketplaces = PluginMarketplaces;
     return Organization;
 })();
 //# sourceMappingURL=organization.mjs.map
@@ -73183,7 +76417,7 @@ class skills_versions_Versions extends APIResource {
 
 
 
-var skills_Skills = /* @__PURE__ */ (() => {
+var skills_skills_Skills = /* @__PURE__ */ (() => {
     class Skills extends APIResource {
         constructor() {
             super(...arguments);
@@ -74030,12 +77264,12 @@ var Beta = /* @__PURE__ */ (() => {
             this.vaults = new Vaults(this._client);
             this.memoryStores = new MemoryStores(this._client);
             this.files = new files_Files(this._client);
-            this.skills = new skills_Skills(this._client);
+            this.skills = new skills_skills_Skills(this._client);
             this.webhooks = new Webhooks(this._client);
             this.userProfiles = new UserProfiles(this._client);
             this.dreams = new Dreams(this._client);
             this.tunnels = new Tunnels(this._client);
-            this.organization = new Organization(this._client);
+            this.organization = new organization_Organization(this._client);
         }
     }
     Beta.Models = models_Models;
@@ -74048,17 +77282,18 @@ var Beta = /* @__PURE__ */ (() => {
     Beta.Vaults = Vaults;
     Beta.MemoryStores = MemoryStores;
     Beta.Files = files_Files;
-    Beta.Skills = skills_Skills;
+    Beta.Skills = skills_skills_Skills;
     Beta.Webhooks = Webhooks;
     Beta.UserProfiles = UserProfiles;
     Beta.Dreams = Dreams;
     Beta.Tunnels = Tunnels;
-    Beta.Organization = Organization;
+    Beta.Organization = organization_Organization;
     return Beta;
 })();
 //# sourceMappingURL=beta.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/client.mjs
 var _BaseAnthropic_instances, _a, _BaseAnthropic_encoder, _BaseAnthropic_baseURLOverridden;
+
 
 
 
@@ -75002,6 +78237,7 @@ var Anthropic = /* @__PURE__ */ (() => {
             this.models = new Models(this);
             this.files = new Files(this);
             this.skills = new Skills(this);
+            this.organization = new Organization(this);
             this.beta = new Beta(this);
         }
     }
@@ -75010,6 +78246,7 @@ var Anthropic = /* @__PURE__ */ (() => {
     Anthropic.Models = Models;
     Anthropic.Files = Files;
     Anthropic.Skills = Skills;
+    Anthropic.Organization = Organization;
     Anthropic.Beta = Beta;
     return Anthropic;
 })();
@@ -82786,7 +86023,7 @@ class Chats {
      * ```
      */
     create(params) {
-        return new Chat(this.apiClient, this.modelsModule, params.model, params.config, 
+        return new node_Chat(this.apiClient, this.modelsModule, params.model, params.config, 
         // Deep copy the history to avoid mutating the history outside of the
         // chat session.
         structuredClone(params.history));
@@ -82799,7 +86036,7 @@ class Chats {
  * @remarks
  * The session maintains all the turns between user and model.
  */
-class Chat {
+class node_Chat {
     constructor(apiClient, modelsModule, model, config = {}, history = []) {
         this.apiClient = apiClient;
         this.modelsModule = modelsModule;
@@ -103581,7 +106818,7 @@ async function shims_CancelReadableStream(stream) {
 //# sourceMappingURL=shims.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/utils/bytes.mjs
 /** Copies byte arrays into one contiguous `Uint8Array` while preserving their order. */
-function concatBytes(buffers) {
+function bytes_concatBytes(buffers) {
     let length = 0;
     for (const buffer of buffers) {
         length += buffer.length;
@@ -104200,6 +107437,12 @@ class streaming_Stream {
     [(streaming_Stream_client = new WeakMap(), _Stream_isTeeBranch = new WeakMap(), _Stream_instances = new WeakSet(), Symbol.asyncIterator)]() {
         return this.iterator();
     }
+    /** Beta-only iterator decoration for Agents helpers, preserving custom stream identity.
+     * @internal
+     */
+    __betaTransformIterator(transform) {
+        this.iterator = transform(this.iterator.bind(this));
+    }
     /**
      * Splits the stream into two streams which can be
      * independently read from at different speeds.
@@ -104684,7 +107927,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.25.0'; // x-release-please-version
+const openai_version_VERSION = '7.27.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -113530,7 +116773,7 @@ function invites_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class invites_Invites extends resource_APIResource {
+class organization_invites_Invites extends resource_APIResource {
     /**
      * Create an invite for a user to the organization. The invite must be accepted by
      * the user before they have access to the organization.
@@ -114363,7 +117606,7 @@ function users_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class users_Users extends resource_APIResource {
+class groups_users_Users extends resource_APIResource {
     /**
      * Adds a user to a group.
      *
@@ -114503,7 +117746,7 @@ function groups_normalizeRequestOptionsForQuery(value, queryKeys, options) {
 class Groups extends resource_APIResource {
     constructor() {
         super(...arguments);
-        this.users = new users_Users(this._client);
+        this.users = new groups_users_Users(this._client);
         this.roles = new roles_Roles(this._client);
     }
     /**
@@ -114588,7 +117831,7 @@ class Groups extends resource_APIResource {
         })));
     }
 }
-Groups.Users = users_Users;
+Groups.Users = groups_users_Users;
 Groups.Roles = roles_Roles;
 //# sourceMappingURL=groups.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/projects/api-keys.mjs
@@ -114651,7 +117894,7 @@ function api_keys_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class api_keys_APIKeys extends resource_APIResource {
+class projects_api_keys_APIKeys extends resource_APIResource {
     /**
      * Retrieves an API key in the project.
      *
@@ -115795,7 +119038,7 @@ function service_accounts_normalizeRequestOptionsForQuery(value, queryKeys, opti
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class service_accounts_service_accounts_ServiceAccounts extends resource_APIResource {
+class projects_service_accounts_service_accounts_ServiceAccounts extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.apiKeys = new service_accounts_api_keys_APIKeys(this._client);
@@ -115895,7 +119138,7 @@ class service_accounts_service_accounts_ServiceAccounts extends resource_APIReso
         })));
     }
 }
-service_accounts_service_accounts_ServiceAccounts.APIKeys = service_accounts_api_keys_APIKeys;
+projects_service_accounts_service_accounts_ServiceAccounts.APIKeys = service_accounts_api_keys_APIKeys;
 //# sourceMappingURL=service-accounts.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/projects/users/roles.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -116236,12 +119479,12 @@ function projects_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class Projects extends resource_APIResource {
+class projects_Projects extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.users = new users_users_Users(this._client);
-        this.serviceAccounts = new service_accounts_service_accounts_ServiceAccounts(this._client);
-        this.apiKeys = new api_keys_APIKeys(this._client);
+        this.serviceAccounts = new projects_service_accounts_service_accounts_ServiceAccounts(this._client);
+        this.apiKeys = new projects_api_keys_APIKeys(this._client);
         this.rateLimits = new projects_rate_limits_RateLimits(this._client);
         this.modelPermissions = new ModelPermissions(this._client);
         this.hostedToolPermissions = new HostedToolPermissions(this._client);
@@ -116338,18 +119581,18 @@ class Projects extends resource_APIResource {
         })));
     }
 }
-Projects.Users = users_users_Users;
-Projects.ServiceAccounts = service_accounts_service_accounts_ServiceAccounts;
-Projects.APIKeys = api_keys_APIKeys;
-Projects.RateLimits = projects_rate_limits_RateLimits;
-Projects.ModelPermissions = ModelPermissions;
-Projects.HostedToolPermissions = HostedToolPermissions;
-Projects.Groups = groups_Groups;
-Projects.Roles = projects_roles_Roles;
-Projects.DataRetention = data_retention_DataRetention;
-Projects.SpendLimit = spend_limit_SpendLimit;
-Projects.SpendAlerts = spend_alerts_SpendAlerts;
-Projects.Certificates = projects_certificates_Certificates;
+projects_Projects.Users = users_users_Users;
+projects_Projects.ServiceAccounts = projects_service_accounts_service_accounts_ServiceAccounts;
+projects_Projects.APIKeys = projects_api_keys_APIKeys;
+projects_Projects.RateLimits = projects_rate_limits_RateLimits;
+projects_Projects.ModelPermissions = ModelPermissions;
+projects_Projects.HostedToolPermissions = HostedToolPermissions;
+projects_Projects.Groups = groups_Groups;
+projects_Projects.Roles = projects_roles_Roles;
+projects_Projects.DataRetention = data_retention_DataRetention;
+projects_Projects.SpendLimit = spend_limit_SpendLimit;
+projects_Projects.SpendAlerts = spend_alerts_SpendAlerts;
+projects_Projects.Certificates = projects_certificates_Certificates;
 //# sourceMappingURL=projects.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/users/roles.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -116643,13 +119886,13 @@ organization_users_users_Users.Roles = organization_users_roles_Roles;
 
 
 
-class organization_Organization extends resource_APIResource {
+class organization_organization_Organization extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.auditLogs = new AuditLogs(this._client);
         this.adminAPIKeys = new AdminAPIKeys(this._client);
         this.usage = new Usage(this._client);
-        this.invites = new invites_Invites(this._client);
+        this.invites = new organization_invites_Invites(this._client);
         this.users = new organization_users_users_Users(this._client);
         this.groups = new Groups(this._client);
         this.roles = new Roles(this._client);
@@ -116658,22 +119901,22 @@ class organization_Organization extends resource_APIResource {
         this.spendLimit = new SpendLimit(this._client);
         this.spendAlerts = new SpendAlerts(this._client);
         this.certificates = new certificates_Certificates(this._client);
-        this.projects = new Projects(this._client);
+        this.projects = new projects_Projects(this._client);
     }
 }
-organization_Organization.AuditLogs = AuditLogs;
-organization_Organization.AdminAPIKeys = AdminAPIKeys;
-organization_Organization.Usage = Usage;
-organization_Organization.Invites = invites_Invites;
-organization_Organization.Users = organization_users_users_Users;
-organization_Organization.Groups = Groups;
-organization_Organization.Roles = Roles;
-organization_Organization.DataRetention = DataRetention;
-organization_Organization.ExternalStorage = ExternalStorage;
-organization_Organization.SpendLimit = SpendLimit;
-organization_Organization.SpendAlerts = SpendAlerts;
-organization_Organization.Certificates = certificates_Certificates;
-organization_Organization.Projects = Projects;
+organization_organization_Organization.AuditLogs = AuditLogs;
+organization_organization_Organization.AdminAPIKeys = AdminAPIKeys;
+organization_organization_Organization.Usage = Usage;
+organization_organization_Organization.Invites = organization_invites_Invites;
+organization_organization_Organization.Users = organization_users_users_Users;
+organization_organization_Organization.Groups = Groups;
+organization_organization_Organization.Roles = Roles;
+organization_organization_Organization.DataRetention = DataRetention;
+organization_organization_Organization.ExternalStorage = ExternalStorage;
+organization_organization_Organization.SpendLimit = SpendLimit;
+organization_organization_Organization.SpendAlerts = SpendAlerts;
+organization_organization_Organization.Certificates = certificates_Certificates;
+organization_organization_Organization.Projects = projects_Projects;
 //# sourceMappingURL=organization.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/admin.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -116683,10 +119926,10 @@ organization_Organization.Projects = Projects;
 class Admin extends resource_APIResource {
     constructor() {
         super(...arguments);
-        this.organization = new organization_Organization(this._client);
+        this.organization = new organization_organization_Organization(this._client);
     }
 }
-Admin.Organization = organization_Organization;
+Admin.Organization = organization_organization_Organization;
 //# sourceMappingURL=admin.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/audio/speech.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -117097,8 +120340,96 @@ class Realtime extends resource_APIResource {
 Realtime.Sessions = sessions_Sessions;
 Realtime.TranscriptionSessions = TranscriptionSessions;
 //# sourceMappingURL=realtime.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/files.mjs
+
+
+/** Beta: uploaded file IDs remain available after partial preparation or staging failure. */
+class AgentFileUploadError extends error_OpenAIError {
+    constructor(uploadedFiles, cause) {
+        super('Agent file preparation or staging failed; uploaded files remain caller-owned.');
+        this.name = 'AgentFileUploadError';
+        this.uploadedFiles = uploadedFiles;
+        Object.defineProperty(this, 'cause', { value: cause, configurable: true });
+    }
+}
+/** @internal */
+function validateAgentFilePath(path) {
+    const parts = path.split('/');
+    const root = parts[2] ?? '';
+    if (!path.startsWith('/workspace/') ||
+        path.includes('\\') ||
+        path.includes('\0') ||
+        parts.slice(1).some((part) => part === '' || part === '.' || part === '..') ||
+        root === '.codex' ||
+        root === '.managed-agents' ||
+        root.startsWith('.managed-agents-') ||
+        path === '/workspace/outputs') {
+        throw new error_OpenAIError('Agent files require a non-reserved absolute file path inside /workspace');
+    }
+}
+function preflight(files, options) {
+    const entries = Object.entries(files);
+    const headers = headers_buildHeaders([options.headers]);
+    if (entries.length > 1 &&
+        (headers.values.has('idempotency-key') ||
+            (!headers.nulls.has('idempotency-key') && options?.idempotencyKey !== undefined))) {
+        throw new error_OpenAIError('Do not reuse an Idempotency-Key across multiple file uploads');
+    }
+    const paths = new Set(entries.map(([path]) => path));
+    for (const [path] of entries) {
+        validateAgentFilePath(path);
+        for (let slash = path.lastIndexOf('/'); slash > 0; slash = path.lastIndexOf('/', slash - 1)) {
+            if (paths.has(path.slice(0, slash))) {
+                throw new error_OpenAIError('Agent file destinations conflict');
+            }
+        }
+    }
+    return entries;
+}
+/** @internal */
+async function prepareAgentFiles(client, files, options) {
+    const requestOptions = { ...options };
+    // Internal SDK read: capture effective headers once, including defaults and explicit omissions.
+    const headers = headers_buildHeaders([client['_options'].defaultHeaders, requestOptions.headers]);
+    requestOptions.headers = headers;
+    const entries = preflight(files, requestOptions);
+    if (entries.length > 1) {
+        // Keep a later mutation of client defaults from adding one key to this entire batch.
+        headers.nulls.add('idempotency-key');
+    }
+    const prepared = { files: [], uploadedFiles: [] };
+    try {
+        for (const [path, file] of entries) {
+            // oxlint-disable-next-line no-await-in-loop -- Stop on the first failure and expose precisely the uploads already created.
+            const uploaded = await client.files.create({ file, purpose: 'user_data' }, requestOptions);
+            prepared.uploadedFiles.push(uploaded);
+            prepared.files.push({ type: 'file_id', file_id: uploaded.id, path });
+        }
+        return prepared;
+    }
+    catch (error) {
+        throw new AgentFileUploadError(prepared.uploadedFiles, error);
+    }
+}
+/** @internal */
+async function uploadAgentFile(client, resource, environmentID, params, options) {
+    const prepared = await prepareAgentFiles(client, { [params.path]: params.file }, options);
+    const [reference] = prepared.files;
+    const [uploadedFile] = prepared.uploadedFiles;
+    if (!reference || !uploadedFile) {
+        throw new error_OpenAIError('Missing prepared agent file');
+    }
+    try {
+        return { uploadedFile, environmentFile: await resource.create(environmentID, reference, options) };
+    }
+    catch (error) {
+        throw new AgentFileUploadError(prepared.uploadedFiles, error);
+    }
+}
+//# sourceMappingURL=files.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/environments/files.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
 
 
 
@@ -117107,6 +120438,14 @@ function files_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
 class environments_files_Files extends resource_APIResource {
+    /** Beta: prepare initial hosted file references; uploaded Files API objects remain caller-owned. */
+    prepare(files, options) {
+        return prepareAgentFiles(this._client, files, options);
+    }
+    /** Beta: upload one local file and stage its reference in a live environment. */
+    upload(environmentID, params, options) {
+        return uploadAgentFile(this._client, this, environmentID, params, options);
+    }
     /**
      * Copies inline bytes or a Files API file into a connected execution environment.
      * See
@@ -117417,14 +120756,400 @@ class TurnState {
 }
 _TurnState_turnID = new WeakMap(), _TurnState_turnEnded = new WeakMap(), _TurnState_eventIDs = new WeakMap(), _TurnState_calls = new WeakMap();
 //# sourceMappingURL=turn-state.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/lib/agents/agent-session-stream.mjs
-var _AgentSessionStream_instances, _AgentSessionStream_consumed, _AgentSessionStream_stream, _AgentSessionStream_response, _AgentSessionStream_reading, _AgentSessionStream_sessions, _AgentSessionStream_sessionID, _AgentSessionStream_input, _AgentSessionStream_handlers, _AgentSessionStream_inputKey, _AgentSessionStream_options, _AgentSessionStream_iterate, _AgentSessionStream_result, _AgentSessionStream_checkAbort, _AgentSessionStream_abortError, _AgentSessionStream_wait, _AgentSessionStream_submit;
+;// CONCATENATED MODULE: ./node_modules/openai/lib/agents/output-text.mjs
+/** Joins output_text blocks in content order, without filtering phase, fetching, or mutating the message. */
+function outputText(message) {
+    return message.content.map((block) => (block.type === 'output_text' ? block.text : '')).join('');
+}
+//# sourceMappingURL=output-text.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-turn-result.mjs
+
+/** Beta: the completed final assistant messages from one hosted root turn. */
+class AgentTurnResult {
+    constructor(turn, messages) {
+        this.turn = turn;
+        this.messages = messages;
+    }
+    get session_id() {
+        return this.turn.session_id;
+    }
+    get turn_id() {
+        return this.turn.id;
+    }
+    get output_text() {
+        return this.messages.map(outputText).join('');
+    }
+}
+//# sourceMappingURL=agent-turn-result.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/parsed-agent-turn-result.mjs
+
+/** Beta: a completed hosted turn whose output passed the local parser. */
+class ParsedAgentTurnResult extends AgentTurnResult {
+    constructor(result, parsed) {
+        super(result.turn, result.messages);
+        this.raw_result = result;
+        this.output_parsed = parsed;
+    }
+}
+//# sourceMappingURL=parsed-agent-turn-result.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/output-parse-error.mjs
+var _AgentOutputParseError_rawResult;
+
+
+/** Beta: hosted execution completed, but local output parsing failed. */
+class AgentOutputParseError extends error_OpenAIError {
+    constructor(result) {
+        super('The completed agent output could not be parsed');
+        this.name = 'AgentOutputParseError';
+        _AgentOutputParseError_rawResult.set(this, void 0);
+        __classPrivateFieldSet(this, _AgentOutputParseError_rawResult, result, "f");
+    }
+    /** Inspect the completed output explicitly; ordinary error logging omits it. */
+    get raw_result() {
+        return __classPrivateFieldGet(this, _AgentOutputParseError_rawResult, "f");
+    }
+}
+_AgentOutputParseError_rawResult = new WeakMap();
+//# sourceMappingURL=output-parse-error.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/parse-result.mjs
+
+
+
+/** @internal */
+function parseAgentResult(result, format) {
+    try {
+        if (!format) {
+            // SAFETY: Absent formats use the default never/raw overload.
+            return result;
+        }
+        let first;
+        for (const message of result.messages) {
+            for (const content of message.content) {
+                if (content.type === 'output_text') {
+                    const value = format.$parseRaw(content.text);
+                    first ?? (first = { value });
+                }
+            }
+        }
+        if (!first) {
+            throw new AgentOutputParseError(result);
+        }
+        // SAFETY: Callers preserve the format's inferred T.
+        return new ParsedAgentTurnResult(result, first.value);
+    }
+    catch {
+        throw new AgentOutputParseError(result);
+    }
+}
+// Inspect only JSON-visible data fields; leave getters and inherited values to normal serialization.
+function ownJSONValue(object, key) {
+    const descriptor = object && Object.getOwnPropertyDescriptor(object, key);
+    // SAFETY: The own data descriptor corresponds to the requested property in T.
+    return descriptor?.enumerable && 'value' in descriptor ? descriptor.value : undefined;
+}
+/** @internal */
+function agentFormatParser(format) {
+    if (!format) {
+        return undefined;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(format, '$parseRaw');
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- An own parser data property is the explicit opt-in marker.
+    if (!descriptor || !('value' in descriptor) || typeof descriptor.value !== 'function') {
+        return undefined;
+    }
+    // SAFETY: Inspect the schema data descriptor without evaluating a caller getter; validate its discriminator below.
+    const schema = ownJSONValue(format, 'schema');
+    if (ownJSONValue(format, 'type') !== 'json_schema' || !schema) {
+        throw new error_OpenAIError('Typed agent formats require own enumerable type and schema data properties');
+    }
+    // SAFETY: The own descriptor was checked for a callable parser; retain its receiver and never reread the property.
+    const parse = descriptor.value;
+    return { type: 'json_schema', schema, $parseRaw: (text) => parse.call(format, text) };
+}
+// Materialize JSON-visible envelope getters once without evaluating unrelated properties.
+function snapshotJSONProperty(object, key, capture = (value) => value) {
+    const descriptor = Object.getOwnPropertyDescriptor(object, key);
+    if (!descriptor?.enumerable) {
+        return object;
+    }
+    const value = capture(object[key]);
+    if ('value' in descriptor && value === descriptor.value) {
+        return object;
+    }
+    // SAFETY: Preserve the original properties/prototype, replacing only this captured property's value.
+    return Object.create(Object.getPrototypeOf(object), {
+        ...Object.getOwnPropertyDescriptors(object),
+        [key]: { value, enumerable: true, configurable: descriptor.configurable, writable: true },
+    });
+}
+/** @internal */
+function captureAgentOutput(input, options) {
+    const body = snapshotJSONProperty(input, 'agent', (agent) => agent
+        ? snapshotJSONProperty(agent, 'text', (text) => (text ? snapshotJSONProperty(text, 'format') : text))
+        : agent);
+    const agent = ownJSONValue(body, 'agent');
+    const text = ownJSONValue(agent, 'text');
+    const format = agentFormatParser(ownJSONValue(text, 'format'));
+    if (!format) {
+        return { body, options };
+    }
+    const schema = structuredClone(format.schema);
+    for (const envelope of [body, agent, text]) {
+        if (envelope && 'toJSON' in envelope) {
+            throw new error_OpenAIError('Typed agent requests cannot customize body, agent, or text serialization');
+        }
+    }
+    // Snapshot options once, matching the own enumerable fields native request spreading uses.
+    const capturedOptions = { ...options };
+    if (ownJSONValue(capturedOptions, 'body') !== undefined) {
+        throw new error_OpenAIError('Typed agent requests cannot override the body in request options');
+    }
+    delete capturedOptions.body;
+    return {
+        options: capturedOptions,
+        body: {
+            ...body,
+            agent: {
+                ...agent,
+                text: { ...text, format: { type: 'json_schema', schema } },
+            },
+        },
+        format,
+    };
+}
+/** @internal */
+async function parseAgentResultPromise(result, format) {
+    return parseAgentResult(await result, format);
+}
+//# sourceMappingURL=parse-result.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-turn-result-error.mjs
+
+/** Beta: final collection failed; partial state is evidence, not a successful result. */
+class AgentTurnResultError extends error_OpenAIError {
+    constructor(reason, session_id, turn, messages, required_actions = [], cause) {
+        super(`Could not collect the agent turn result: ${reason}`);
+        this.name = 'AgentTurnResultError';
+        this.reason = reason;
+        this.session_id = session_id;
+        this.turn = turn;
+        this.messages = messages;
+        this.required_actions = required_actions;
+        this.cause = cause;
+    }
+    get turn_id() {
+        return this.turn?.id;
+    }
+}
+//# sourceMappingURL=agent-turn-result-error.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-turn-result-collector.mjs
+var _AgentTurnResultCollector_instances, _AgentTurnResultCollector_sessionID, _AgentTurnResultCollector_turn, _AgentTurnResultCollector_messages, _AgentTurnResultCollector_requiredActions, _AgentTurnResultCollector_sessionFailed, _AgentTurnResultCollector_terminal, _AgentTurnResultCollector_idle, _AgentTurnResultCollector_acceptTurn, _AgentTurnResultCollector_acceptOutput, _AgentTurnResultCollector_finalMessages;
+
+
+
+/** Accumulates completed items independently of transport and tool execution.
+ * @internal
+ */
+class AgentTurnResultCollector {
+    constructor(sessionID) {
+        _AgentTurnResultCollector_instances.add(this);
+        _AgentTurnResultCollector_sessionID.set(this, void 0);
+        _AgentTurnResultCollector_turn.set(this, void 0);
+        _AgentTurnResultCollector_messages.set(this, new Map());
+        _AgentTurnResultCollector_requiredActions.set(this, []);
+        _AgentTurnResultCollector_sessionFailed.set(this, false);
+        _AgentTurnResultCollector_terminal.set(this, false);
+        _AgentTurnResultCollector_idle.set(this, false);
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionID, sessionID, "f");
+    }
+    accept(event) {
+        if (this.ready) {
+            return;
+        }
+        if ('session' in event) {
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionID, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionID, "f") ?? event.session.id, "f");
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_requiredActions, structuredClone(event.session.required_actions ?? []), "f");
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionFailed, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionFailed, "f") || event.type === 'agent.session.failed', "f");
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_idle, __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f") || event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f"), "f");
+        }
+        if (event.type === 'agent.session.turn.created' && event.turn.subagent_id === null && !__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")) {
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_turn, structuredClone(event.turn), "f");
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionID, event.turn.session_id, "f");
+        }
+        let turnID = 'turn_id' in event ? event.turn_id : undefined;
+        if ('item' in event) {
+            turnID = event.item.turn_id;
+        }
+        if (!__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f") || turnID !== __classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f").id) {
+            return;
+        }
+        __classPrivateFieldGet(this, _AgentTurnResultCollector_instances, "m", _AgentTurnResultCollector_acceptTurn).call(this, event);
+    }
+    error(reason, cause) {
+        return new AgentTurnResultError(reason, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionID, "f"), __classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f"), __classPrivateFieldGet(this, _AgentTurnResultCollector_instances, "m", _AgentTurnResultCollector_finalMessages).call(this), __classPrivateFieldGet(this, _AgentTurnResultCollector_requiredActions, "f"), cause);
+    }
+    checkAction(canHandle) {
+        if (__classPrivateFieldGet(this, _AgentTurnResultCollector_sessionFailed, "f") || __classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")?.status === 'failed') {
+            throw this.error('failed');
+        }
+        if (__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")?.status === 'cancelled') {
+            throw this.error('cancelled');
+        }
+        if (__classPrivateFieldGet(this, _AgentTurnResultCollector_requiredActions, "f").some((action) => action.type !== 'function_call' || !canHandle(action.name))) {
+            throw this.error('requires_action');
+        }
+    }
+    get ready() {
+        return __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") && __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f");
+    }
+    release() {
+        __classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").clear();
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_requiredActions, [], "f");
+    }
+    finish() {
+        this.checkAction(() => this.ready);
+        if (!__classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") || __classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")?.status !== 'completed' || !__classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f")) {
+            throw this.error('observation');
+        }
+        return new AgentTurnResult(__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f"), __classPrivateFieldGet(this, _AgentTurnResultCollector_instances, "m", _AgentTurnResultCollector_finalMessages).call(this));
+    }
+}
+_AgentTurnResultCollector_sessionID = new WeakMap(), _AgentTurnResultCollector_turn = new WeakMap(), _AgentTurnResultCollector_messages = new WeakMap(), _AgentTurnResultCollector_requiredActions = new WeakMap(), _AgentTurnResultCollector_sessionFailed = new WeakMap(), _AgentTurnResultCollector_terminal = new WeakMap(), _AgentTurnResultCollector_idle = new WeakMap(), _AgentTurnResultCollector_instances = new WeakSet(), _AgentTurnResultCollector_acceptTurn = function _AgentTurnResultCollector_acceptTurn(event) {
+    if ('turn' in event) {
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_turn, structuredClone(event.turn), "f");
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_terminal, __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") || (event.type === 'agent.session.turn.completed' ||
+            event.type === 'agent.session.turn.failed' ||
+            event.type === 'agent.session.turn.cancelled'), "f");
+    }
+    __classPrivateFieldGet(this, _AgentTurnResultCollector_instances, "m", _AgentTurnResultCollector_acceptOutput).call(this, event);
+}, _AgentTurnResultCollector_acceptOutput = function _AgentTurnResultCollector_acceptOutput(event) {
+    if (event.type !== 'agent.session.turn.item.done' ||
+        event.item.type !== 'message' ||
+        event.item.status !== 'completed' ||
+        event.item.phase === 'commentary' ||
+        __classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").has(event.item.id)) {
+        return;
+    }
+    __classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").set(event.item.id, { index: event.output_index, message: structuredClone(event.item) });
+}, _AgentTurnResultCollector_finalMessages = function _AgentTurnResultCollector_finalMessages() {
+    return ([...__classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").values()]
+        // oxlint-disable-next-line unicorn/no-array-sort -- Sort a fresh array; ES2020 declarations do not include toSorted.
+        .sort((a, b) => a.index - b.index)
+        .map(({ message }) => message));
+};
+//# sourceMappingURL=agent-turn-result-collector.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/result-collection.mjs
+var _ResultCollection_instances, _ResultCollection_iterator, _ResultCollection_ended, _ResultCollection_enabled, _ResultCollection_uncollectedEvents, _ResultCollection_error, _ResultCollection_result, _ResultCollection_source, _ResultCollection_signal, _ResultCollection_canHandle, _ResultCollection_observe, _ResultCollection_collect;
 
 
 
 
+/** Shares collection between a raw creation stream and the follow-up helper.
+ * @internal
+ */
+class ResultCollection {
+    constructor(source, canHandle = () => false, sessionID, signal) {
+        _ResultCollection_instances.add(this);
+        _ResultCollection_iterator.set(this, void 0);
+        _ResultCollection_ended.set(this, false);
+        _ResultCollection_enabled.set(this, false);
+        _ResultCollection_uncollectedEvents.set(this, false);
+        _ResultCollection_error.set(this, void 0);
+        _ResultCollection_result.set(this, void 0);
+        _ResultCollection_source.set(this, void 0);
+        _ResultCollection_signal.set(this, void 0);
+        _ResultCollection_canHandle.set(this, void 0);
+        __classPrivateFieldSet(this, _ResultCollection_source, source, "f");
+        __classPrivateFieldSet(this, _ResultCollection_signal, signal, "f");
+        __classPrivateFieldSet(this, _ResultCollection_canHandle, canHandle, "f");
+        this.collector = new AgentTurnResultCollector(sessionID);
+    }
+    enable() {
+        if (!__classPrivateFieldGet(this, _ResultCollection_enabled, "f") && __classPrivateFieldGet(this, _ResultCollection_uncollectedEvents, "f")) {
+            throw new error_OpenAIError('Call withResultCollection() before consuming events, or call finalResult() on a fresh stream.');
+        }
+        __classPrivateFieldSet(this, _ResultCollection_enabled, true, "f");
+    }
+    iterate() {
+        if (__classPrivateFieldGet(this, _ResultCollection_iterator, "f")) {
+            throw new error_OpenAIError('An agent result stream can only be consumed once');
+        }
+        return (__classPrivateFieldSet(this, _ResultCollection_iterator, __classPrivateFieldGet(this, _ResultCollection_instances, "m", _ResultCollection_observe).call(this), "f"));
+    }
+    finalResult() {
+        return (__classPrivateFieldSet(this, _ResultCollection_result, __classPrivateFieldGet(this, _ResultCollection_result, "f") ?? __classPrivateFieldGet(this, _ResultCollection_instances, "m", _ResultCollection_collect).call(this), "f"));
+    }
+}
+_ResultCollection_iterator = new WeakMap(), _ResultCollection_ended = new WeakMap(), _ResultCollection_enabled = new WeakMap(), _ResultCollection_uncollectedEvents = new WeakMap(), _ResultCollection_error = new WeakMap(), _ResultCollection_result = new WeakMap(), _ResultCollection_source = new WeakMap(), _ResultCollection_signal = new WeakMap(), _ResultCollection_canHandle = new WeakMap(), _ResultCollection_instances = new WeakSet(), _ResultCollection_observe = async function* _ResultCollection_observe() {
+    const iterator = __classPrivateFieldGet(this, _ResultCollection_source, "f").call(this);
+    let done = false;
+    try {
+        while (true) {
+            // oxlint-disable-next-line no-await-in-loop -- Pull the single-use stream sequentially.
+            const next = await iterator.next();
+            if (next.done) {
+                done = true;
+                return;
+            }
+            if (__classPrivateFieldGet(this, _ResultCollection_enabled, "f")) {
+                this.collector.accept(next.value);
+            }
+            else {
+                __classPrivateFieldSet(this, _ResultCollection_uncollectedEvents, true, "f");
+            }
+            yield next.value;
+        }
+    }
+    catch (error) {
+        if (__classPrivateFieldGet(this, _ResultCollection_enabled, "f")) {
+            __classPrivateFieldSet(this, _ResultCollection_error, error, "f");
+        }
+        throw error;
+    }
+    finally {
+        __classPrivateFieldSet(this, _ResultCollection_ended, true, "f");
+        if (!done) {
+            await iterator.return?.();
+        }
+    }
+}, _ResultCollection_collect = async function _ResultCollection_collect() {
+    this.enable();
+    try {
+        const iterator = __classPrivateFieldGet(this, _ResultCollection_iterator, "f") ?? this.iterate();
+        while (!__classPrivateFieldGet(this, _ResultCollection_ended, "f") && !this.collector.ready) {
+            this.collector.checkAction(__classPrivateFieldGet(this, _ResultCollection_canHandle, "f"));
+            // oxlint-disable-next-line no-await-in-loop -- Each event can dispatch tools before the next pull.
+            const next = await iterator.next();
+            if (next.done) {
+                break;
+            }
+        }
+        if (__classPrivateFieldGet(this, _ResultCollection_error, "f") !== undefined && !this.collector.ready) {
+            throw __classPrivateFieldGet(this, _ResultCollection_error, "f");
+        }
+        if (!this.collector.ready && __classPrivateFieldGet(this, _ResultCollection_signal, "f")?.aborted) {
+            throw this.collector.error('observation', __classPrivateFieldGet(this, _ResultCollection_signal, "f").reason);
+        }
+        return this.collector.finish();
+    }
+    catch (error) {
+        throw error instanceof AgentTurnResultError ? error : this.collector.error('observation', error);
+    }
+    finally {
+        try {
+            await __classPrivateFieldGet(this, _ResultCollection_iterator, "f")?.return();
+        }
+        finally {
+            this.collector.release();
+        }
+    }
+};
+//# sourceMappingURL=result-collection.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/tool-output.mjs
 
-
+/**
+ * Recognizes supported content blocks without confusing JSON business data with content.
+ * @internal
+ */
 function isInputContent(value) {
     if (!isObj(value)) {
         return false;
@@ -117442,6 +121167,18 @@ function isInputContent(value) {
     }
     return values_hasOwn(content, 'type') && values_hasOwn(content, field) && typeof content[field] === 'string';
 }
+//# sourceMappingURL=tool-output.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/agents/agent-session-stream.mjs
+var _AgentSessionStream_instances, _AgentSessionStream_consumed, _AgentSessionStream_format, _AgentSessionStream_parsedResult, _AgentSessionStream_collection, _AgentSessionStream_stream, _AgentSessionStream_response, _AgentSessionStream_reading, _AgentSessionStream_sessions, _AgentSessionStream_sessionID, _AgentSessionStream_input, _AgentSessionStream_handlers, _AgentSessionStream_inputKey, _AgentSessionStream_options, _AgentSessionStream_iterate, _AgentSessionStream_result, _AgentSessionStream_checkAbort, _AgentSessionStream_abortError, _AgentSessionStream_wait, _AgentSessionStream_submit;
+
+
+
+
+
+
+
+
+
 function normalizedOutput(value) {
     if (value === null) {
         return null;
@@ -117495,6 +121232,9 @@ class AgentSessionStream {
         /** Aborts local requests and iteration without cancelling the backend turn. */
         this.controller = new AbortController();
         _AgentSessionStream_consumed.set(this, false);
+        _AgentSessionStream_format.set(this, void 0);
+        _AgentSessionStream_parsedResult.set(this, void 0);
+        _AgentSessionStream_collection.set(this, void 0);
         _AgentSessionStream_stream.set(this, void 0);
         _AgentSessionStream_response.set(this, void 0);
         _AgentSessionStream_reading.set(this, false);
@@ -117509,6 +121249,10 @@ class AgentSessionStream {
             : params.input;
         if (params.input.length === 0) {
             throw new error_OpenAIError('input must not be empty');
+        }
+        __classPrivateFieldSet(this, _AgentSessionStream_format, agentFormatParser(params.outputFormat), "f");
+        if (params.outputFormat && !__classPrivateFieldGet(this, _AgentSessionStream_format, "f")) {
+            throw new error_OpenAIError('outputFormat must have its own parser function');
         }
         __classPrivateFieldSet(this, _AgentSessionStream_sessions, sessions, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_sessionID, sessionID, "f");
@@ -117525,6 +121269,7 @@ class AgentSessionStream {
         headers.nulls.delete('idempotency-key');
         const { idempotencyKey: _key, ...rest } = options ?? {};
         __classPrivateFieldSet(this, _AgentSessionStream_options, { ...rest, headers }, "f");
+        __classPrivateFieldSet(this, _AgentSessionStream_collection, new ResultCollection(() => __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_iterate).call(this), (name) => __classPrivateFieldGet(this, _AgentSessionStream_handlers, "f").has(name), sessionID), "f");
     }
     /** Closes local requests without cancelling the turn; an optional reason becomes the abort error's cause. */
     abort(reason) {
@@ -117535,12 +121280,21 @@ class AgentSessionStream {
         }
     }
     /** Starts iteration once; use for await to ensure early exits close the connection. */
-    [(_AgentSessionStream_consumed = new WeakMap(), _AgentSessionStream_stream = new WeakMap(), _AgentSessionStream_response = new WeakMap(), _AgentSessionStream_reading = new WeakMap(), _AgentSessionStream_sessions = new WeakMap(), _AgentSessionStream_sessionID = new WeakMap(), _AgentSessionStream_input = new WeakMap(), _AgentSessionStream_handlers = new WeakMap(), _AgentSessionStream_inputKey = new WeakMap(), _AgentSessionStream_options = new WeakMap(), _AgentSessionStream_instances = new WeakSet(), Symbol.asyncIterator)]() {
+    [(_AgentSessionStream_consumed = new WeakMap(), _AgentSessionStream_format = new WeakMap(), _AgentSessionStream_parsedResult = new WeakMap(), _AgentSessionStream_collection = new WeakMap(), _AgentSessionStream_stream = new WeakMap(), _AgentSessionStream_response = new WeakMap(), _AgentSessionStream_reading = new WeakMap(), _AgentSessionStream_sessions = new WeakMap(), _AgentSessionStream_sessionID = new WeakMap(), _AgentSessionStream_input = new WeakMap(), _AgentSessionStream_handlers = new WeakMap(), _AgentSessionStream_inputKey = new WeakMap(), _AgentSessionStream_options = new WeakMap(), _AgentSessionStream_instances = new WeakSet(), Symbol.asyncIterator)]() {
         if (__classPrivateFieldGet(this, _AgentSessionStream_consumed, "f")) {
             throw new error_OpenAIError('An AgentSessionStream can only be consumed once');
         }
         __classPrivateFieldSet(this, _AgentSessionStream_consumed, true, "f");
-        return __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_iterate).call(this);
+        return __classPrivateFieldGet(this, _AgentSessionStream_collection, "f").iterate();
+    }
+    /** Beta: opt into retaining completed final messages before iterating progress events. */
+    withResultCollection() {
+        __classPrivateFieldGet(this, _AgentSessionStream_collection, "f").enable();
+        return this;
+    }
+    /** Beta: drain this turn, dispatch registered tools, and collect its final assistant messages. */
+    finalResult() {
+        return (__classPrivateFieldSet(this, _AgentSessionStream_parsedResult, __classPrivateFieldGet(this, _AgentSessionStream_parsedResult, "f") ?? parseAgentResultPromise(__classPrivateFieldGet(this, _AgentSessionStream_collection, "f").finalResult(), __classPrivateFieldGet(this, _AgentSessionStream_format, "f")), "f"));
     }
 }
 _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
@@ -117688,8 +121442,126 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
     }
 };
 //# sourceMappingURL=agent-session-stream.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-session-create-stream.mjs
+
+
+/** Add beta result collection without replacing custom stream instances.
+ * @internal
+ */
+function withAgentTurnResult(stream, format) {
+    let collection;
+    stream.__betaTransformIterator((source) => {
+        collection = new ResultCollection(source, undefined, undefined, stream.controller.signal);
+        return () => collection.iterate();
+    });
+    let parsed;
+    const result = Object.assign(stream, {
+        finalResult: () => (parsed ?? (parsed = parseAgentResultPromise(collection.finalResult(), format))),
+        withResultCollection: () => {
+            collection.enable();
+            return result;
+        },
+    });
+    return result;
+}
+//# sourceMappingURL=agent-session-create-stream.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/pages.mjs
+
+
+/** Retain server cursor metadata for legacy Agents items with nullable IDs.
+ * @internal
+ * @yields {T} Each item in server order, failing if pagination cannot advance.
+ */
+async function* agentItems(load) {
+    let after;
+    while (true) {
+        // oxlint-disable-next-line no-await-in-loop -- Each page determines the next cursor.
+        const page = await load(after);
+        yield* page.data;
+        if (!page.has_more) {
+            return;
+        }
+        // Internal SDK read: CursorPage keeps raw metadata but does not expose last_id.
+        // oxlint-disable-next-line prefer-destructuring -- Bracket access intentionally reads a protected internal field.
+        const body = page['body'];
+        // oxlint-disable-next-line unicorn/prefer-at -- Keep published source compatible with ES2020 declarations.
+        const last = page.data[page.data.length - 1];
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate only the opaque cursor from response metadata.
+        const cursor = isObj(body) && typeof body['last_id'] === 'string' ? body['last_id'] : last?.id;
+        if (!cursor || cursor === after) {
+            throw new error_OpenAIError('Agent pagination cannot advance to the next page');
+        }
+        after = cursor;
+    }
+}
+//# sourceMappingURL=pages.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/result-artifacts.mjs
+var _AgentResultArtifacts_resource, _AgentResultArtifacts_sessionID, _AgentResultArtifacts_turnID;
+
+
+
+/** Beta: artifacts from the exact session and turn represented by a result. */
+class AgentResultArtifacts {
+    constructor(resource, result) {
+        _AgentResultArtifacts_resource.set(this, void 0);
+        _AgentResultArtifacts_sessionID.set(this, void 0);
+        _AgentResultArtifacts_turnID.set(this, void 0);
+        __classPrivateFieldSet(this, _AgentResultArtifacts_resource, resource, "f");
+        __classPrivateFieldSet(this, _AgentResultArtifacts_sessionID, result.session_id, "f");
+        __classPrivateFieldSet(this, _AgentResultArtifacts_turnID, result.turn_id, "f");
+    }
+    /** Find one immutable artifact by its exact hosted path, across all pages. */
+    async retrieve(path, options) {
+        let selected;
+        for await (const artifact of agentItems((after) => __classPrivateFieldGet(this, _AgentResultArtifacts_resource, "f").list(__classPrivateFieldGet(this, _AgentResultArtifacts_sessionID, "f"), {}, { ...options, query: { ...options?.query, after, environment_id: undefined } }))) {
+            if (artifact.session_id === __classPrivateFieldGet(this, _AgentResultArtifacts_sessionID, "f") &&
+                artifact.turn_id === __classPrivateFieldGet(this, _AgentResultArtifacts_turnID, "f") &&
+                artifact.path === path) {
+                if (selected) {
+                    throw new error_OpenAIError('Multiple artifacts match this result and path');
+                }
+                selected = artifact;
+            }
+        }
+        if (!selected) {
+            throw new error_OpenAIError('No artifact matches this result and path');
+        }
+        return selected;
+    }
+    /** Return the native binary response for this result's exact artifact path. */
+    async content(path, options) {
+        const artifact = await this.retrieve(path, options);
+        return __classPrivateFieldGet(this, _AgentResultArtifacts_resource, "f").content(artifact.id, { session_id: __classPrivateFieldGet(this, _AgentResultArtifacts_sessionID, "f") }, options);
+    }
+    /** Stream bytes to a caller-chosen destination; the hosted path never selects a local path. */
+    async download(params, options) {
+        const { path, to } = params;
+        const artifact = await this.retrieve(path, options);
+        const response = await __classPrivateFieldGet(this, _AgentResultArtifacts_resource, "f").content(artifact.id, { session_id: __classPrivateFieldGet(this, _AgentResultArtifacts_sessionID, "f") }, options);
+        if (!response.body) {
+            throw new error_OpenAIError('Artifact response has no content stream');
+        }
+        try {
+            await response.body.pipeTo(to, options?.signal ? { signal: options.signal } : {});
+        }
+        catch (error) {
+            // pipeTo can reject before acquiring a reader, for example when the destination is locked.
+            try {
+                await response.body.cancel();
+            }
+            catch {
+                /* already cancelled or owned by pipeTo */
+            }
+            throw error;
+        }
+        return artifact;
+    }
+}
+_AgentResultArtifacts_resource = new WeakMap(), _AgentResultArtifacts_sessionID = new WeakMap(), _AgentResultArtifacts_turnID = new WeakMap();
+//# sourceMappingURL=result-artifacts.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/artifacts.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
 
 
 
@@ -117749,7 +121621,11 @@ function artifacts_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class Artifacts extends resource_APIResource {
+class artifacts_Artifacts extends resource_APIResource {
+    /** Beta: bind artifact lookup and downloads to a completed result's exact session and turn. */
+    forResult(result) {
+        return new AgentResultArtifacts(this, result);
+    }
     /**
      * Retrieves immutable metadata for one durable session artifact. See
      * [session artifacts](https://developers.openai.com/api/docs/guides/agents-api/environments/files#openai-hosted-artifacts).
@@ -117848,11 +121724,12 @@ function events_resolveResourceRequestOptions(options, buildOptions) {
 }
 class sessions_events_Events extends resource_APIResource {
     /**
-     * Submits message, cancellation, or tool-result events to a managed agent session.
-     * Cancellation can recover a still-open turn whose backend execution has ended by
-     * marking it cancelled and abandoning unpublished outputs. Saved results,
-     * published files, and existing terminal outcomes are preserved. HTTP 202 confirms
-     * acceptance, not durable completion. See
+     * Submits message, cancellation, tool-result, or computer-use approval-response
+     * events to a managed agent session. Cancellation can recover a still-open turn
+     * whose backend execution has ended by marking it cancelled and abandoning
+     * unpublished outputs. Saved results, published files, and existing terminal
+     * outcomes are preserved. HTTP 202 confirms acceptance, not durable completion.
+     * See
      * [session events](https://developers.openai.com/api/docs/guides/agents-api/sessions/events).
      *
      * @example
@@ -117997,6 +121874,84 @@ class Items extends resource_APIResource {
     }
 }
 //# sourceMappingURL=items.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/traces.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+function traces_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const traces_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function traces_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => traces_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !traces_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class Traces extends resource_APIResource {
+    list(sessionID, query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = traces_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/traces`, (CursorPage), traces_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=traces.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/turns.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 
@@ -118363,6 +122318,10 @@ Subagents.Turns = turns_Turns;
 
 
 
+
+
+
+
 function sessions_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
@@ -118422,9 +122381,10 @@ class sessions_sessions_Sessions extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.subagents = new Subagents(this._client);
-        this.artifacts = new Artifacts(this._client);
+        this.artifacts = new artifacts_Artifacts(this._client);
         this.items = new Items(this._client);
         this.events = new sessions_events_Events(this._client);
+        this.traces = new Traces(this._client);
         this.turns = new Turns(this._client);
     }
     /** Stream one turn on an idle session with a single input writer. See AgentSessionStream for lifecycle and tool handling. */
@@ -118432,13 +122392,20 @@ class sessions_sessions_Sessions extends resource_APIResource {
         return new AgentSessionStream(this, sessionID, params, options);
     }
     create(body, options) {
-        return this._client.post('/agents/sessions', sessions_resolveResourceRequestOptions(options, (options) => ({
-            body,
+        const output = captureAgentOutput(body, options);
+        return this._client
+            .post('/agents/sessions', sessions_resolveResourceRequestOptions(output.options, (options) => ({
+            body: output.body,
             ...options,
             headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
-            stream: body.stream ?? false,
+            stream: output.body.stream ?? false,
             __security: { bearerAuth: true },
-        })));
+        })))
+            ._thenUnwrap((data, { options }) => 
+        // SAFETY: defaultParseResponse uses this same resolved flag to return the configured stream instance.
+        options.stream
+            ? withAgentTurnResult(data, output.format)
+            : data);
     }
     /**
      * Retrieves the current state of a managed agent session. See
@@ -118512,9 +122479,10 @@ class sessions_sessions_Sessions extends resource_APIResource {
     }
 }
 sessions_sessions_Sessions.Subagents = Subagents;
-sessions_sessions_Sessions.Artifacts = Artifacts;
+sessions_sessions_Sessions.Artifacts = artifacts_Artifacts;
 sessions_sessions_Sessions.Items = Items;
 sessions_sessions_Sessions.Events = sessions_events_Events;
+sessions_sessions_Sessions.Traces = Traces;
 sessions_sessions_Sessions.Turns = Turns;
 //# sourceMappingURL=sessions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/vaults/credentials.mjs
@@ -121935,7 +125903,7 @@ class runs_Runs extends resource_APIResource {
      */
     cancel(runID, params, options) {
         const { eval_id } = params;
-        return this._client.post(utils_path_path `/evals/${eval_id}/runs/${runID}`, runs_runs_resolveResourceRequestOptions(options, (options) => ({ ...options, __security: { bearerAuth: true } })));
+        return this._client.post(utils_path_path `/evals/${eval_id}/runs/${runID}/cancel`, runs_runs_resolveResourceRequestOptions(options, (options) => ({ ...options, __security: { bearerAuth: true } })));
     }
 }
 runs_Runs.OutputItems = OutputItems;
@@ -122377,7 +126345,7 @@ function permissions_normalizeRequestOptionsForQuery(value, queryKeys, options) 
 /**
  * Manage fine-tuning jobs to tailor a model to your specific training data.
  */
-class Permissions extends resource_APIResource {
+class permissions_Permissions extends resource_APIResource {
     /**
      * **NOTE:** Calling this endpoint requires an
      * [admin API key](https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/admin_api_keys).
@@ -122466,10 +126434,10 @@ class Permissions extends resource_APIResource {
 class Checkpoints extends resource_APIResource {
     constructor() {
         super(...arguments);
-        this.permissions = new Permissions(this._client);
+        this.permissions = new permissions_Permissions(this._client);
     }
 }
-Checkpoints.Permissions = Permissions;
+Checkpoints.Permissions = permissions_Permissions;
 //# sourceMappingURL=checkpoints.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/fine-tuning/jobs/checkpoints.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -125462,7 +129430,7 @@ function skills_normalizeRequestOptionsForQuery(value, queryKeys, options) {
         return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
     }));
 }
-class skills_skills_Skills extends resource_APIResource {
+class resources_skills_skills_Skills extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.content = new content_Content(this._client);
@@ -125512,8 +129480,8 @@ class skills_skills_Skills extends resource_APIResource {
         return this._client.delete(utils_path_path `/skills/${skillID}`, skills_resolveResourceRequestOptions(options, (options) => ({ ...options, __security: { bearerAuth: true } })));
     }
 }
-skills_skills_Skills.Content = content_Content;
-skills_skills_Skills.Versions = versions_versions_Versions;
+resources_skills_skills_Skills.Content = content_Content;
+resources_skills_skills_Skills.Versions = versions_versions_Versions;
 //# sourceMappingURL=skills.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/uploads/parts.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -126679,7 +130647,452 @@ webhooks_Webhooks.EventTypes = EventTypes;
 
 
 //# sourceMappingURL=index.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/bedrock.mjs
+
+
+/** Identifies legacy Bedrock clients without importing the client class into WebSocket modules. */
+const brand_privateBedrockClient = Symbol.for('openai.privateBedrockClient');
+/** Wraps a provider failure in an SDK error while preserving its original cause. */
+function errorWithCause(message, cause) {
+    // SAFETY: This SDK error is created locally and receives its optional cause immediately below; no existing error shape is trusted.
+    const error = new Errors.OpenAIError(message);
+    error.cause = cause;
+    return error;
+}
+/** Trims a configuration string, treating missing and whitespace-only values as absent. */
+function normalizeOptionalString(value) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
+    const normalized = typeof value === 'string' ? value.trim() : undefined;
+    return normalized || undefined;
+}
+function normalizeBaseURL(baseURL) {
+    const url = new URL(baseURL);
+    const responsesMatch = url.pathname.match(/\/responses(?:\/.*)?$/);
+    if (responsesMatch?.index !== undefined) {
+        url.pathname = url.pathname.slice(0, responsesMatch.index) || '/';
+    }
+    return url.toString().replace(/\/$/, '');
+}
+function resolveRuntimeDnsSuffixes(region) {
+    if (region.startsWith('cn-')) {
+        return ['amazonaws.com.cn', 'api.amazonwebservices.com.cn'];
+    }
+    if (region.startsWith('eusc-')) {
+        return ['amazonaws.eu', 'api.amazonwebservices.eu'];
+    }
+    if (region.startsWith('us-iso-')) {
+        return ['c2s.ic.gov', 'api.aws.ic.gov'];
+    }
+    if (region.startsWith('us-isob-')) {
+        return ['sc2s.sgov.gov', 'api.aws.scloud'];
+    }
+    if (region.startsWith('eu-isoe-')) {
+        return ['cloud.adc-e.uk', 'api.cloud-aws.adc-e.uk'];
+    }
+    if (region.startsWith('us-isof-')) {
+        return ['csp.hci.ic.gov', 'api.aws.hci.ic.gov'];
+    }
+    return ['amazonaws.com', 'api.aws'];
+}
+/** Identifies a canonical Amazon Bedrock hostname and its embedded AWS region. */
+function parseBedrockEndpointHostname(hostname) {
+    const canonicalHostname = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname;
+    const [service, region, ...suffixParts] = canonicalHostname.toLowerCase().split('.');
+    const suffix = suffixParts.join('.');
+    if (service === 'bedrock-mantle' && region && /^[a-z0-9-]+$/.test(region) && suffix === 'api.aws') {
+        return { endpoint: 'mantle', region };
+    }
+    if ((service === 'bedrock-runtime' || service === 'bedrock-runtime-fips') && region) {
+        const [standardSuffix, dualStackSuffix] = resolveRuntimeDnsSuffixes(region);
+        if (suffix === standardSuffix || suffix === dualStackSuffix) {
+            return { endpoint: 'runtime', region };
+        }
+    }
+    return undefined;
+}
+/** Rejects insecure or mismatched canonical Amazon Bedrock endpoint overrides. */
+function validateCanonicalBedrockEndpoint(baseURL, endpoint, region) {
+    const parsedBaseURL = new URL(baseURL);
+    const canonicalEndpoint = parseBedrockEndpointHostname(parsedBaseURL.hostname);
+    if (canonicalEndpoint && parsedBaseURL.protocol !== 'https:') {
+        throw new Errors.OpenAIError('Canonical Amazon Bedrock endpoints require HTTPS.');
+    }
+    if (canonicalEndpoint && canonicalEndpoint.endpoint !== endpoint) {
+        throw new Errors.OpenAIError(`The Bedrock ${canonicalEndpoint.endpoint} hostname does not match the selected \`${endpoint}\` endpoint. Set \`endpoint: '${canonicalEndpoint.endpoint}'\` to use this hostname.`);
+    }
+    if (canonicalEndpoint && region && canonicalEndpoint.region !== region) {
+        throw new Errors.OpenAIError(`The Bedrock endpoint region \`${canonicalEndpoint.region}\` does not match the configured AWS region \`${region}\`.`);
+    }
+}
+function validateBedrockEndpointSelection(endpoint) {
+    if (endpoint !== undefined && endpoint !== 'mantle' && endpoint !== 'runtime') {
+        throw new Errors.OpenAIError('The Bedrock `endpoint` must be either `mantle` or `runtime`.');
+    }
+}
+/**
+ * Resolves the Bedrock endpoint family, region, and API root from configuration.
+ *
+ * Region precedence is `region`, `AWS_REGION`, then `AWS_DEFAULT_REGION`.
+ * Endpoint precedence is `baseURL`, `AWS_BEDROCK_BASE_URL`, then the regional
+ * selected endpoint; an explicit `null` base URL skips the environment override.
+ * Existing `/responses` suffixes and trailing slashes are removed. Canonical
+ * AWS hostnames infer the endpoint family when none is selected explicitly.
+ * Other configured URLs and derived endpoints default to Mantle.
+ *
+ * @throws {Errors.OpenAIError} If an option is invalid, a canonical hostname
+ * conflicts with the endpoint family, or the default endpoint needs a region.
+ */
+function resolveBedrockEndpoint(options) {
+    validateBedrockEndpointSelection(options.endpoint);
+    if (options.region !== undefined && !normalizeOptionalString(options.region)) {
+        throw new Errors.OpenAIError('The Bedrock AWS `region` must not be empty.');
+    }
+    if (options.baseURL !== undefined &&
+        options.baseURL !== null &&
+        !normalizeOptionalString(options.baseURL)) {
+        throw new Errors.OpenAIError('The Bedrock `baseURL` must not be empty.');
+    }
+    const region = normalizeOptionalString(options.region) ??
+        normalizeOptionalString(readEnv('AWS_REGION')) ??
+        normalizeOptionalString(readEnv('AWS_DEFAULT_REGION'));
+    if (region && !/^[a-z]{2,8}(?:-[a-z0-9]+)+-\d+$/.test(region)) {
+        throw new Errors.OpenAIError('The Bedrock AWS `region` is invalid. Use a standard AWS region such as `us-east-1`.');
+    }
+    const configuredBaseURL = options.baseURL === undefined
+        ? normalizeOptionalString(readEnv('AWS_BEDROCK_BASE_URL'))
+        : normalizeOptionalString(options.baseURL);
+    if (configuredBaseURL) {
+        const baseURL = normalizeBaseURL(configuredBaseURL);
+        const endpoint = options.endpoint ?? parseBedrockEndpointHostname(new URL(baseURL).hostname)?.endpoint ?? 'mantle';
+        validateCanonicalBedrockEndpoint(baseURL, endpoint, region);
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Preserve the declared endpoint resolver contract across configured URLs and inferred regions.
+        return { endpoint, region, baseURL };
+    }
+    const endpoint = options.endpoint ?? 'mantle';
+    if (!region) {
+        throw new Errors.OpenAIError('Bedrock requires an AWS region. Pass `region` to `bedrock(...)`, or set `AWS_REGION` or `AWS_DEFAULT_REGION`.');
+    }
+    const hostname = endpoint === 'runtime'
+        ? `bedrock-runtime.${region}.${resolveRuntimeDnsSuffixes(region)[0]}`
+        : `bedrock-mantle.${region}.api.aws`;
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The resolver intentionally returns its declared endpoint contract across all configuration paths.
+    return { endpoint, region, baseURL: `https://${hostname}/openai/v1` };
+}
+/**
+ * Ensures Bedrock credentials are only attached to the configured endpoint origin.
+ *
+ * @throws {Errors.OpenAIError} If either URL is not HTTP(S) or the request targets a different origin.
+ */
+function assertBedrockRequestOrigin(baseURL, requestURL) {
+    const expectedURL = new URL(baseURL);
+    const request = new URL(requestURL);
+    const expectedOrigin = expectedURL.origin;
+    const requestOrigin = request.origin;
+    if ((expectedURL.protocol !== 'http:' && expectedURL.protocol !== 'https:') ||
+        (request.protocol !== 'http:' && request.protocol !== 'https:') ||
+        requestOrigin !== expectedOrigin) {
+        throw new error_OpenAIError(`Bedrock request origin \`${requestOrigin}\` does not match the configured base URL origin \`${expectedOrigin}\`.`);
+    }
+}
+/** Validates a final WebSocket URL before a legacy Bedrock client resolves or attaches credentials. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The WebSocket authentication boundary verifies the caller client at runtime before trusting provider metadata.
+function assertBedrockWebSocketOrigin(client, requestURL) {
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
+    if (typeof client !== 'object' || client === null || !(brand_privateBedrockClient in client)) {
+        return;
+    }
+    const normalizedRequestURL = new URL(requestURL);
+    if (normalizedRequestURL.protocol === 'wss:') {
+        normalizedRequestURL.protocol = 'https:';
+    }
+    else if (normalizedRequestURL.protocol === 'ws:') {
+        normalizedRequestURL.protocol = 'http:';
+    }
+    // SAFETY: The private Bedrock brand checked above identifies the client whose baseURL is validated against the finalized request origin.
+    assertBedrockRequestOrigin(
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The private Bedrock client brand checked above identifies the client baseURL contract.
+    client.baseURL, normalizedRequestURL.toString());
+}
+/**
+ * Rejects caller-provided authorization headers that conflict with provider authentication.
+ *
+ * @throws {Errors.OpenAIError} If an `Authorization` header is already present.
+ */
+function assertProviderOwnsAuthorization(headers) {
+    if (headers.has('authorization')) {
+        throw new Errors.OpenAIError('Bedrock provider authentication cannot be combined with a custom `Authorization` header.');
+    }
+}
+/** Rejects non-HTTP field bytes without retaining or exposing a bearer credential. */
+function assertValidBedrockBearerCredential(credential) {
+    if (/^[\t ]|[\t ]$/.test(credential)) {
+        throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
+    }
+    for (const character of credential) {
+        const value = character.codePointAt(0) ?? 0;
+        if ((value < 0x20 && value !== 0x09) || value === 0x7f || value > 0xff) {
+            throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
+        }
+    }
+}
+function createBedrockUserAbortError(signal) {
+    const error = new Errors.APIUserAbortError();
+    Object.defineProperty(error, 'cause', {
+        value: signal.reason,
+        writable: true,
+        configurable: true,
+    });
+    return error;
+}
+function removeBedrockAbortListener(signal, listener) {
+    try {
+        signal.removeEventListener('abort', listener);
+    }
+    catch {
+        // A nonstandard AbortSignal must not replace the actual request outcome.
+    }
+}
+function resolveAbortableBedrockAuth(operation, signals, failure) {
+    // oxlint-disable-next-line promise/avoid-new -- AbortSignal events require a Promise callback bridge.
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const listeners = [];
+        const removeListeners = () => {
+            while (listeners.length > 0) {
+                const registered = listeners.pop();
+                if (registered) {
+                    removeBedrockAbortListener(registered.signal, registered.listener);
+                }
+            }
+        };
+        failure.removeListeners = removeListeners;
+        const settle = (result) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            if ('value' in result) {
+                resolve(result.value);
+            }
+            else {
+                removeListeners();
+                reject(result.error);
+            }
+        };
+        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Failures and rejection reasons can be arbitrary JavaScript values; preserve them until inspection or forwarding.
+        const rejectSignalFailure = (error) => {
+            if (failure.error) {
+                return;
+            }
+            failure.error = { value: error };
+            settle({ error });
+        };
+        const registerAbortListener = (signal) => {
+            const onAbort = () => {
+                if (failure.error) {
+                    return;
+                }
+                try {
+                    rejectSignalFailure(createBedrockUserAbortError(signal));
+                }
+                catch (error) {
+                    rejectSignalFailure(error);
+                }
+            };
+            try {
+                if (signal.aborted) {
+                    onAbort();
+                    return false;
+                }
+                listeners.push({ signal, listener: onAbort });
+                signal.addEventListener('abort', onAbort, { once: true });
+                if (settled) {
+                    removeBedrockAbortListener(signal, onAbort);
+                    return false;
+                }
+                if (signal.aborted) {
+                    onAbort();
+                    return false;
+                }
+            }
+            catch (error) {
+                if (settled) {
+                    removeBedrockAbortListener(signal, onAbort);
+                }
+                else {
+                    rejectSignalFailure(error);
+                }
+                return false;
+            }
+            return true;
+        };
+        for (const signal of signals) {
+            if (!registerAbortListener(signal)) {
+                return;
+            }
+        }
+        let pending;
+        try {
+            pending = operation();
+        }
+        catch (error) {
+            settle({ error });
+            return;
+        }
+        const observeResult = async () => {
+            try {
+                settle({ value: await pending });
+            }
+            catch (error) {
+                settle({ error });
+            }
+        };
+        // Observe the result even if the provider synchronously triggered cancellation.
+        void observeResult();
+    });
+}
+/**
+ * Resolves Bedrock authentication work with caller cancellation, then applies
+ * its result synchronously after the final cancellation checks.
+ *
+ * @internal
+ */
+async function prepareBedrockAuth(request, context, operation) {
+    const signals = [];
+    for (const signal of [context.options.signal, request.signal]) {
+        if (signal != null && !signals.includes(signal)) {
+            signals.push(signal);
+        }
+    }
+    const signalFailure = {};
+    let value;
+    try {
+        try {
+            value =
+                signals.length > 0
+                    ? await resolveAbortableBedrockAuth(operation.resolve, signals, signalFailure)
+                    : await operation.resolve();
+        }
+        catch (cause) {
+            if (signalFailure.error && Object.is(cause, signalFailure.error.value)) {
+                throw cause;
+            }
+            throw errorWithCause(operation.failureMessage, cause);
+        }
+        if (signalFailure.error) {
+            throw signalFailure.error.value;
+        }
+        for (const signal of signals) {
+            if (signal.aborted) {
+                throw createBedrockUserAbortError(signal);
+            }
+        }
+    }
+    finally {
+        signalFailure.removeListeners?.();
+    }
+    operation.apply(value);
+}
+class BedrockBearerAuth {
+    constructor(tokenProvider) {
+        this.tokenProvider = tokenProvider;
+    }
+    async prepareRequest(request, context) {
+        const headers = new Headers(request.headers);
+        assertProviderOwnsAuthorization(headers);
+        await prepareBedrockAuth(request, context, {
+            resolve: () => this.tokenProvider(),
+            failureMessage: 'Failed to resolve a bearer credential for Bedrock.',
+            apply: (token) => {
+                // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
+                if (typeof token !== 'string' || !token.trim()) {
+                    throw new Errors.OpenAIError('The Bedrock bearer credential provider must return a non-empty string.');
+                }
+                assertValidBedrockBearerCredential(token);
+                try {
+                    headers.set('authorization', `Bearer ${token}`);
+                }
+                catch (error) {
+                    if (error instanceof TypeError) {
+                        // oxlint-disable-next-line eslint/preserve-caught-error -- The original error contains the bearer credential.
+                        throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
+                    }
+                    throw error;
+                }
+                request.redirect = 'manual';
+                request.headers = headers;
+            },
+        });
+    }
+}
+/**
+ * Resolves a bearer-authentication factory without calling token providers eagerly.
+ *
+ * Explicit `tokenProvider` and `apiKey` options are mutually exclusive. When
+ * neither is set, `AWS_BEARER_TOKEN_BEDROCK` is used unless environment
+ * credentials are disabled or `apiKey` is explicitly `null`.
+ *
+ * @throws {Errors.OpenAIError} If an explicit key is empty or multiple bearer
+ * credential sources are configured.
+ */
+function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
+    if (options.apiKey !== undefined &&
+        options.apiKey !== null &&
+        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
+        (typeof options.apiKey !== 'string' || !options.apiKey.trim())) {
+        throw new Errors.OpenAIError('The Bedrock bearer credential must not be empty.');
+    }
+    if (options.apiKey != null && options.tokenProvider) {
+        throw new Errors.OpenAIError('The `apiKey` and `tokenProvider` options are mutually exclusive. Configure only one.');
+    }
+    if (options.tokenProvider) {
+        const tokenProvider = options.tokenProvider;
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared bearer-auth contract hides concrete authenticator implementations behind their factory.
+        return { factory: () => new BedrockBearerAuth(tokenProvider), explicit: true };
+    }
+    if (options.apiKey != null) {
+        const apiKey = options.apiKey;
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Explicit API keys use the same declared auth-factory contract as token providers.
+        return { factory: () => new BedrockBearerAuth(async () => apiKey), explicit: true };
+    }
+    if (allowEnvironment && options.apiKey !== null && readEnv('AWS_BEARER_TOKEN_BEDROCK')) {
+        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Environment credentials must preserve the same declared auth-factory contract as explicit options.
+        return {
+            explicit: false,
+            factory: () => new BedrockBearerAuth(async () => {
+                const token = readEnv('AWS_BEARER_TOKEN_BEDROCK');
+                if (!token) {
+                    throw new Errors.OpenAIError('Could not find credentials for Bedrock. Set `AWS_BEARER_TOKEN_BEDROCK` or configure AWS credential authentication.');
+                }
+                return token;
+            }),
+        };
+    }
+    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared optional factory contract also represents the absence of bearer credentials.
+    return { factory: undefined, explicit: false };
+}
+//# sourceMappingURL=bedrock.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/realtime-credentials.mjs
+
+// Only the key crosses module formats: the context belongs to each participating client.
+const realtimeCacheContext = Symbol.for('openai.realtimeAPIKeyCacheContext');
+let cacheContext;
+/** Installs the Node transport's invocation context without loading Node in the base client. @internal */
+function setRealtimeAPIKeyCacheContext(context) {
+    cacheContext = context;
+}
+/** Reserves a deferred commit when the base hook is entered for this invocation. @internal */
+function getDeferredRealtimeAPIKeyCache(client) {
+    const deferred = client[realtimeCacheContext]?.getStore();
+    return deferred?.client === client ? deferred : undefined;
+}
+/** Applies the Bedrock getter's validation when a captured credential does not enter the cache. @internal */
+function validateCapturedAPIKey(client, credential) {
+    if (credential !== null && brand_privateBedrockClient in client) {
+        assertValidBedrockBearerCredential(credential);
+    }
+    return credential;
+}
 /** Selects a captured credential without treating an explicit null as absent. @internal */
 function getRealtimeAPIKey(client, captured) {
     return captured === undefined ? client?.apiKey : captured;
@@ -126691,14 +131104,422 @@ function getRealtimeAPIKey(client, captured) {
  * synchronizing concurrent credential updates.
  * @internal
  */
-async function resolveRealtimeAPIKey(client) {
+async function resolveRealtimeAPIKey(client, deferCache = false) {
     let apiKey;
-    const isProvider = await client._callApiKey((resolved) => {
+    const current = {
+        client,
+        commit: () => (apiKey === undefined ? client.apiKey : apiKey),
+    };
+    const capture = (resolved) => {
         apiKey = resolved;
-    });
-    return { apiKey: apiKey === undefined ? client.apiKey : apiKey, isProvider };
+    };
+    const invoke = () => client._callApiKey(capture);
+    const context = client[realtimeCacheContext] ?? cacheContext;
+    if (deferCache && context && !client[realtimeCacheContext]) {
+        Object.defineProperty(client, realtimeCacheContext, { value: context });
+    }
+    // An HTTP or ordinary Realtime request nested inside a WebSocket hook owns its own cache writes.
+    const isProvider = await (context ? context.run(deferCache ? current : undefined, invoke) : invoke());
+    return {
+        apiKey: apiKey === undefined ? client.apiKey : apiKey,
+        isProvider,
+        commit: () => {
+            const hookKey = current.providerKey !== undefined && apiKey !== undefined && apiKey !== current.providerKey
+                ? validateCapturedAPIKey(client, apiKey)
+                : undefined;
+            const cached = current.commit();
+            return hookKey === undefined ? validateCapturedAPIKey(client, cached) : hookKey;
+        },
+    };
 }
 //# sourceMappingURL=realtime-credentials.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/ws.mjs
+
+
+const webSocketErrors = new WeakMap();
+/** Records physical failure before transport callbacks notify public observers. @internal */
+function recordWebSocketError(socket, error) {
+    webSocketErrors.set(socket, error);
+}
+/** Returns physical failure for this socket instance, never for a replacement. @internal */
+function getWebSocketError(socket) {
+    return webSocketErrors.get(socket);
+}
+/** Snapshots and validates the iterator's limit before listeners are attached. */
+function getMaxBufferedEvents(options) {
+    const limit = options?.maxBufferedEvents;
+    if (limit !== undefined && (!Number.isSafeInteger(limit) || limit <= 0)) {
+        throw new OpenAIError('maxBufferedEvents must be a positive safe integer');
+    }
+    return limit;
+}
+const REDIRECT_SAFE_WEBSOCKET_HEADERS = new Set([
+    'connection',
+    'host',
+    'openai-beta',
+    'origin',
+    'sec-websocket-extensions',
+    'sec-websocket-key',
+    'sec-websocket-version',
+    'upgrade',
+    'user-agent',
+    'x-access-level',
+    'x-auth-metadata',
+    'x-auth-tokenization',
+    'x-authentication-metadata',
+    'x-authentication-tokenization',
+    'x-security-policy',
+    'x-token-budget',
+    'x-trace-id',
+]);
+const WEBSOCKET_METADATA_HEADER_NAMES = new Set([
+    'accept',
+    'accept-encoding',
+    'accept-language',
+    'content-type',
+    'x-request-id',
+    'x-client-request-id',
+    'x-correlation-id',
+    'traceparent',
+    'tracestate',
+    'sentry-trace',
+    'x-amzn-trace-id',
+    'x-cloud-trace-context',
+    'x-datadog-trace-id',
+    'x-datadog-parent-id',
+    'x-datadog-sampling-priority',
+    'x-datadog-origin',
+    'x-datadog-tags',
+    'baggage',
+    'b3',
+]);
+// Request and tracing metadata do not authenticate a Responses socket, but remain protected on redirects.
+const WEBSOCKET_METADATA_HEADERS = {
+    has: (name, values) => WEBSOCKET_METADATA_HEADER_NAMES.has(name) ||
+        name.startsWith('x-b3-') ||
+        (name === 'sec-websocket-protocol' &&
+            !values.some((value) => typeof value === 'string' &&
+                value.split(',').some((protocol) => protocol.trim().startsWith('openai-insecure-api-key.')))),
+};
+function isWebSocketCredentialHeader(name) {
+    return !REDIRECT_SAFE_WEBSOCKET_HEADERS.has(name.toLowerCase().split('_').join('-'));
+}
+/**
+ * Snapshots credential values in final socket options before validation and dispatch.
+ * Reports potential caller authentication, excluding additional metadata when requested.
+ * The server remains responsible for validating credentials. Noncredential headers are left intact.
+ */
+function snapshotWebSocketCredentials(options, metadataHeaders) {
+    if (options.auth !== null && options.auth !== undefined) {
+        options.auth = String(options.auth);
+    }
+    const credentials = new Map();
+    const headers = options.headers ?? {};
+    for (const [name, value] of Object.entries(headers)) {
+        const normalizedName = name.toLowerCase().split('_').join('-');
+        // Routing metadata is still protected on redirects, but cannot authenticate a socket.
+        if (!isWebSocketCredentialHeader(name) ||
+            normalizedName === 'openai-organization' ||
+            normalizedName === 'openai-project') {
+            continue;
+        }
+        let snapshot = value;
+        if (Array.isArray(value)) {
+            snapshot = value.map(String);
+        }
+        else if (value !== null && value !== undefined) {
+            snapshot = String(value);
+        }
+        headers[name] = snapshot;
+        const values = Array.isArray(snapshot) ? snapshot : [snapshot];
+        if (!metadataHeaders?.has(normalizedName, values)) {
+            credentials.set(name.toLowerCase(), values.some((item) => typeof item === 'string' && item.trim().length > 0));
+        }
+    }
+    // Node applies header names case-insensitively, and Authorization overrides Basic auth.
+    return ([...credentials.values()].some(Boolean) ||
+        (!credentials.has('authorization') && typeof options.auth === 'string' && options.auth.trim().length > 0));
+}
+/** Merge transport authentication before explicit caller overrides and header removals. */
+function mergeWebSocketAuthHeaders(options, authHeaders, removedHeaders) {
+    const headers = new Map(Object.entries(authHeaders).map(([name, value]) => [name.toLowerCase(), value]));
+    for (const name of removedHeaders) {
+        headers.delete(name);
+    }
+    for (const [name, value] of Object.entries(options.headers ?? {})) {
+        headers.set(name, value);
+    }
+    return { ...options, headers: Object.fromEntries(headers) };
+}
+/** Removal sink for one synchronous header-hook call, including legacy one-argument overrides. */
+const webSocketHeaderRemovals = new WeakMap();
+const preparedWebSocketHeaders = new WeakMap();
+/** Build a WebSocket handshake with explicit caller headers applied after the client defaults. */
+function buildWebSocketOptions(client, authHeaders, options, removedHeaders, usePreparedHeaders = false) {
+    // Capture the base result even through older overrides that forward only one argument.
+    const previous = webSocketHeaderRemovals.get(client);
+    const prepared = usePreparedHeaders && options ? preparedWebSocketHeaders.get(options) : undefined;
+    const context = {
+        removedHeaders,
+        baseHeaders: prepared?.baseHeaders,
+    };
+    webSocketHeaderRemovals.set(client, context);
+    let headers;
+    try {
+        headers = new Map(Object.entries(client._buildWebSocketHeaders(authHeaders, removedHeaders)).map(([name, value]) => [
+            name.toLowerCase(),
+            value,
+        ]));
+    }
+    finally {
+        if (previous) {
+            webSocketHeaderRemovals.set(client, previous);
+        }
+        else {
+            webSocketHeaderRemovals.delete(client);
+        }
+    }
+    // The first hook output is not a caller override of the final, credentialed hook.
+    // Save transport names and explicit nulls separately, then reuse their validated values.
+    const transportHeaders = new Map();
+    const currentHeaders = new Map(Object.entries(options?.headers ?? {}));
+    const overrides = prepared
+        ? [...prepared.transportHeaders].map(([name, removed]) => [name, removed ? null : currentHeaders.get(name)])
+        : currentHeaders;
+    for (const [name, value] of overrides) {
+        const normalizedName = name.toLowerCase();
+        if (value === null) {
+            headers.delete(normalizedName);
+            removedHeaders?.add(normalizedName);
+            transportHeaders.set(normalizedName, true);
+        }
+        else if (value !== undefined) {
+            headers.set(normalizedName, value);
+            removedHeaders?.delete(normalizedName);
+            transportHeaders.set(normalizedName, false);
+        }
+    }
+    const result = {
+        ...options,
+        headers: Object.fromEntries(headers),
+        followRedirects: false,
+    };
+    preparedWebSocketHeaders.set(result, { baseHeaders: context.baseHeaders, transportHeaders });
+    return result;
+}
+/** Prevents WebSocket redirects from forwarding caller or SDK credentials to another origin. */
+function protectWebSocketOptionsFromCredentialRedirects(options) {
+    const hasSensitiveHeader = Object.keys(options.headers ?? {}).some(isWebSocketCredentialHeader);
+    if (!options.auth && !hasSensitiveHeader) {
+        return options;
+    }
+    return { ...options, followRedirects: false };
+}
+function toUint8Array(view) {
+    if (view instanceof Uint8Array) {
+        return view;
+    }
+    return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+}
+/**
+ * Flatten `ArrayBufferView[]` fragments into a single `Uint8Array` so that
+ * `ws.send()` transmits the correct bytes.
+ */
+function flattenRawData(data) {
+    if (Array.isArray(data)) {
+        return concatBytes(data.map(toUint8Array));
+    }
+    return data;
+}
+function snapshotRawData(data) {
+    if (typeof data === 'string') {
+        return data;
+    }
+    if (Array.isArray(data)) {
+        return concatBytes(data.map(toUint8Array));
+    }
+    if (ArrayBuffer.isView(data)) {
+        const copy = new Uint8Array(data.byteLength);
+        copy.set(toUint8Array(data));
+        return copy;
+    }
+    // oxlint-disable-next-line unicorn/prefer-spread -- ArrayBufferLike.slice copies bytes while spread changes the return type.
+    return data.slice(0);
+}
+/** Counts wire bytes without allocating another payload-sized buffer. */
+function rawByteLength(data) {
+    if (typeof data === 'string') {
+        let bytes = 0;
+        for (let index = 0; index < data.length; index += 1) {
+            const code = data.codePointAt(index);
+            if (code < 128) {
+                bytes += 1;
+            }
+            else if (code < 2048) {
+                bytes += 2;
+            }
+            else if (code <= 65535) {
+                bytes += 3;
+            }
+            else {
+                bytes += 4;
+                index += 1;
+            }
+        }
+        return bytes;
+    }
+    if (Array.isArray(data)) {
+        return data.reduce((sum, buf) => sum + buf.byteLength, 0);
+    }
+    if ('byteLength' in data) {
+        return data.byteLength;
+    }
+    return 0;
+}
+/**
+ * Buffers outgoing WebSocket messages while a connection is unavailable.
+ *
+ * JSON values are serialized immediately, and raw binary payloads are copied,
+ * so later caller mutations cannot change queued messages. A single oversized
+ * message is accepted when the queue is empty; further messages are rejected
+ * whenever they would exceed the configured byte budget.
+ */
+class SendQueue {
+    /** Creates a queue with a one-mebibyte default byte budget. */
+    constructor(maxBytes = 1048576) {
+        this._queue = [];
+        this._bytes = 0;
+        this._maxBytes = maxBytes;
+    }
+    /**
+     * Serializes and snapshots a JSON message before queueing it.
+     *
+     * @returns `true` when accepted, including an oversized first message; `false`
+     * when adding it to a nonempty queue would exceed the byte budget.
+     */
+    enqueue(event) {
+        const data = JSON.stringify(event);
+        const byteLength = encodeUTF8(data).byteLength;
+        if (this._bytes + byteLength > this._maxBytes && this._queue.length > 0) {
+            return false;
+        }
+        this._queue.push({ kind: 'json', data, byteLength });
+        this._bytes += byteLength;
+        return true;
+    }
+    /**
+     * Queues a raw string or a defensive copy of a binary WebSocket payload.
+     * Fragmented typed-array payloads are flattened before storage.
+     *
+     * @returns `true` when accepted, including an oversized first frame; `false`
+     * when adding it to a nonempty queue would exceed the byte budget.
+     */
+    enqueueRaw(data) {
+        const snapshot = snapshotRawData(data);
+        const byteLength = rawByteLength(snapshot);
+        if (this._bytes + byteLength > this._maxBytes && this._queue.length > 0) {
+            return false;
+        }
+        this._queue.push({ kind: 'raw', data: snapshot, byteLength });
+        this._bytes += byteLength;
+        return true;
+    }
+    /**
+     * Send every queued message via `send`. If `send` throws, the failing
+     * message and all subsequent messages are re-queued and the error is
+     * re-thrown so the caller can report it. Endpoints that cannot safely replay
+     * an attempted write use `requeueFailed: false`. Never-attempted messages
+     * remain queued, including messages enqueued during the failed send.
+     */
+    flush(send, options) {
+        const pending = this._queue.splice(0);
+        this._bytes = 0;
+        for (let i = 0; i < pending.length; i++) {
+            try {
+                send(pending[i].data);
+            }
+            catch (err) {
+                const remaining = pending.slice(options?.requeueFailed === false ? i + 1 : i);
+                this._queue = [...remaining, ...this._queue];
+                this._bytes = this._queue.reduce((sum, item) => sum + item.byteLength, 0);
+                throw err;
+            }
+        }
+    }
+    /**
+     * Drain the queue and return the unsent messages. JSON messages are
+     * deserialized back to their original form. Resets byte tracking to zero.
+     */
+    drain() {
+        const unsent = this._queue.map((entry) => {
+            if (entry.kind === 'raw') {
+                return { type: 'raw', data: entry.data };
+            }
+            // SAFETY: T is the transport caller's event contract; JSON syntax is parsed here without imposing a runtime schema on forward-compatible events.
+            return { type: 'message', message: JSON.parse(entry.data) };
+        });
+        this._queue = [];
+        this._bytes = 0;
+        return unsent;
+    }
+}
+/**
+ * Reports whether an RFC 6455 close code represents a recoverable interruption.
+ *
+ * Network failures, service restarts, temporary server errors, and TLS
+ * handshake failures can be retried; normal closure, protocol violations,
+ * invalid payloads, and unrecognized codes cannot.
+ */
+function isRecoverableClose(code) {
+    switch (code) {
+        case 1000: {
+            return false;
+        } // Normal closure
+        case 1001: {
+            return true;
+        } // Going away (server shutting down)
+        case 1002: {
+            return false;
+        } // Protocol error
+        case 1003: {
+            return false;
+        } // Unsupported data
+        case 1005: {
+            return true;
+        } // No status code (abnormal)
+        case 1006: {
+            return true;
+        } // Abnormal closure (network drop)
+        case 1007: {
+            return false;
+        } // Invalid payload
+        case 1008: {
+            return false;
+        } // Policy violation
+        case 1009: {
+            return false;
+        } // Message too big
+        case 1010: {
+            return false;
+        } // Missing extension
+        case 1011: {
+            return true;
+        } // Internal server error
+        case 1012: {
+            return true;
+        } // Service restart
+        case 1013: {
+            return true;
+        } // Try again later
+        case 1015: {
+            return true;
+        } // TLS handshake failure
+        default: {
+            return false;
+        }
+    }
+}
+//# sourceMappingURL=ws.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/provider.mjs
 /**
  * A provider factory such as `bedrock(options)` captures configuration in a
@@ -126806,6 +131627,7 @@ var _OpenAI_instances, client_a, _OpenAI_encoder, _OpenAI_x509Authentication, _O
 
 
 
+
 function isRunningInBrowserOrBrowserWorker() {
     if (detect_platform_isRunningInBrowser())
         return true;
@@ -126855,6 +131677,8 @@ class OpenAI {
         // Preserve an explicit global selection without storing a second routing URL.
         _OpenAI_explicitDataResidency.set(this, false);
         _OpenAI_responseAttempts.set(this, new WeakMap());
+        this._apiKeyInvocation = 0;
+        this._lastCachedAPIKeyInvocation = 0;
         /**
          * Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.
          */
@@ -126912,7 +131736,7 @@ class OpenAI {
          */
         this.evals = new Evals(this);
         this.containers = new Containers(this);
-        this.skills = new skills_skills_Skills(this);
+        this.skills = new resources_skills_skills_Skills(this);
         /**
          * @deprecated The Sora API is scheduled to permanently shut down on September 24, 2026.
          */
@@ -127087,8 +131911,12 @@ class OpenAI {
         return this._options.defaultQuery;
     }
     /** @internal Client request headers for each new WebSocket handshake. */
-    _buildWebSocketHeaders(authHeaders) {
-        return Object.fromEntries(headers_buildHeaders([
+    _buildWebSocketHeaders(authHeaders, removedHeaders) {
+        const context = webSocketHeaderRemovals.get(this);
+        if (context?.baseHeaders) {
+            return mergeWebSocketAuthHeaders({ headers: context.baseHeaders }, authHeaders, context.removedHeaders ?? new Set()).headers;
+        }
+        const headers = headers_buildHeaders([
             {
                 'User-Agent': this.getUserAgent(),
                 'OpenAI-Organization': this.organization,
@@ -127096,7 +131924,13 @@ class OpenAI {
             },
             authHeaders,
             this._options.defaultHeaders,
-        ]).values);
+        ]);
+        headers.nulls.forEach((name) => (removedHeaders ?? context?.removedHeaders)?.add(name));
+        const result = Object.fromEntries(headers.values);
+        if (context) {
+            context.baseHeaders = { ...result };
+        }
+        return result;
     }
     validateHeaders({ values, nulls }, schemes = {
         bearerAuth: true,
@@ -127182,11 +132016,8 @@ class OpenAI {
         return typeof this._options.apiKey === 'function';
     }
     /**
-     * Resolves a function-based API key and retains the resolved value on this client.
-     * Returns whether a provider was invoked. Internal callers can capture this
-     * invocation's key before another request updates the shared `apiKey` property.
-     * Overrides should forward `capture` or invoke it with their own resolved key
-     * to preserve invocation-local credentials in concurrent requests and Realtime factories.
+     * Resolves and retains a provider key, returning whether a provider was invoked.
+     * Overrides should forward `capture` (or call it with their resolved key) for local credentials.
      * @internal
      */
     async _callApiKey(capture) {
@@ -127199,6 +132030,8 @@ class OpenAI {
             capture?.(this.apiKey);
             return false;
         }
+        const deferredCache = getDeferredRealtimeAPIKeyCache(this);
+        const invocation = ++this._apiKeyInvocation;
         let token;
         try {
             token = await apiKey();
@@ -127213,8 +132046,24 @@ class OpenAI {
         if (typeof token !== 'string' || !token) {
             throw new error_OpenAIError(`Expected 'apiKey' function argument to return a string but it returned ${token}`);
         }
-        this.apiKey = token;
-        capture?.(this.apiKey);
+        const resolvedToken = token;
+        const commit = () => {
+            if (capture)
+                validateCapturedAPIKey(this, resolvedToken);
+            if (invocation < this._lastCachedAPIKeyInvocation) {
+                return resolvedToken;
+            }
+            this.apiKey = resolvedToken;
+            const cached = capture ? this.apiKey : resolvedToken;
+            this._lastCachedAPIKeyInvocation = invocation;
+            return cached;
+        };
+        if (deferredCache) {
+            deferredCache.providerKey = resolvedToken;
+            deferredCache.commit = commit;
+        }
+        const cached = deferredCache ? validateCapturedAPIKey(this, resolvedToken) : commit();
+        capture?.(cached);
         return true;
     }
     buildURL(path, query, defaultBaseURL) {
@@ -128427,7 +133276,7 @@ OpenAI.Realtime = realtime_Realtime;
 OpenAI.Conversations = Conversations;
 OpenAI.Evals = Evals;
 OpenAI.Containers = Containers;
-OpenAI.Skills = skills_skills_Skills;
+OpenAI.Skills = resources_skills_skills_Skills;
 OpenAI.Videos = Videos;
 OpenAI.ConversationCursorPage = ConversationCursorPage;
 OpenAI.CursorPage = CursorPage;
@@ -128626,431 +133475,6 @@ const _deployments_endpoints = new Set([
     '/images/edits',
 ]);
 //# sourceMappingURL=azure.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/internal/bedrock.mjs
-
-
-/** Identifies legacy Bedrock clients without importing the client class into WebSocket modules. */
-const brand_privateBedrockClient = Symbol.for('openai.privateBedrockClient');
-/** Wraps a provider failure in an SDK error while preserving its original cause. */
-function errorWithCause(message, cause) {
-    // SAFETY: This SDK error is created locally and receives its optional cause immediately below; no existing error shape is trusted.
-    const error = new Errors.OpenAIError(message);
-    error.cause = cause;
-    return error;
-}
-/** Trims a configuration string, treating missing and whitespace-only values as absent. */
-function normalizeOptionalString(value) {
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
-    const normalized = typeof value === 'string' ? value.trim() : undefined;
-    return normalized || undefined;
-}
-function normalizeBaseURL(baseURL) {
-    const url = new URL(baseURL);
-    const responsesMatch = url.pathname.match(/\/responses(?:\/.*)?$/);
-    if (responsesMatch?.index !== undefined) {
-        url.pathname = url.pathname.slice(0, responsesMatch.index) || '/';
-    }
-    return url.toString().replace(/\/$/, '');
-}
-function resolveRuntimeDnsSuffixes(region) {
-    if (region.startsWith('cn-')) {
-        return ['amazonaws.com.cn', 'api.amazonwebservices.com.cn'];
-    }
-    if (region.startsWith('eusc-')) {
-        return ['amazonaws.eu', 'api.amazonwebservices.eu'];
-    }
-    if (region.startsWith('us-iso-')) {
-        return ['c2s.ic.gov', 'api.aws.ic.gov'];
-    }
-    if (region.startsWith('us-isob-')) {
-        return ['sc2s.sgov.gov', 'api.aws.scloud'];
-    }
-    if (region.startsWith('eu-isoe-')) {
-        return ['cloud.adc-e.uk', 'api.cloud-aws.adc-e.uk'];
-    }
-    if (region.startsWith('us-isof-')) {
-        return ['csp.hci.ic.gov', 'api.aws.hci.ic.gov'];
-    }
-    return ['amazonaws.com', 'api.aws'];
-}
-/** Identifies a canonical Amazon Bedrock hostname and its embedded AWS region. */
-function parseBedrockEndpointHostname(hostname) {
-    const canonicalHostname = hostname.endsWith('.') ? hostname.slice(0, -1) : hostname;
-    const [service, region, ...suffixParts] = canonicalHostname.toLowerCase().split('.');
-    const suffix = suffixParts.join('.');
-    if (service === 'bedrock-mantle' && region && /^[a-z0-9-]+$/.test(region) && suffix === 'api.aws') {
-        return { endpoint: 'mantle', region };
-    }
-    if ((service === 'bedrock-runtime' || service === 'bedrock-runtime-fips') && region) {
-        const [standardSuffix, dualStackSuffix] = resolveRuntimeDnsSuffixes(region);
-        if (suffix === standardSuffix || suffix === dualStackSuffix) {
-            return { endpoint: 'runtime', region };
-        }
-    }
-    return undefined;
-}
-/** Rejects insecure or mismatched canonical Amazon Bedrock endpoint overrides. */
-function validateCanonicalBedrockEndpoint(baseURL, endpoint, region) {
-    const parsedBaseURL = new URL(baseURL);
-    const canonicalEndpoint = parseBedrockEndpointHostname(parsedBaseURL.hostname);
-    if (canonicalEndpoint && parsedBaseURL.protocol !== 'https:') {
-        throw new Errors.OpenAIError('Canonical Amazon Bedrock endpoints require HTTPS.');
-    }
-    if (canonicalEndpoint && canonicalEndpoint.endpoint !== endpoint) {
-        throw new Errors.OpenAIError(`The Bedrock ${canonicalEndpoint.endpoint} hostname does not match the selected \`${endpoint}\` endpoint. Set \`endpoint: '${canonicalEndpoint.endpoint}'\` to use this hostname.`);
-    }
-    if (canonicalEndpoint && region && canonicalEndpoint.region !== region) {
-        throw new Errors.OpenAIError(`The Bedrock endpoint region \`${canonicalEndpoint.region}\` does not match the configured AWS region \`${region}\`.`);
-    }
-}
-function validateBedrockEndpointSelection(endpoint) {
-    if (endpoint !== undefined && endpoint !== 'mantle' && endpoint !== 'runtime') {
-        throw new Errors.OpenAIError('The Bedrock `endpoint` must be either `mantle` or `runtime`.');
-    }
-}
-/**
- * Resolves the Bedrock endpoint family, region, and API root from configuration.
- *
- * Region precedence is `region`, `AWS_REGION`, then `AWS_DEFAULT_REGION`.
- * Endpoint precedence is `baseURL`, `AWS_BEDROCK_BASE_URL`, then the regional
- * selected endpoint; an explicit `null` base URL skips the environment override.
- * Existing `/responses` suffixes and trailing slashes are removed. Canonical
- * AWS hostnames infer the endpoint family when none is selected explicitly.
- * Other configured URLs and derived endpoints default to Mantle.
- *
- * @throws {Errors.OpenAIError} If an option is invalid, a canonical hostname
- * conflicts with the endpoint family, or the default endpoint needs a region.
- */
-function resolveBedrockEndpoint(options) {
-    validateBedrockEndpointSelection(options.endpoint);
-    if (options.region !== undefined && !normalizeOptionalString(options.region)) {
-        throw new Errors.OpenAIError('The Bedrock AWS `region` must not be empty.');
-    }
-    if (options.baseURL !== undefined &&
-        options.baseURL !== null &&
-        !normalizeOptionalString(options.baseURL)) {
-        throw new Errors.OpenAIError('The Bedrock `baseURL` must not be empty.');
-    }
-    const region = normalizeOptionalString(options.region) ??
-        normalizeOptionalString(readEnv('AWS_REGION')) ??
-        normalizeOptionalString(readEnv('AWS_DEFAULT_REGION'));
-    if (region && !/^[a-z]{2,8}(?:-[a-z0-9]+)+-\d+$/.test(region)) {
-        throw new Errors.OpenAIError('The Bedrock AWS `region` is invalid. Use a standard AWS region such as `us-east-1`.');
-    }
-    const configuredBaseURL = options.baseURL === undefined
-        ? normalizeOptionalString(readEnv('AWS_BEDROCK_BASE_URL'))
-        : normalizeOptionalString(options.baseURL);
-    if (configuredBaseURL) {
-        const baseURL = normalizeBaseURL(configuredBaseURL);
-        const endpoint = options.endpoint ?? parseBedrockEndpointHostname(new URL(baseURL).hostname)?.endpoint ?? 'mantle';
-        validateCanonicalBedrockEndpoint(baseURL, endpoint, region);
-        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Preserve the declared endpoint resolver contract across configured URLs and inferred regions.
-        return { endpoint, region, baseURL };
-    }
-    const endpoint = options.endpoint ?? 'mantle';
-    if (!region) {
-        throw new Errors.OpenAIError('Bedrock requires an AWS region. Pass `region` to `bedrock(...)`, or set `AWS_REGION` or `AWS_DEFAULT_REGION`.');
-    }
-    const hostname = endpoint === 'runtime'
-        ? `bedrock-runtime.${region}.${resolveRuntimeDnsSuffixes(region)[0]}`
-        : `bedrock-mantle.${region}.api.aws`;
-    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The resolver intentionally returns its declared endpoint contract across all configuration paths.
-    return { endpoint, region, baseURL: `https://${hostname}/openai/v1` };
-}
-/**
- * Ensures Bedrock credentials are only attached to the configured endpoint origin.
- *
- * @throws {Errors.OpenAIError} If either URL is not HTTP(S) or the request targets a different origin.
- */
-function assertBedrockRequestOrigin(baseURL, requestURL) {
-    const expectedURL = new URL(baseURL);
-    const request = new URL(requestURL);
-    const expectedOrigin = expectedURL.origin;
-    const requestOrigin = request.origin;
-    if ((expectedURL.protocol !== 'http:' && expectedURL.protocol !== 'https:') ||
-        (request.protocol !== 'http:' && request.protocol !== 'https:') ||
-        requestOrigin !== expectedOrigin) {
-        throw new error_OpenAIError(`Bedrock request origin \`${requestOrigin}\` does not match the configured base URL origin \`${expectedOrigin}\`.`);
-    }
-}
-/** Validates a final WebSocket URL before a legacy Bedrock client resolves or attaches credentials. */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The WebSocket authentication boundary verifies the caller client at runtime before trusting provider metadata.
-function assertBedrockWebSocketOrigin(client, requestURL) {
-    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
-    if (typeof client !== 'object' || client === null || !(brand_privateBedrockClient in client)) {
-        return;
-    }
-    const normalizedRequestURL = new URL(requestURL);
-    if (normalizedRequestURL.protocol === 'wss:') {
-        normalizedRequestURL.protocol = 'https:';
-    }
-    else if (normalizedRequestURL.protocol === 'ws:') {
-        normalizedRequestURL.protocol = 'http:';
-    }
-    // SAFETY: The private Bedrock brand checked above identifies the client whose baseURL is validated against the finalized request origin.
-    assertBedrockRequestOrigin(
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- The private Bedrock client brand checked above identifies the client baseURL contract.
-    client.baseURL, normalizedRequestURL.toString());
-}
-/**
- * Rejects caller-provided authorization headers that conflict with provider authentication.
- *
- * @throws {Errors.OpenAIError} If an `Authorization` header is already present.
- */
-function assertProviderOwnsAuthorization(headers) {
-    if (headers.has('authorization')) {
-        throw new Errors.OpenAIError('Bedrock provider authentication cannot be combined with a custom `Authorization` header.');
-    }
-}
-/** Rejects non-HTTP field bytes without retaining or exposing a bearer credential. */
-function assertValidBedrockBearerCredential(credential) {
-    if (/^[\t ]|[\t ]$/.test(credential)) {
-        throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
-    }
-    for (const character of credential) {
-        const value = character.codePointAt(0) ?? 0;
-        if ((value < 0x20 && value !== 0x09) || value === 0x7f || value > 0xff) {
-            throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
-        }
-    }
-}
-function createBedrockUserAbortError(signal) {
-    const error = new Errors.APIUserAbortError();
-    Object.defineProperty(error, 'cause', {
-        value: signal.reason,
-        writable: true,
-        configurable: true,
-    });
-    return error;
-}
-function removeBedrockAbortListener(signal, listener) {
-    try {
-        signal.removeEventListener('abort', listener);
-    }
-    catch {
-        // A nonstandard AbortSignal must not replace the actual request outcome.
-    }
-}
-function resolveAbortableBedrockAuth(operation, signals, failure) {
-    // oxlint-disable-next-line promise/avoid-new -- AbortSignal events require a Promise callback bridge.
-    return new Promise((resolve, reject) => {
-        let settled = false;
-        const listeners = [];
-        const removeListeners = () => {
-            while (listeners.length > 0) {
-                const registered = listeners.pop();
-                if (registered) {
-                    removeBedrockAbortListener(registered.signal, registered.listener);
-                }
-            }
-        };
-        failure.removeListeners = removeListeners;
-        const settle = (result) => {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            if ('value' in result) {
-                resolve(result.value);
-            }
-            else {
-                removeListeners();
-                reject(result.error);
-            }
-        };
-        // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Failures and rejection reasons can be arbitrary JavaScript values; preserve them until inspection or forwarding.
-        const rejectSignalFailure = (error) => {
-            if (failure.error) {
-                return;
-            }
-            failure.error = { value: error };
-            settle({ error });
-        };
-        const registerAbortListener = (signal) => {
-            const onAbort = () => {
-                if (failure.error) {
-                    return;
-                }
-                try {
-                    rejectSignalFailure(createBedrockUserAbortError(signal));
-                }
-                catch (error) {
-                    rejectSignalFailure(error);
-                }
-            };
-            try {
-                if (signal.aborted) {
-                    onAbort();
-                    return false;
-                }
-                listeners.push({ signal, listener: onAbort });
-                signal.addEventListener('abort', onAbort, { once: true });
-                if (settled) {
-                    removeBedrockAbortListener(signal, onAbort);
-                    return false;
-                }
-                if (signal.aborted) {
-                    onAbort();
-                    return false;
-                }
-            }
-            catch (error) {
-                if (settled) {
-                    removeBedrockAbortListener(signal, onAbort);
-                }
-                else {
-                    rejectSignalFailure(error);
-                }
-                return false;
-            }
-            return true;
-        };
-        for (const signal of signals) {
-            if (!registerAbortListener(signal)) {
-                return;
-            }
-        }
-        let pending;
-        try {
-            pending = operation();
-        }
-        catch (error) {
-            settle({ error });
-            return;
-        }
-        const observeResult = async () => {
-            try {
-                settle({ value: await pending });
-            }
-            catch (error) {
-                settle({ error });
-            }
-        };
-        // Observe the result even if the provider synchronously triggered cancellation.
-        void observeResult();
-    });
-}
-/**
- * Resolves Bedrock authentication work with caller cancellation, then applies
- * its result synchronously after the final cancellation checks.
- *
- * @internal
- */
-async function prepareBedrockAuth(request, context, operation) {
-    const signals = [];
-    for (const signal of [context.options.signal, request.signal]) {
-        if (signal != null && !signals.includes(signal)) {
-            signals.push(signal);
-        }
-    }
-    const signalFailure = {};
-    let value;
-    try {
-        try {
-            value =
-                signals.length > 0
-                    ? await resolveAbortableBedrockAuth(operation.resolve, signals, signalFailure)
-                    : await operation.resolve();
-        }
-        catch (cause) {
-            if (signalFailure.error && Object.is(cause, signalFailure.error.value)) {
-                throw cause;
-            }
-            throw errorWithCause(operation.failureMessage, cause);
-        }
-        if (signalFailure.error) {
-            throw signalFailure.error.value;
-        }
-        for (const signal of signals) {
-            if (signal.aborted) {
-                throw createBedrockUserAbortError(signal);
-            }
-        }
-    }
-    finally {
-        signalFailure.removeListeners?.();
-    }
-    operation.apply(value);
-}
-class BedrockBearerAuth {
-    constructor(tokenProvider) {
-        this.tokenProvider = tokenProvider;
-    }
-    async prepareRequest(request, context) {
-        const headers = new Headers(request.headers);
-        assertProviderOwnsAuthorization(headers);
-        await prepareBedrockAuth(request, context, {
-            resolve: () => this.tokenProvider(),
-            failureMessage: 'Failed to resolve a bearer credential for Bedrock.',
-            apply: (token) => {
-                // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
-                if (typeof token !== 'string' || !token.trim()) {
-                    throw new Errors.OpenAIError('The Bedrock bearer credential provider must return a non-empty string.');
-                }
-                assertValidBedrockBearerCredential(token);
-                try {
-                    headers.set('authorization', `Bearer ${token}`);
-                }
-                catch (error) {
-                    if (error instanceof TypeError) {
-                        // oxlint-disable-next-line eslint/preserve-caught-error -- The original error contains the bearer credential.
-                        throw new TypeError('Bedrock bearer credential contains an invalid HTTP header value.');
-                    }
-                    throw error;
-                }
-                request.redirect = 'manual';
-                request.headers = headers;
-            },
-        });
-    }
-}
-/**
- * Resolves a bearer-authentication factory without calling token providers eagerly.
- *
- * Explicit `tokenProvider` and `apiKey` options are mutually exclusive. When
- * neither is set, `AWS_BEARER_TOKEN_BEDROCK` is used unless environment
- * credentials are disabled or `apiKey` is explicitly `null`.
- *
- * @throws {Errors.OpenAIError} If an explicit key is empty or multiple bearer
- * credential sources are configured.
- */
-function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
-    if (options.apiKey !== undefined &&
-        options.apiKey !== null &&
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Bedrock credential and origin checks validate JavaScript configuration before any credential is sent.
-        (typeof options.apiKey !== 'string' || !options.apiKey.trim())) {
-        throw new Errors.OpenAIError('The Bedrock bearer credential must not be empty.');
-    }
-    if (options.apiKey != null && options.tokenProvider) {
-        throw new Errors.OpenAIError('The `apiKey` and `tokenProvider` options are mutually exclusive. Configure only one.');
-    }
-    if (options.tokenProvider) {
-        const tokenProvider = options.tokenProvider;
-        // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared bearer-auth contract hides concrete authenticator implementations behind their factory.
-        return { factory: () => new BedrockBearerAuth(tokenProvider), explicit: true };
-    }
-    if (options.apiKey != null) {
-        const apiKey = options.apiKey;
-        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Explicit API keys use the same declared auth-factory contract as token providers.
-        return { factory: () => new BedrockBearerAuth(async () => apiKey), explicit: true };
-    }
-    if (allowEnvironment && options.apiKey !== null && readEnv('AWS_BEARER_TOKEN_BEDROCK')) {
-        // oxlint-disable-next-line anti-slop/no-known-value-widening -- Environment credentials must preserve the same declared auth-factory contract as explicit options.
-        return {
-            explicit: false,
-            factory: () => new BedrockBearerAuth(async () => {
-                const token = readEnv('AWS_BEARER_TOKEN_BEDROCK');
-                if (!token) {
-                    throw new Errors.OpenAIError('Could not find credentials for Bedrock. Set `AWS_BEARER_TOKEN_BEDROCK` or configure AWS credential authentication.');
-                }
-                return token;
-            }),
-        };
-    }
-    // oxlint-disable-next-line anti-slop/no-known-value-widening -- The declared optional factory contract also represents the absence of bearer credentials.
-    return { factory: undefined, explicit: false };
-}
-//# sourceMappingURL=bedrock.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/bedrock.mjs
 var bedrock_a;
 
