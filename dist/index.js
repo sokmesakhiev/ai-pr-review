@@ -79634,6 +79634,10 @@ var FinishReason;
      * Image generation stopped for a reason not otherwise specified.
      */
     FinishReason["IMAGE_OTHER"] = "IMAGE_OTHER";
+    /**
+     * Token generation stopped because the response reached the per-request token limit, but generation is not yet complete. The response can be continued by passing the returned `continuation_token` in a subsequent request.
+     */
+    FinishReason["CONTINUATION"] = "CONTINUATION";
 })(FinishReason || (FinishReason = {}));
 /** Output only. The probability of harm for this category. */
 var HarmProbability;
@@ -82959,6 +82963,12 @@ function candidateFromMldev$1(fromObject) {
     if (fromUrlContextMetadata != null) {
         setValueByPath(toObject, ['urlContextMetadata'], fromUrlContextMetadata);
     }
+    const fromContinuationToken = getValueByPath(fromObject, [
+        'continuationToken',
+    ]);
+    if (fromContinuationToken != null) {
+        setValueByPath(toObject, ['continuationToken'], fromContinuationToken);
+    }
     return toObject;
 }
 function citationMetadataFromMldev$1(fromObject) {
@@ -83362,8 +83372,9 @@ function generateContentConfigToMldev$1(apiClient, fromObject, parentObject) {
     if (parentObject !== undefined && fromToolConfig != null) {
         setValueByPath(parentObject, ['toolConfig'], toolConfigToMldev$2(fromToolConfig));
     }
-    if (getValueByPath(fromObject, ['labels']) !== undefined) {
-        throw new Error('labels parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    const fromLabels = getValueByPath(fromObject, ['labels']);
+    if (parentObject !== undefined && fromLabels != null) {
+        setValueByPath(parentObject, ['labels'], fromLabels);
     }
     const fromCachedContent = getValueByPath(fromObject, [
         'cachedContent',
@@ -83414,6 +83425,12 @@ function generateContentConfigToMldev$1(apiClient, fromObject, parentObject) {
     }
     if (getValueByPath(fromObject, ['modelArmorConfig']) !== undefined) {
         throw new Error('modelArmorConfig parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    }
+    const fromContinuationToken = getValueByPath(fromObject, [
+        'continuationToken',
+    ]);
+    if (parentObject !== undefined && fromContinuationToken != null) {
+        setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
     }
     return toObject;
 }
@@ -88089,6 +88106,12 @@ function candidateFromMldev(fromObject, rootObject) {
     if (fromUrlContextMetadata != null) {
         setValueByPath(toObject, ['urlContextMetadata'], fromUrlContextMetadata);
     }
+    const fromContinuationToken = getValueByPath(fromObject, [
+        'continuationToken',
+    ]);
+    if (fromContinuationToken != null) {
+        setValueByPath(toObject, ['continuationToken'], fromContinuationToken);
+    }
     return toObject;
 }
 function citationMetadataFromMldev(fromObject, _rootObject) {
@@ -89014,8 +89037,9 @@ function generateContentConfigToMldev(apiClient, fromObject, parentObject, rootO
     if (parentObject !== undefined && fromToolConfig != null) {
         setValueByPath(parentObject, ['toolConfig'], toolConfigToMldev(fromToolConfig));
     }
-    if (getValueByPath(fromObject, ['labels']) !== undefined) {
-        throw new Error('labels parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    const fromLabels = getValueByPath(fromObject, ['labels']);
+    if (parentObject !== undefined && fromLabels != null) {
+        setValueByPath(parentObject, ['labels'], fromLabels);
     }
     const fromCachedContent = getValueByPath(fromObject, [
         'cachedContent',
@@ -89066,6 +89090,12 @@ function generateContentConfigToMldev(apiClient, fromObject, parentObject, rootO
     }
     if (getValueByPath(fromObject, ['modelArmorConfig']) !== undefined) {
         throw new Error('modelArmorConfig parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    }
+    const fromContinuationToken = getValueByPath(fromObject, [
+        'continuationToken',
+    ]);
+    if (parentObject !== undefined && fromContinuationToken != null) {
+        setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
     }
     return toObject;
 }
@@ -89250,6 +89280,12 @@ function generateContentConfigToVertex(apiClient, fromObject, parentObject, root
     ]);
     if (parentObject !== undefined && fromModelArmorConfig != null) {
         setValueByPath(parentObject, ['modelArmorConfig'], fromModelArmorConfig);
+    }
+    const fromContinuationToken = getValueByPath(fromObject, [
+        'continuationToken',
+    ]);
+    if (parentObject !== undefined && fromContinuationToken != null) {
+        setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
     }
     return toObject;
 }
@@ -91842,7 +91878,7 @@ const CONTENT_TYPE_HEADER = 'Content-Type';
 const SERVER_TIMEOUT_HEADER = 'X-Server-Timeout';
 const USER_AGENT_HEADER = 'User-Agent';
 const GOOGLE_API_CLIENT_HEADER = 'x-goog-api-client';
-const SDK_VERSION = '2.24.0'; // x-release-please-version
+const SDK_VERSION = '2.27.0'; // x-release-please-version
 const LIBRARY_LABEL = `google-genai-sdk/${SDK_VERSION}`;
 const VERTEX_AI_API_DEFAULT_VERSION = 'v1beta1';
 const GOOGLE_AI_API_DEFAULT_VERSION = 'v1beta';
@@ -105116,6 +105152,12 @@ function tuningJobFromVertex(fromObject, rootObject) {
     ]);
     if (fromVeoTuningSpec != null) {
         setValueByPath(toObject, ['veoTuningSpec'], fromVeoTuningSpec);
+    }
+    const fromGcsMetricsUri = getValueByPath(fromObject, [
+        'gcsMetricsUri',
+    ]);
+    if (fromGcsMetricsUri != null) {
+        setValueByPath(toObject, ['gcsMetricsUri'], fromGcsMetricsUri);
     }
     return toObject;
 }
