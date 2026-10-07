@@ -107969,7 +107969,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.27.0'; // x-release-please-version
+const openai_version_VERSION = '7.28.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -120050,8 +120050,48 @@ class Translations extends resource_APIResource {
     }
 }
 //# sourceMappingURL=translations.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/audio/voices.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+function voices_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+/**
+ * Turn audio into text or text into audio.
+ */
+class voices_Voices extends resource_APIResource {
+    /**
+     * Creates a voice from a text prompt or from a consent recording and an audio
+     * sample.
+     *
+     * For prompt-based creation, send `type: "prompt"` with a `name` and `prompt` as
+     * JSON or multipart form data. For creation from an audio sample, send
+     * `type: "audio_sample"` with a `name`, `audio_sample`, and `consent` recording ID
+     * as multipart form data. The type defaults to `audio_sample` when omitted.
+     *
+     * Returns the saved voice's metadata. Voices created from text prompts are
+     * supported only in Live, not in Realtime or the speech endpoint. The response
+     * does not include preview audio.
+     *
+     * @example
+     * ```ts
+     * const voice = await client.audio.voices.create({
+     *   audio_sample: fs.createReadStream('path/to/file'),
+     *   consent: 'consent',
+     *   name: 'x',
+     * });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/audio/voices', voices_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions({ body, ...options, __security: { bearerAuth: true } }, this._client)));
+    }
+}
+//# sourceMappingURL=voices.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/audio/audio.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
 
 
 
@@ -120065,11 +120105,13 @@ class Audio extends resource_APIResource {
         this.transcriptions = new Transcriptions(this._client);
         this.translations = new Translations(this._client);
         this.speech = new Speech(this._client);
+        this.voices = new voices_Voices(this._client);
     }
 }
 Audio.Transcriptions = Transcriptions;
 Audio.Translations = Translations;
 Audio.Speech = Speech;
+Audio.Voices = voices_Voices;
 //# sourceMappingURL=audio.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/batches.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -126793,14 +126835,11 @@ function images_resolveResourceRequestOptions(options, buildOptions) {
  */
 class Images extends resource_APIResource {
     /**
-     * Creates a variation of a given image. This endpoint only supports `dall-e-2`.
+     * This endpoint is retired and no longer available. Use the image edits endpoint
+     * with a GPT Image model and a prompt to create a variation of an image. The
+     * request and response schemas below describe the legacy contract.
      *
-     * @example
-     * ```ts
-     * const imagesResponse = await client.images.createVariation({
-     *   image: fs.createReadStream('otter.png'),
-     * });
-     * ```
+     * @deprecated
      */
     createVariation(body, options) {
         return this._client.post('/images/variations', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions({ body, ...options, __security: { bearerAuth: true } }, this._client)));
