@@ -107969,7 +107969,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.28.0'; // x-release-please-version
+const openai_version_VERSION = '7.30.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -111449,6 +111449,30 @@ class completions_messages_Messages extends resource_APIResource {
     }
 }
 //# sourceMappingURL=messages.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/chat-completions/streaming.mjs
+function normalizeChatCompletionChunk(chunk) {
+    if (!Array.isArray(chunk?.choices)) {
+        // SAFETY: This is an opaque provider record, with no choices to normalize.
+        // Preserve the existing SSE pass-through; the SDK does not validate these records.
+        return chunk;
+    }
+    return {
+        ...chunk,
+        choices: chunk.choices.map((choice) => ({ ...choice, finish_reason: choice.finish_reason ?? null })),
+    };
+}
+function normalizeChatCompletionStream(stream) {
+    const iterator = stream[Symbol.asyncIterator].bind(stream);
+    stream[Symbol.asyncIterator] = async function* normalizedChunks() {
+        const source = { [Symbol.asyncIterator]: iterator };
+        for await (const chunk of source) {
+            yield normalizeChatCompletionChunk(chunk);
+        }
+    };
+    // SAFETY: The installed iterator normalizes every wire chunk before exposing it.
+    return stream;
+}
+//# sourceMappingURL=streaming.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/error.mjs
 /** @deprecated Import from ./core/error instead */
 
@@ -114179,6 +114203,7 @@ var _ChatCompletionStream_instances, _ChatCompletionStream_params, _ChatCompleti
 
 
 
+
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- Partial JSON may have any shape; callers validate or parse it against their response schema.
 function parseStructuredStreamingJSON(content) {
     try {
@@ -115087,7 +115112,7 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
                 this._addMessage(message.message);
                 continue;
             }
-            const chunk = item;
+            const chunk = normalizeChatCompletionChunk(item);
             if (chatId && chunk.id && chatId !== chunk.id) {
                 // A new request has been made.
                 this._addChatCompletion(__classPrivateFieldGet(this, _ChatCompletionStream_instances, "m", _ChatCompletionStream_endRequest).call(this));
@@ -115469,7 +115494,13 @@ class ChatCompletionStream extends AbstractChatCompletionRunner {
             }
             let choice = snapshot.choices[index];
             if (!choice) {
-                const newChoice = { finish_reason, index, message: {}, logprobs: null, ...other };
+                const newChoice = {
+                    finish_reason: finish_reason ?? null,
+                    index,
+                    message: {},
+                    logprobs: null,
+                    ...other,
+                };
                 snapshot.choices[index] = newChoice;
                 choice = newChoice;
             }
@@ -115968,6 +115999,7 @@ class ChatCompletionStreamingRunner extends ChatCompletionStream {
 
 
 
+
 function completions_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
@@ -116032,12 +116064,14 @@ class completions_Completions extends resource_APIResource {
         this.messages = new completions_messages_Messages(this._client);
     }
     create(body, options) {
-        return this._client.post('/chat/completions', completions_resolveResourceRequestOptions(options, (options) => ({
+        return this._client
+            .post('/chat/completions', completions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
             stream: body.stream ?? false,
             __security: { bearerAuth: true },
-        })));
+        })))
+            ._thenUnwrap((result) => body.stream ? normalizeChatCompletionStream(result) : result);
     }
     /**
      * Get a stored chat completion. Only Chat Completions that have been created with
@@ -120840,6 +120874,216 @@ class TurnState {
 }
 _TurnState_turnID = new WeakMap(), _TurnState_turnEnded = new WeakMap(), _TurnState_eventIDs = new WeakMap(), _TurnState_calls = new WeakMap();
 //# sourceMappingURL=turn-state.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/tool-output.mjs
+
+/**
+ * Recognizes supported content blocks without confusing JSON business data with content.
+ * @internal
+ */
+function isInputContent(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    const content = value;
+    let field;
+    if (content['type'] === 'input_text') {
+        field = 'text';
+    }
+    else if (content['type'] === 'input_image') {
+        field = 'image_url';
+    }
+    else {
+        return false;
+    }
+    return values_hasOwn(content, 'type') && values_hasOwn(content, field) && typeof content[field] === 'string';
+}
+//# sourceMappingURL=tool-output.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/tool-stages.mjs
+/** @internal */
+const toolStages = Symbol.for('openai.beta.agents.toolStages');
+//# sourceMappingURL=tool-stages.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/tool-dispatcher.mjs
+var _AgentToolDispatcher_instances, _AgentToolDispatcher_handlers, _AgentToolDispatcher_options, _AgentToolDispatcher_sessions, _AgentToolDispatcher_controller, _AgentToolDispatcher_onToolError, _AgentToolDispatcher_result, _AgentToolDispatcher_checkAbort, _AgentToolDispatcher_abortError, _AgentToolDispatcher_wait, _AgentToolDispatcher_submit;
+
+
+
+
+
+
+
+function normalizedOutput(value) {
+    if (value === null) {
+        return null;
+    }
+    if (typeof value === 'string' || (Array.isArray(value) && value.every(isInputContent))) {
+        return value;
+    }
+    throw new error_OpenAIError('Tool output must be text, content, a JSON object, or null');
+}
+// oxlint-disable-next-line anti-slop/no-object-parameters -- The public AgentToolOutput contract accepts arbitrary JSON-serializable object results.
+function toolResult(call, value) {
+    const output = isObj(value) ? JSON.stringify(value) : value;
+    // Detect unserializable callback results inside the redacted failure boundary.
+    const serialized = JSON.stringify(output);
+    if (serialized === undefined) {
+        throw new error_OpenAIError('Tool output must be JSON serializable');
+    }
+    return {
+        type: 'agent.session.input.tool_result',
+        turn_id: call.turn_id,
+        call_id: call.call_id,
+        success: true,
+        output: normalizedOutput(typeof output === 'string' ? output : JSON.parse(serialized)),
+    };
+}
+/** Shared local function dispatch for creation and follow-up streams. @internal */
+class AgentToolDispatcher {
+    constructor(sessions, handlers, controller, options, onToolError) {
+        _AgentToolDispatcher_instances.add(this);
+        _AgentToolDispatcher_handlers.set(this, void 0);
+        _AgentToolDispatcher_options.set(this, void 0);
+        _AgentToolDispatcher_sessions.set(this, void 0);
+        _AgentToolDispatcher_controller.set(this, void 0);
+        _AgentToolDispatcher_onToolError.set(this, void 0);
+        __classPrivateFieldSet(this, _AgentToolDispatcher_sessions, sessions, "f");
+        __classPrivateFieldSet(this, _AgentToolDispatcher_controller, controller, "f");
+        __classPrivateFieldSet(this, _AgentToolDispatcher_onToolError, onToolError, "f");
+        __classPrivateFieldSet(this, _AgentToolDispatcher_handlers, new Map(Object.entries(handlers)), "f");
+        const headers = headers_buildHeaders([options?.headers]);
+        headers.values.delete('idempotency-key');
+        headers.nulls.delete('idempotency-key');
+        const { idempotencyKey: _key, ...rest } = options ?? {};
+        __classPrivateFieldSet(this, _AgentToolDispatcher_options, { ...rest, headers, signal: controller.signal }, "f");
+    }
+    canHandle(name) {
+        return typeof __classPrivateFieldGet(this, _AgentToolDispatcher_handlers, "f").get(name) === 'function';
+    }
+    /** Capture routing and arguments before the caller can mutate the yielded event. */
+    prepare(call, sessionID) {
+        const handler = call && __classPrivateFieldGet(this, _AgentToolDispatcher_handlers, "f").get(call.name);
+        if (!call || typeof handler !== 'function') {
+            return;
+        }
+        if (!sessionID) {
+            throw new error_OpenAIError('Tool call received before the session creation event');
+        }
+        const snapshot = structuredClone(call);
+        return async () => {
+            __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+            const result = await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_result).call(this, snapshot, handler, sessionID);
+            __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+            await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_submit).call(this, sessionID, result);
+        };
+    }
+}
+_AgentToolDispatcher_handlers = new WeakMap(), _AgentToolDispatcher_options = new WeakMap(), _AgentToolDispatcher_sessions = new WeakMap(), _AgentToolDispatcher_controller = new WeakMap(), _AgentToolDispatcher_onToolError = new WeakMap(), _AgentToolDispatcher_instances = new WeakSet(), _AgentToolDispatcher_result = async function _AgentToolDispatcher_result(call, handler, sessionID) {
+    let stage = 'arguments';
+    try {
+        const args = typeof call.arguments === 'string' ? JSON.parse(call.arguments) : call.arguments;
+        if (!isObj(args)) {
+            throw new error_OpenAIError('Function arguments must be a JSON object');
+        }
+        stage = 'execution';
+        // SAFETY: Arguments were parsed as JSON and checked to be a non-null non-array object before invoking the handler.
+        const arguments_ = args;
+        const output = await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_wait).call(this, () => __classPrivateFieldGet(this, _AgentToolDispatcher_onToolError, "f") && handler[toolStages]
+            ? handler(arguments_, (value) => {
+                stage = value;
+            })
+            : handler(arguments_));
+        stage = 'output';
+        return toolResult(call, output);
+    }
+    catch (error) {
+        __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+        if (__classPrivateFieldGet(this, _AgentToolDispatcher_onToolError, "f")) {
+            const failure = Object.freeze({
+                error,
+                stage,
+                tool_name: call.name,
+                session_id: sessionID,
+                turn_id: call.turn_id,
+                call_id: call.call_id,
+            });
+            try {
+                await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_wait).call(this, () => __classPrivateFieldGet(this, _AgentToolDispatcher_onToolError, "f")?.call(this, failure));
+            }
+            catch {
+                // Observers must not prevent the original sanitized tool failure from being submitted.
+                __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+            }
+        }
+        return {
+            type: 'agent.session.input.tool_result',
+            turn_id: call.turn_id,
+            call_id: call.call_id,
+            success: false,
+            error: 'Tool handler failed.',
+        };
+    }
+}, _AgentToolDispatcher_checkAbort = function _AgentToolDispatcher_checkAbort() {
+    if (__classPrivateFieldGet(this, _AgentToolDispatcher_controller, "f").signal.aborted) {
+        throw __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_abortError).call(this);
+    }
+}, _AgentToolDispatcher_abortError = function _AgentToolDispatcher_abortError() {
+    const error = new error_APIUserAbortError();
+    Object.defineProperty(error, 'cause', {
+        value: __classPrivateFieldGet(this, _AgentToolDispatcher_controller, "f").signal.reason,
+        writable: true,
+        configurable: true,
+    });
+    return error;
+}, _AgentToolDispatcher_wait = async function _AgentToolDispatcher_wait(action) {
+    let onAbort;
+    // oxlint-disable-next-line promise/avoid-new -- Bridge the caller's AbortSignal while a handler or registration delay is pending.
+    const aborted = new Promise((_resolve, reject) => {
+        onAbort = () => reject(__classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_abortError).call(this));
+        __classPrivateFieldGet(this, _AgentToolDispatcher_controller, "f").signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+        __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+        // Capture synchronous throws before racing cancellation, so both promises
+        // always have rejection handlers even if the callback aborts and throws.
+        const invoke = async () => await action();
+        return await Promise.race([invoke(), aborted]);
+    }
+    finally {
+        if (onAbort) {
+            __classPrivateFieldGet(this, _AgentToolDispatcher_controller, "f").signal.removeEventListener('abort', onAbort);
+        }
+    }
+}, _AgentToolDispatcher_submit = async function _AgentToolDispatcher_submit(sessionID, result, key = uuid_uuid4(), attempt = 0) {
+    __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
+    try {
+        await __classPrivateFieldGet(this, _AgentToolDispatcher_sessions, "f").events.create(sessionID, { events: [result], 'Idempotency-Key': key }, __classPrivateFieldGet(this, _AgentToolDispatcher_options, "f"));
+    }
+    catch (error) {
+        const delay = [100, 300, 600][attempt];
+        if (delay === undefined ||
+            !(error instanceof error_BadRequestError) ||
+            error.code !== 'invalid_request_error' ||
+            !error.error ||
+            !('message' in error.error) ||
+            error.error.message !== `Unknown pending tool call: ${result.call_id}`) {
+            throw error;
+        }
+        let timer;
+        try {
+            await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_wait).call(this, () => 
+            // oxlint-disable-next-line promise/avoid-new -- Own the registration timer so cancellation clears it promptly.
+            new Promise((resolve) => {
+                timer = setTimeout(resolve, delay);
+            }));
+        }
+        finally {
+            if (timer !== undefined) {
+                clearTimeout(timer);
+            }
+        }
+        await __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_submit).call(this, sessionID, result, key, attempt + 1);
+    }
+};
+//# sourceMappingURL=tool-dispatcher.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/agents/output-text.mjs
 /** Joins output_text blocks in content order, without filtering phase, fetching, or mutating the message. */
 function outputText(message) {
@@ -121228,32 +121472,8 @@ _ResultCollection_iterator = new WeakMap(), _ResultCollection_ended = new WeakMa
     }
 };
 //# sourceMappingURL=result-collection.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/tool-output.mjs
-
-/**
- * Recognizes supported content blocks without confusing JSON business data with content.
- * @internal
- */
-function isInputContent(value) {
-    if (!isObj(value)) {
-        return false;
-    }
-    const content = value;
-    let field;
-    if (content['type'] === 'input_text') {
-        field = 'text';
-    }
-    else if (content['type'] === 'input_image') {
-        field = 'image_url';
-    }
-    else {
-        return false;
-    }
-    return values_hasOwn(content, 'type') && values_hasOwn(content, field) && typeof content[field] === 'string';
-}
-//# sourceMappingURL=tool-output.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/agents/agent-session-stream.mjs
-var _AgentSessionStream_instances, _AgentSessionStream_consumed, _AgentSessionStream_format, _AgentSessionStream_parsedResult, _AgentSessionStream_collection, _AgentSessionStream_stream, _AgentSessionStream_response, _AgentSessionStream_reading, _AgentSessionStream_sessions, _AgentSessionStream_sessionID, _AgentSessionStream_input, _AgentSessionStream_handlers, _AgentSessionStream_inputKey, _AgentSessionStream_options, _AgentSessionStream_iterate, _AgentSessionStream_result, _AgentSessionStream_checkAbort, _AgentSessionStream_abortError, _AgentSessionStream_wait, _AgentSessionStream_submit;
+var _AgentSessionStream_instances, _AgentSessionStream_consumed, _AgentSessionStream_format, _AgentSessionStream_parsedResult, _AgentSessionStream_collection, _AgentSessionStream_stream, _AgentSessionStream_response, _AgentSessionStream_reading, _AgentSessionStream_sessions, _AgentSessionStream_sessionID, _AgentSessionStream_input, _AgentSessionStream_dispatcher, _AgentSessionStream_inputKey, _AgentSessionStream_options, _AgentSessionStream_iterate, _AgentSessionStream_checkAbort, _AgentSessionStream_abortError;
 
 
 
@@ -121262,32 +121482,6 @@ var _AgentSessionStream_instances, _AgentSessionStream_consumed, _AgentSessionSt
 
 
 
-
-function normalizedOutput(value) {
-    if (value === null) {
-        return null;
-    }
-    if (typeof value === 'string' || (Array.isArray(value) && value.every(isInputContent))) {
-        return value;
-    }
-    throw new error_OpenAIError('Tool output must be text, content, a JSON object, or null');
-}
-// oxlint-disable-next-line anti-slop/no-object-parameters -- The public AgentToolOutput contract accepts arbitrary JSON-serializable object results.
-function toolResult(call, value) {
-    const output = isObj(value) ? JSON.stringify(value) : value;
-    // Detect unserializable callback results inside the redacted failure boundary.
-    const serialized = JSON.stringify(output);
-    if (serialized === undefined) {
-        throw new error_OpenAIError('Tool output must be JSON serializable');
-    }
-    return {
-        type: 'agent.session.input.tool_result',
-        turn_id: call.turn_id,
-        call_id: call.call_id,
-        success: true,
-        output: normalizedOutput(typeof output === 'string' ? output : JSON.parse(serialized)),
-    };
-}
 async function cancelBody(response) {
     try {
         await response?.body?.cancel();
@@ -121325,7 +121519,7 @@ class AgentSessionStream {
         _AgentSessionStream_sessions.set(this, void 0);
         _AgentSessionStream_sessionID.set(this, void 0);
         _AgentSessionStream_input.set(this, void 0);
-        _AgentSessionStream_handlers.set(this, void 0);
+        _AgentSessionStream_dispatcher.set(this, void 0);
         _AgentSessionStream_inputKey.set(this, void 0);
         _AgentSessionStream_options.set(this, void 0);
         const input = typeof params.input === 'string'
@@ -121341,7 +121535,6 @@ class AgentSessionStream {
         __classPrivateFieldSet(this, _AgentSessionStream_sessions, sessions, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_sessionID, sessionID, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_input, { type: 'agent.session.input.message', input }, "f");
-        __classPrivateFieldSet(this, _AgentSessionStream_handlers, new Map(Object.entries(params.toolHandlers ?? {})), "f");
         const headers = headers_buildHeaders([options?.headers]);
         __classPrivateFieldSet(this, _AgentSessionStream_inputKey, headers.nulls.has('idempotency-key')
             ? undefined
@@ -121353,7 +121546,8 @@ class AgentSessionStream {
         headers.nulls.delete('idempotency-key');
         const { idempotencyKey: _key, ...rest } = options ?? {};
         __classPrivateFieldSet(this, _AgentSessionStream_options, { ...rest, headers }, "f");
-        __classPrivateFieldSet(this, _AgentSessionStream_collection, new ResultCollection(() => __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_iterate).call(this), (name) => __classPrivateFieldGet(this, _AgentSessionStream_handlers, "f").has(name), sessionID), "f");
+        __classPrivateFieldSet(this, _AgentSessionStream_dispatcher, new AgentToolDispatcher(sessions, params.toolHandlers ?? {}, this.controller, __classPrivateFieldGet(this, _AgentSessionStream_options, "f"), params.onToolError), "f");
+        __classPrivateFieldSet(this, _AgentSessionStream_collection, new ResultCollection(() => __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_iterate).call(this), (name) => __classPrivateFieldGet(this, _AgentSessionStream_dispatcher, "f").canHandle(name), sessionID), "f");
     }
     /** Closes local requests without cancelling the turn; an optional reason becomes the abort error's cause. */
     abort(reason) {
@@ -121364,7 +121558,7 @@ class AgentSessionStream {
         }
     }
     /** Starts iteration once; use for await to ensure early exits close the connection. */
-    [(_AgentSessionStream_consumed = new WeakMap(), _AgentSessionStream_format = new WeakMap(), _AgentSessionStream_parsedResult = new WeakMap(), _AgentSessionStream_collection = new WeakMap(), _AgentSessionStream_stream = new WeakMap(), _AgentSessionStream_response = new WeakMap(), _AgentSessionStream_reading = new WeakMap(), _AgentSessionStream_sessions = new WeakMap(), _AgentSessionStream_sessionID = new WeakMap(), _AgentSessionStream_input = new WeakMap(), _AgentSessionStream_handlers = new WeakMap(), _AgentSessionStream_inputKey = new WeakMap(), _AgentSessionStream_options = new WeakMap(), _AgentSessionStream_instances = new WeakSet(), Symbol.asyncIterator)]() {
+    [(_AgentSessionStream_consumed = new WeakMap(), _AgentSessionStream_format = new WeakMap(), _AgentSessionStream_parsedResult = new WeakMap(), _AgentSessionStream_collection = new WeakMap(), _AgentSessionStream_stream = new WeakMap(), _AgentSessionStream_response = new WeakMap(), _AgentSessionStream_reading = new WeakMap(), _AgentSessionStream_sessions = new WeakMap(), _AgentSessionStream_sessionID = new WeakMap(), _AgentSessionStream_input = new WeakMap(), _AgentSessionStream_dispatcher = new WeakMap(), _AgentSessionStream_inputKey = new WeakMap(), _AgentSessionStream_options = new WeakMap(), _AgentSessionStream_instances = new WeakSet(), Symbol.asyncIterator)]() {
         if (__classPrivateFieldGet(this, _AgentSessionStream_consumed, "f")) {
             throw new error_OpenAIError('An AgentSessionStream can only be consumed once');
         }
@@ -121417,10 +121611,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
                 continue;
             }
             const terminal = state.terminal(event);
-            const pendingCall = state.call(event);
-            const handler = pendingCall && __classPrivateFieldGet(this, _AgentSessionStream_handlers, "f").get(pendingCall.name);
-            // Freeze dispatch identity and arguments before exposing the original event.
-            const call = pendingCall && handler ? structuredClone(pendingCall) : undefined;
+            const dispatch = __classPrivateFieldGet(this, _AgentSessionStream_dispatcher, "f").prepare(state.call(event), __classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"));
             if (terminal) {
                 __classPrivateFieldGet(this, _AgentSessionStream_stream, "f").controller.abort();
             }
@@ -121429,12 +121620,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
                 return;
             }
             __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-            if (!call || !handler) {
-                continue;
-            }
-            const result = await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_result).call(this, call, handler);
-            __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-            await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_submit).call(this, result, options);
+            await dispatch?.();
         }
         __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
         throw new error_OpenAIError('Session event stream ended before the turn reached idle or failed');
@@ -121443,25 +121629,6 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
         externalSignal?.removeEventListener('abort', abort);
         this.controller.signal.removeEventListener('abort', abort);
         this.abort();
-    }
-}, _AgentSessionStream_result = async function _AgentSessionStream_result(call, handler) {
-    try {
-        const args = typeof call.arguments === 'string' ? JSON.parse(call.arguments) : call.arguments;
-        if (!isObj(args)) {
-            throw new error_OpenAIError('Function arguments must be a JSON object');
-        }
-        // SAFETY: Arguments were parsed as JSON and checked to be a non-null non-array object before invoking the handler.
-        return toolResult(call, await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_wait).call(this, () => handler(args)));
-    }
-    catch {
-        __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-        return {
-            type: 'agent.session.input.tool_result',
-            turn_id: call.turn_id,
-            call_id: call.call_id,
-            success: false,
-            error: 'Tool handler failed.',
-        };
     }
 }, _AgentSessionStream_checkAbort = function _AgentSessionStream_checkAbort() {
     if (this.controller.signal.aborted) {
@@ -121475,67 +121642,48 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
         configurable: true,
     });
     return error;
-}, _AgentSessionStream_wait = async function _AgentSessionStream_wait(action) {
-    let onAbort;
-    // oxlint-disable-next-line promise/avoid-new -- Bridge the caller's AbortSignal while a handler or registration delay is pending.
-    const aborted = new Promise((_resolve, reject) => {
-        onAbort = () => reject(__classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_abortError).call(this));
-        this.controller.signal.addEventListener('abort', onAbort, { once: true });
-    });
-    try {
-        __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-        // Capture synchronous throws before racing cancellation, so both promises
-        // always have rejection handlers even if the callback aborts and throws.
-        const invoke = async () => await action();
-        return await Promise.race([invoke(), aborted]);
-    }
-    finally {
-        if (onAbort) {
-            this.controller.signal.removeEventListener('abort', onAbort);
-        }
-    }
-}, _AgentSessionStream_submit = async function _AgentSessionStream_submit(result, options, key = uuid_uuid4(), attempt = 0) {
-    __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-    try {
-        await __classPrivateFieldGet(this, _AgentSessionStream_sessions, "f").events.create(__classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"), { events: [result], 'Idempotency-Key': key }, options);
-    }
-    catch (error) {
-        const delay = [100, 300, 600][attempt];
-        if (delay === undefined ||
-            !(error instanceof error_BadRequestError) ||
-            error.code !== 'invalid_request_error' ||
-            !error.error ||
-            !('message' in error.error) ||
-            error.error.message !== `Unknown pending tool call: ${result.call_id}`) {
-            throw error;
-        }
-        let timer;
-        try {
-            await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_wait).call(this, () => 
-            // oxlint-disable-next-line promise/avoid-new -- Own the registration timer so cancellation clears it promptly.
-            new Promise((resolve) => {
-                timer = setTimeout(resolve, delay);
-            }));
-        }
-        finally {
-            if (timer !== undefined) {
-                clearTimeout(timer);
-            }
-        }
-        await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_submit).call(this, result, options, key, attempt + 1);
-    }
 };
 //# sourceMappingURL=agent-session-stream.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-session-create-stream.mjs
 
 
+
+
+
+
+async function* dispatchCreationTools(source, dispatcher, signal) {
+    const state = new TurnState();
+    let sessionID;
+    for await (const event of { [Symbol.asyncIterator]: source }) {
+        if (event.type === 'agent.session.created') {
+            sessionID ?? (sessionID = event.session.id);
+        }
+        const dispatch = state.accept(event) ? dispatcher.prepare(state.call(event), sessionID) : undefined;
+        yield event;
+        if (signal.aborted) {
+            return;
+        }
+        try {
+            await dispatch?.();
+        }
+        catch (error) {
+            if (signal.aborted && error instanceof error_APIUserAbortError) {
+                return;
+            }
+            throw error;
+        }
+    }
+}
 /** Add beta result collection without replacing custom stream instances.
  * @internal
  */
-function withAgentTurnResult(stream, format) {
+function withAgentTurnResult(stream, format, tools) {
     let collection;
     stream.__betaTransformIterator((source) => {
-        collection = new ResultCollection(source, undefined, undefined, stream.controller.signal);
+        // A tool result has its own POST endpoint, independent of creation overrides.
+        const { path: _path, method: _method, stream: _stream, ...options } = tools?.options ?? {};
+        const dispatcher = tools && new AgentToolDispatcher(tools.sessions, tools.handlers, stream.controller, options);
+        collection = new ResultCollection(dispatcher ? () => dispatchCreationTools(source, dispatcher, stream.controller.signal) : source, dispatcher ? (name) => dispatcher.canHandle(name) : undefined, undefined, stream.controller.signal);
         return () => collection.iterate();
     });
     let parsed;
@@ -121547,6 +121695,43 @@ function withAgentTurnResult(stream, format) {
         },
     });
     return result;
+}
+/** Remove local callbacks without changing ordinary creation requests. @internal */
+function captureCreationTools(body, options) {
+    const descriptor = Object.getOwnPropertyDescriptor(body, 'toolHandlers');
+    if (!descriptor) {
+        return { body, options };
+    }
+    const handlers = body.toolHandlers;
+    if (handlers === undefined && 'value' in descriptor) {
+        return { body, options };
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(body);
+    delete descriptors.toolHandlers;
+    const capturedOptions = { ...options };
+    if ('toJSON' in body || capturedOptions.body !== undefined) {
+        throw new error_OpenAIError('Creation tool handlers cannot customize request body serialization');
+    }
+    if (handlers === undefined) {
+        // SAFETY: Preserve request fields while removing the accessor so serialization cannot evaluate it again.
+        return {
+            body: Object.create(Object.getPrototypeOf(body), descriptors),
+            options: capturedOptions,
+        };
+    }
+    const { stream } = body;
+    if (stream !== true) {
+        throw new error_OpenAIError('toolHandlers requires stream: true');
+    }
+    capturedOptions.headers = headers_buildHeaders([capturedOptions.headers]);
+    descriptors.stream = { value: stream, enumerable: true, configurable: true, writable: true };
+    // SAFETY: Preserve request fields, omitting callbacks and fixing the validated streaming mode.
+    const request = Object.create(Object.getPrototypeOf(body), descriptors);
+    return {
+        body: request,
+        options: capturedOptions,
+        handlers: handlers && Object.fromEntries(Object.entries(handlers)),
+    };
 }
 //# sourceMappingURL=agent-session-create-stream.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/pages.mjs
@@ -122036,106 +122221,6 @@ class Traces extends resource_APIResource {
     }
 }
 //# sourceMappingURL=traces.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/turns.mjs
-// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
-
-
-
-
-function turns_resolveResourceRequestOptions(options, buildOptions) {
-    return Promise.resolve(options).then(buildOptions);
-}
-// Recognizable options across SDK runtime versions. Keep this independent of
-// private RequestOptions fields so older handwritten runtimes still compile.
-const turns_normalizeRequestOptionsForQueryKeys = new Set([
-    'method',
-    'path',
-    'query',
-    'body',
-    'headers',
-    'maxRetries',
-    'stream',
-    'timeout',
-    'httpAgent',
-    'fetchOptions',
-    'signal',
-    'idempotencyKey',
-    'defaultBaseURL',
-    '__metadata',
-    '__binaryRequest',
-    '__binaryResponse',
-    '__streamClass',
-    '__security',
-    '__synthesizeEventData',
-]);
-function turns_normalizeRequestOptionsForQuery(value, queryKeys, options) {
-    if (typeof value !== 'object' || value === null)
-        return undefined;
-    // Optional never fields can still be explicitly undefined unless consumers
-    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
-    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
-    const keys = entries.map(([key]) => key);
-    const requestOnly = keys.some((key) => turns_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
-    if (!requestOnly)
-        return undefined;
-    // Declared query fields, including stream, must use the query argument.
-    // Mixing them with request-only options is ambiguous and could change the return type.
-    if (options !== undefined ||
-        keys.some((key) => !turns_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
-        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
-    }
-    // The query position must not gain authority to change the request destination
-    // or transport. Those overrides require the explicit request options argument.
-    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
-        throw new TypeError('Pass transport overrides in the explicit request options argument.');
-    }
-    // Copy only the validated fields. Spreading value would reintroduce undefined
-    // transport overrides, and deleting them would mutate the caller's object.
-    return Object.fromEntries(entries.map(([key, descriptor]) => {
-        if ('value' in descriptor)
-            return [key, descriptor.value];
-        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
-    }));
-}
-class Turns extends resource_APIResource {
-    /**
-     * Retrieves a turn's current status, timestamps, usage, and error. Returns 404 if
-     * the turn does not belong to the session. See
-     * [session turns](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage#inspect-session-turns).
-     *
-     * @example
-     * ```ts
-     * const turn =
-     *   await client.beta.agents.sessions.turns.retrieve(
-     *     'turn_id',
-     *     { session_id: 'session_id' },
-     *   );
-     * ```
-     */
-    retrieve(turnID, params, options) {
-        const { session_id } = params;
-        return this._client.get(utils_path_path `/agents/sessions/${session_id}/turns/${turnID}`, turns_resolveResourceRequestOptions(options, (options) => ({
-            ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
-            __security: { bearerAuth: true },
-        })));
-    }
-    list(sessionID, query = {}, options) {
-        const normalizeRequestOptionsForQueryOptions = turns_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order'], options);
-        if (normalizeRequestOptionsForQueryOptions !== undefined) {
-            options = normalizeRequestOptionsForQueryOptions;
-            query = {};
-        }
-        query = query;
-        return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/turns`, (CursorPage), turns_resolveResourceRequestOptions(options, (options) => ({
-            query,
-            ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
-            __security: { bearerAuth: true },
-        })));
-    }
-}
-//# sourceMappingURL=turns.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/subagents/items.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 
@@ -122216,10 +122301,10 @@ class turns_items_Items extends resource_APIResource {
 
 
 
-function turns_turns_resolveResourceRequestOptions(options, buildOptions) {
+function turns_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
-class turns_Turns extends resource_APIResource {
+class Turns extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.items = new turns_items_Items(this._client);
@@ -122242,7 +122327,7 @@ class turns_Turns extends resource_APIResource {
      */
     retrieve(turnID, params, options) {
         const { session_id, subagent_id } = params;
-        return this._client.get(utils_path_path `/agents/sessions/${session_id}/subagents/${subagent_id}/turns/${turnID}`, turns_turns_resolveResourceRequestOptions(options, (options) => ({
+        return this._client.get(utils_path_path `/agents/sessions/${session_id}/subagents/${subagent_id}/turns/${turnID}`, turns_resolveResourceRequestOptions(options, (options) => ({
             ...options,
             headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
@@ -122265,7 +122350,7 @@ class turns_Turns extends resource_APIResource {
      */
     list(subagentID, params, options) {
         const { session_id, ...query } = params;
-        return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/subagents/${subagentID}/turns`, (CursorPage), turns_turns_resolveResourceRequestOptions(options, (options) => ({
+        return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/subagents/${subagentID}/turns`, (CursorPage), turns_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
             headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
@@ -122273,7 +122358,7 @@ class turns_Turns extends resource_APIResource {
         })));
     }
 }
-turns_Turns.Items = turns_items_Items;
+Turns.Items = turns_items_Items;
 //# sourceMappingURL=turns.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/subagents/subagents.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -122344,7 +122429,7 @@ class Subagents extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.items = new items_Items(this._client);
-        this.turns = new turns_Turns(this._client);
+        this.turns = new Turns(this._client);
     }
     /**
      * Retrieves a subagent belonging to this session. See
@@ -122383,8 +122468,152 @@ class Subagents extends resource_APIResource {
     }
 }
 Subagents.Items = items_Items;
-Subagents.Turns = turns_Turns;
+Subagents.Turns = Turns;
 //# sourceMappingURL=subagents.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/turns/items.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+function sessions_turns_items_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+class sessions_turns_items_Items extends resource_APIResource {
+    /**
+     * Lists items belonging to one root-agent turn, including its interactions with
+     * subagents. See
+     * [inspecting agent output](https://developers.openai.com/api/docs/guides/agents-api/observability).
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const agentSessionItem of client.beta.agents.sessions.turns.items.list(
+     *   'turn_id',
+     *   { session_id: 'session_id' },
+     * )) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(turnID, params, options) {
+        const { session_id, ...query } = params;
+        return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/turns/${turnID}/items`, (ConversationCursorPage), sessions_turns_items_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=items.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/turns/turns.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+
+
+function turns_turns_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const turns_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function turns_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => turns_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !turns_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class turns_Turns extends resource_APIResource {
+    constructor() {
+        super(...arguments);
+        this.items = new sessions_turns_items_Items(this._client);
+    }
+    /**
+     * Retrieves a turn's current status, timestamps, usage, and error. Returns 404 if
+     * the turn does not belong to the session. See
+     * [session turns](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage#inspect-session-turns).
+     *
+     * @example
+     * ```ts
+     * const turn =
+     *   await client.beta.agents.sessions.turns.retrieve(
+     *     'turn_id',
+     *     { session_id: 'session_id' },
+     *   );
+     * ```
+     */
+    retrieve(turnID, params, options) {
+        const { session_id } = params;
+        return this._client.get(utils_path_path `/agents/sessions/${session_id}/turns/${turnID}`, turns_turns_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    list(sessionID, query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = turns_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/turns`, (CursorPage), turns_turns_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+turns_Turns.Items = sessions_turns_items_Items;
+//# sourceMappingURL=turns.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/sessions/sessions.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 
@@ -122469,14 +122698,15 @@ class sessions_sessions_Sessions extends resource_APIResource {
         this.items = new Items(this._client);
         this.events = new sessions_events_Events(this._client);
         this.traces = new Traces(this._client);
-        this.turns = new Turns(this._client);
+        this.turns = new turns_Turns(this._client);
     }
     /** Stream one turn on an idle session with a single input writer. See AgentSessionStream for lifecycle and tool handling. */
     stream(sessionID, params, options) {
         return new AgentSessionStream(this, sessionID, params, options);
     }
     create(body, options) {
-        const output = captureAgentOutput(body, options);
+        const creation = captureCreationTools(body, options);
+        const output = captureAgentOutput(creation.body, creation.options);
         return this._client
             .post('/agents/sessions', sessions_resolveResourceRequestOptions(output.options, (options) => ({
             body: output.body,
@@ -122488,7 +122718,9 @@ class sessions_sessions_Sessions extends resource_APIResource {
             ._thenUnwrap((data, { options }) => 
         // SAFETY: defaultParseResponse uses this same resolved flag to return the configured stream instance.
         options.stream
-            ? withAgentTurnResult(data, output.format)
+            ? withAgentTurnResult(data, output.format, creation.handlers
+                ? { sessions: this, handlers: creation.handlers, options: output.options }
+                : undefined)
             : data);
     }
     /**
@@ -122567,7 +122799,7 @@ sessions_sessions_Sessions.Artifacts = artifacts_Artifacts;
 sessions_sessions_Sessions.Items = Items;
 sessions_sessions_Sessions.Events = sessions_events_Events;
 sessions_sessions_Sessions.Traces = Traces;
-sessions_sessions_Sessions.Turns = Turns;
+sessions_sessions_Sessions.Turns = turns_Turns;
 //# sourceMappingURL=sessions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/vaults/credentials.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -125772,6 +126004,35 @@ class Conversations extends resource_APIResource {
 }
 Conversations.Items = conversations_items_Items;
 //# sourceMappingURL=conversations.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/decisions.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+function decisions_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+class Decisions extends resource_APIResource {
+    /**
+     * Evaluate ordered classification and scoring questions against shared input.
+     * Answers are returned in question order.
+     *
+     * Supply input as a string or user messages containing text and inline images.
+     * Only user messages with `input_text` and `input_image` parts are supported;
+     * non-user roles, function calls, files, audio, and item references are not
+     * supported. Images require a data URL, not an external URL or file ID. At most
+     * 128 images are allowed across the request.
+     *
+     * Each question can return a refusal instead of a scored answer. A refusal has
+     * type `refusal` and the corresponding question name, or null if unnamed.
+     */
+    create(body, options) {
+        return this._client.post('/decisions', decisions_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=decisions.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/embeddings.mjs
 
 /**
@@ -127502,6 +127763,11 @@ function getInputToolByName(input_tools, name, namespace) {
         else if (tool.type === 'namespace' && tool.name === namespace) {
             return tool.tools.find((nested) => nested.type === 'function' && nested.name === name);
         }
+    }
+    // Hosted discovery exposes a deferred top-level function under its own name.
+    // A declared namespace above owns that identity, even if it has no matching function.
+    if (namespace === name) {
+        return input_tools.find((tool) => tool.type === 'function' && tool.name === name && tool.defer_loading === true);
     }
     return undefined;
 }
@@ -130727,6 +130993,7 @@ webhooks_Webhooks.EventTypes = EventTypes;
 
 
 
+
 //# sourceMappingURL=index.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/bedrock.mjs
 
@@ -131709,6 +131976,7 @@ var _OpenAI_instances, client_a, _OpenAI_encoder, _OpenAI_x509Authentication, _O
 
 
 
+
 function isRunningInBrowserOrBrowserWorker() {
     if (detect_platform_isRunningInBrowser())
         return true;
@@ -131760,6 +132028,7 @@ class OpenAI {
         _OpenAI_responseAttempts.set(this, new WeakMap());
         this._apiKeyInvocation = 0;
         this._lastCachedAPIKeyInvocation = 0;
+        this.decisions = new Decisions(this);
         /**
          * Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.
          */
@@ -133333,6 +133602,7 @@ OpenAI.UnprocessableEntityError = error_UnprocessableEntityError;
 OpenAI.InvalidWebhookSignatureError = InvalidWebhookSignatureError;
 OpenAI.toFile = to_file_toFile;
 OpenAI.toStreamingFile = toStreamingFile;
+OpenAI.Decisions = Decisions;
 OpenAI.Completions = resources_completions_Completions;
 OpenAI.Chat = chat_Chat;
 OpenAI.Embeddings = Embeddings;
