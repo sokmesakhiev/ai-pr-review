@@ -79853,6 +79853,42 @@ var ApiSpec;
      */
     ApiSpec["ELASTIC_SEARCH"] = "ELASTIC_SEARCH";
 })(ApiSpec || (ApiSpec = {}));
+/** SafetyPolicy */
+var SafetyPolicy;
+(function (SafetyPolicy) {
+    /**
+     * Unspecified safety policy. This value should not be used.
+     */
+    SafetyPolicy["SAFETY_POLICY_UNSPECIFIED"] = "SAFETY_POLICY_UNSPECIFIED";
+    /**
+     * Financial transactions safety policy.
+     */
+    SafetyPolicy["FINANCIAL_TRANSACTIONS"] = "FINANCIAL_TRANSACTIONS";
+    /**
+     * Sensitive data modification safety policy.
+     */
+    SafetyPolicy["SENSITIVE_DATA_MODIFICATION"] = "SENSITIVE_DATA_MODIFICATION";
+    /**
+     * Communication tool safety policy.
+     */
+    SafetyPolicy["COMMUNICATION_TOOL"] = "COMMUNICATION_TOOL";
+    /**
+     * Account creation safety policy.
+     */
+    SafetyPolicy["ACCOUNT_CREATION"] = "ACCOUNT_CREATION";
+    /**
+     * Data modification safety policy.
+     */
+    SafetyPolicy["DATA_MODIFICATION"] = "DATA_MODIFICATION";
+    /**
+     * User consent management safety policy.
+     */
+    SafetyPolicy["USER_CONSENT_MANAGEMENT"] = "USER_CONSENT_MANAGEMENT";
+    /**
+     * Legal terms and agreements safety policy.
+     */
+    SafetyPolicy["LEGAL_TERMS_AND_AGREEMENTS"] = "LEGAL_TERMS_AND_AGREEMENTS";
+})(SafetyPolicy || (SafetyPolicy = {}));
 /** The environment being operated. */
 var Environment;
 (function (Environment) {
@@ -79873,42 +79909,6 @@ var Environment;
      */
     Environment["ENVIRONMENT_DESKTOP"] = "ENVIRONMENT_DESKTOP";
 })(Environment || (Environment = {}));
-/** SafetyPolicy */
-var SafetyPolicy;
-(function (SafetyPolicy) {
-    /**
-     * Unspecified safety policy.
-     */
-    SafetyPolicy["SAFETY_POLICY_UNSPECIFIED"] = "SAFETY_POLICY_UNSPECIFIED";
-    /**
-     * Safety policy for financial transactions.
-     */
-    SafetyPolicy["FINANCIAL_TRANSACTIONS"] = "FINANCIAL_TRANSACTIONS";
-    /**
-     * Safety policy for sensitive data modification.
-     */
-    SafetyPolicy["SENSITIVE_DATA_MODIFICATION"] = "SENSITIVE_DATA_MODIFICATION";
-    /**
-     * Safety policy for communication tools (e.g. Gmail, Chat, Meet).
-     */
-    SafetyPolicy["COMMUNICATION_TOOL"] = "COMMUNICATION_TOOL";
-    /**
-     * Safety policy for account creation.
-     */
-    SafetyPolicy["ACCOUNT_CREATION"] = "ACCOUNT_CREATION";
-    /**
-     * Safety policy for data modification.
-     */
-    SafetyPolicy["DATA_MODIFICATION"] = "DATA_MODIFICATION";
-    /**
-     * Safety policy for user consent management.
-     */
-    SafetyPolicy["USER_CONSENT_MANAGEMENT"] = "USER_CONSENT_MANAGEMENT";
-    /**
-     * Safety policy for legal terms and agreements.
-     */
-    SafetyPolicy["LEGAL_TERMS_AND_AGREEMENTS"] = "LEGAL_TERMS_AND_AGREEMENTS";
-})(SafetyPolicy || (SafetyPolicy = {}));
 /** Sites with confidence level chosen & above this value will be blocked from the search results. This enum is not supported in Gemini API. */
 var PhishBlockThreshold;
 (function (PhishBlockThreshold) {
@@ -81759,7 +81759,7 @@ class GenerateContentResponse {
      * @example
      * ```ts
      * const response = await ai.models.generateContent({
-     *   model: 'gemini-2.0-flash',
+     *   model: 'gemini-flash-latest',
      *   contents:
      *     'Why is the sky blue?',
      * });
@@ -81867,7 +81867,7 @@ class GenerateContentResponse {
      *   required: ['brightness', 'colorTemperature'],
      *  };
      *  const response = await ai.models.generateContent({
-     *     model: 'gemini-2.0-flash',
+     *     model: 'gemini-flash-latest',
      *     contents: 'Dim the lights so the room feels cozy and warm.',
      *     config: {
      *       tools: [{functionDeclarations: [controlLightFunctionDeclaration]}],
@@ -81908,7 +81908,7 @@ class GenerateContentResponse {
      * @example
      * ```ts
      * const response = await ai.models.generateContent({
-     *   model: 'gemini-2.0-flash',
+     *   model: 'gemini-flash-latest',
      *   contents:
      *     'What is the sum of the first 50 prime numbers? Generate and run code for the calculation, and make sure you get all 50.'
      *   config: {
@@ -81944,7 +81944,7 @@ class GenerateContentResponse {
      * @example
      * ```ts
      * const response = await ai.models.generateContent({
-     *   model: 'gemini-2.0-flash',
+     *   model: 'gemini-flash-latest',
      *   contents:
      *     'What is the sum of the first 50 prime numbers? Generate and run code for the calculation, and make sure you get all 50.'
      *   config: {
@@ -84744,7 +84744,7 @@ class node_Batches extends BaseModule {
          * @example
          * ```ts
          * const response = await ai.batches.create({
-         *   model: 'gemini-2.0-flash',
+         *   model: 'gemini-flash-latest',
          *   src: {gcsUri: 'gs://bucket/path/to/file.jsonl', format: 'jsonl'},
          *   config: {
          *     dest: {gcsUri: 'gs://bucket/path/output/directory', format: 'jsonl'},
@@ -85242,29 +85242,6 @@ function authConfigToMldev$3(fromObject) {
     }
     if (getValueByPath(fromObject, ['oidcConfig']) !== undefined) {
         throw new Error('oidcConfig parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
-    }
-    return toObject;
-}
-function computerUseToVertex$3(fromObject) {
-    const toObject = {};
-    const fromEnablePromptInjectionDetection = getValueByPath(fromObject, [
-        'enablePromptInjectionDetection',
-    ]);
-    if (fromEnablePromptInjectionDetection != null) {
-        setValueByPath(toObject, ['enablePromptInjectionDetection'], fromEnablePromptInjectionDetection);
-    }
-    const fromEnvironment = getValueByPath(fromObject, ['environment']);
-    if (fromEnvironment != null) {
-        setValueByPath(toObject, ['environment'], fromEnvironment);
-    }
-    const fromExcludedPredefinedFunctions = getValueByPath(fromObject, [
-        'excludedPredefinedFunctions',
-    ]);
-    if (fromExcludedPredefinedFunctions != null) {
-        setValueByPath(toObject, ['excludedPredefinedFunctions'], fromExcludedPredefinedFunctions);
-    }
-    if (getValueByPath(fromObject, ['disabledSafetyPolicies']) !== undefined) {
-        throw new Error('disabledSafetyPolicies parameter is only supported in Gemini Developer API mode, not in Gemini Enterprise Agent Platform mode.');
     }
     return toObject;
 }
@@ -85975,7 +85952,7 @@ function toolToVertex$3(fromObject) {
     }
     const fromComputerUse = getValueByPath(fromObject, ['computerUse']);
     if (fromComputerUse != null) {
-        setValueByPath(toObject, ['computerUse'], computerUseToVertex$3(fromComputerUse));
+        setValueByPath(toObject, ['computerUse'], fromComputerUse);
     }
     const fromEnterpriseWebSearch = getValueByPath(fromObject, [
         'enterpriseWebSearch',
@@ -86116,7 +86093,7 @@ class Caches extends BaseModule {
      * ```ts
      * const contents = ...; // Initialize the content to cache.
      * const response = await ai.caches.create({
-     *   model: 'gemini-2.0-flash-001',
+     *   model: 'gemini-flash-latest',
      *   config: {
      *    'contents': contents,
      *    'displayName': 'test cache',
@@ -87336,29 +87313,6 @@ function authConfigToMldev$2(fromObject) {
     }
     return toObject;
 }
-function computerUseToVertex$2(fromObject) {
-    const toObject = {};
-    const fromEnablePromptInjectionDetection = getValueByPath(fromObject, [
-        'enablePromptInjectionDetection',
-    ]);
-    if (fromEnablePromptInjectionDetection != null) {
-        setValueByPath(toObject, ['enablePromptInjectionDetection'], fromEnablePromptInjectionDetection);
-    }
-    const fromEnvironment = getValueByPath(fromObject, ['environment']);
-    if (fromEnvironment != null) {
-        setValueByPath(toObject, ['environment'], fromEnvironment);
-    }
-    const fromExcludedPredefinedFunctions = getValueByPath(fromObject, [
-        'excludedPredefinedFunctions',
-    ]);
-    if (fromExcludedPredefinedFunctions != null) {
-        setValueByPath(toObject, ['excludedPredefinedFunctions'], fromExcludedPredefinedFunctions);
-    }
-    if (getValueByPath(fromObject, ['disabledSafetyPolicies']) !== undefined) {
-        throw new Error('disabledSafetyPolicies parameter is only supported in Gemini Developer API mode, not in Gemini Enterprise Agent Platform mode.');
-    }
-    return toObject;
-}
 function contentToMldev$2(fromObject) {
     const toObject = {};
     const fromParts = getValueByPath(fromObject, ['parts']);
@@ -88442,7 +88396,7 @@ function toolToVertex$2(fromObject) {
     }
     const fromComputerUse = getValueByPath(fromObject, ['computerUse']);
     if (fromComputerUse != null) {
-        setValueByPath(toObject, ['computerUse'], computerUseToVertex$2(fromComputerUse));
+        setValueByPath(toObject, ['computerUse'], fromComputerUse);
     }
     const fromEnterpriseWebSearch = getValueByPath(fromObject, [
         'enterpriseWebSearch',
@@ -88763,29 +88717,6 @@ function computeTokensResponseFromVertex(fromObject, _rootObject) {
             });
         }
         setValueByPath(toObject, ['tokensInfo'], transformedList);
-    }
-    return toObject;
-}
-function computerUseToVertex$1(fromObject, _rootObject) {
-    const toObject = {};
-    const fromEnablePromptInjectionDetection = getValueByPath(fromObject, [
-        'enablePromptInjectionDetection',
-    ]);
-    if (fromEnablePromptInjectionDetection != null) {
-        setValueByPath(toObject, ['enablePromptInjectionDetection'], fromEnablePromptInjectionDetection);
-    }
-    const fromEnvironment = getValueByPath(fromObject, ['environment']);
-    if (fromEnvironment != null) {
-        setValueByPath(toObject, ['environment'], fromEnvironment);
-    }
-    const fromExcludedPredefinedFunctions = getValueByPath(fromObject, [
-        'excludedPredefinedFunctions',
-    ]);
-    if (fromExcludedPredefinedFunctions != null) {
-        setValueByPath(toObject, ['excludedPredefinedFunctions'], fromExcludedPredefinedFunctions);
-    }
-    if (getValueByPath(fromObject, ['disabledSafetyPolicies']) !== undefined) {
-        throw new Error('disabledSafetyPolicies parameter is only supported in Gemini Developer API mode, not in Gemini Enterprise Agent Platform mode.');
     }
     return toObject;
 }
@@ -91850,7 +91781,7 @@ function toolToVertex$1(fromObject, rootObject) {
     }
     const fromComputerUse = getValueByPath(fromObject, ['computerUse']);
     if (fromComputerUse != null) {
-        setValueByPath(toObject, ['computerUse'], computerUseToVertex$1(fromComputerUse));
+        setValueByPath(toObject, ['computerUse'], fromComputerUse);
     }
     const fromEnterpriseWebSearch = getValueByPath(fromObject, [
         'enterpriseWebSearch',
@@ -92478,7 +92409,7 @@ const CONTENT_TYPE_HEADER = 'Content-Type';
 const SERVER_TIMEOUT_HEADER = 'X-Server-Timeout';
 const USER_AGENT_HEADER = 'User-Agent';
 const GOOGLE_API_CLIENT_HEADER = 'x-goog-api-client';
-const SDK_VERSION = '2.27.0'; // x-release-please-version
+const SDK_VERSION = '2.28.0'; // x-release-please-version
 const LIBRARY_LABEL = `google-genai-sdk/${SDK_VERSION}`;
 const VERTEX_AI_API_DEFAULT_VERSION = 'v1beta1';
 const GOOGLE_AI_API_DEFAULT_VERSION = 'v1beta';
@@ -94248,19 +94179,19 @@ class node_Models extends BaseModule {
          * Makes an API request to generate content with a given model.
          *
          * For the `model` parameter, supported formats for Gemini Enterprise Agent Platform API include:
-         * - The Gemini model ID, for example: 'gemini-2.0-flash'
+         * - The Gemini model ID, for example: 'gemini-flash-latest'
          * - The full resource name starts with 'projects/', for example:
-         *  'projects/my-project-id/locations/us-central1/publishers/google/models/gemini-2.0-flash'
+         *  'projects/my-project-id/locations/us-central1/publishers/google/models/gemini-flash-latest'
          * - The partial resource name with 'publishers/', for example:
-         *  'publishers/google/models/gemini-2.0-flash' or
+         *  'publishers/google/models/gemini-flash-latest' or
          *  'publishers/meta/models/llama-3.1-405b-instruct-maas'
          * - `/` separated publisher and model name, for example:
-         * 'google/gemini-2.0-flash' or 'meta/llama-3.1-405b-instruct-maas'
+         * 'google/gemini-flash-latest' or 'meta/llama-3.1-405b-instruct-maas'
          *
          * For the `model` parameter, supported formats for Gemini API include:
-         * - The Gemini model ID, for example: 'gemini-2.0-flash'
+         * - The Gemini model ID, for example: 'gemini-flash-latest'
          * - The model name starts with 'models/', for example:
-         *  'models/gemini-2.0-flash'
+         *  'models/gemini-flash-latest'
          * - For tuned models, the model name starts with 'tunedModels/',
          * for example:
          * 'tunedModels/1234567890123456789'
@@ -94273,7 +94204,7 @@ class node_Models extends BaseModule {
          * @example
          * ```ts
          * const response = await ai.models.generateContent({
-         *   model: 'gemini-2.0-flash',
+         *   model: 'gemini-flash-latest',
          *   contents: 'why is the sky blue?',
          *   config: {
          *     candidateCount: 2,
@@ -94339,19 +94270,19 @@ class node_Models extends BaseModule {
          * response in chunks.
          *
          * For the `model` parameter, supported formats for Gemini Enterprise Agent Platform API include:
-         * - The Gemini model ID, for example: 'gemini-2.0-flash'
+         * - The Gemini model ID, for example: 'gemini-flash-latest'
          * - The full resource name starts with 'projects/', for example:
-         *  'projects/my-project-id/locations/us-central1/publishers/google/models/gemini-2.0-flash'
+         *  'projects/my-project-id/locations/us-central1/publishers/google/models/gemini-flash-latest'
          * - The partial resource name with 'publishers/', for example:
-         *  'publishers/google/models/gemini-2.0-flash' or
+         *  'publishers/google/models/gemini-flash-latest' or
          *  'publishers/meta/models/llama-3.1-405b-instruct-maas'
          * - `/` separated publisher and model name, for example:
-         * 'google/gemini-2.0-flash' or 'meta/llama-3.1-405b-instruct-maas'
+         * 'google/gemini-flash-latest' or 'meta/llama-3.1-405b-instruct-maas'
          *
          * For the `model` parameter, supported formats for Gemini API include:
-         * - The Gemini model ID, for example: 'gemini-2.0-flash'
+         * - The Gemini model ID, for example: 'gemini-flash-latest'
          * - The model name starts with 'models/', for example:
-         *  'models/gemini-2.0-flash'
+         *  'models/gemini-flash-latest'
          * - For tuned models, the model name starts with 'tunedModels/',
          * for example:
          *  'tunedModels/1234567890123456789'
@@ -94364,7 +94295,7 @@ class node_Models extends BaseModule {
          * @example
          * ```ts
          * const response = await ai.models.generateContentStream({
-         *   model: 'gemini-2.0-flash',
+         *   model: 'gemini-flash-latest',
          *   contents: 'why is the sky blue?',
          *   config: {
          *     maxOutputTokens: 200,
@@ -95262,7 +95193,7 @@ class node_Models extends BaseModule {
      *
      * @example
      * ```ts
-     * const modelInfo = await ai.models.get({model: 'gemini-2.0-flash'});
+     * const modelInfo = await ai.models.get({model: 'gemini-flash-latest'});
      * ```
      */
     async get(params) {
@@ -95543,7 +95474,7 @@ class node_Models extends BaseModule {
      * @example
      * ```ts
      * const response = await ai.models.countTokens({
-     *  model: 'gemini-2.0-flash',
+     *  model: 'gemini-flash-latest',
      *  contents: 'The quick brown fox jumps over the lazy dog.'
      * });
      * console.log(response);
@@ -95629,7 +95560,7 @@ class node_Models extends BaseModule {
      * @example
      * ```ts
      * const response = await ai.models.computeTokens({
-     *  model: 'gemini-2.0-flash',
+     *  model: 'gemini-flash-latest',
      *  contents: 'What is your name?'
      * });
      * console.log(response);
@@ -104342,29 +104273,6 @@ function cancelTuningJobResponseFromVertex(fromObject, _rootObject) {
     }
     return toObject;
 }
-function computerUseToVertex(fromObject, _rootObject) {
-    const toObject = {};
-    const fromEnablePromptInjectionDetection = getValueByPath(fromObject, [
-        'enablePromptInjectionDetection',
-    ]);
-    if (fromEnablePromptInjectionDetection != null) {
-        setValueByPath(toObject, ['enablePromptInjectionDetection'], fromEnablePromptInjectionDetection);
-    }
-    const fromEnvironment = getValueByPath(fromObject, ['environment']);
-    if (fromEnvironment != null) {
-        setValueByPath(toObject, ['environment'], fromEnvironment);
-    }
-    const fromExcludedPredefinedFunctions = getValueByPath(fromObject, [
-        'excludedPredefinedFunctions',
-    ]);
-    if (fromExcludedPredefinedFunctions != null) {
-        setValueByPath(toObject, ['excludedPredefinedFunctions'], fromExcludedPredefinedFunctions);
-    }
-    if (getValueByPath(fromObject, ['disabledSafetyPolicies']) !== undefined) {
-        throw new Error('disabledSafetyPolicies parameter is only supported in Gemini Developer API mode, not in Gemini Enterprise Agent Platform mode.');
-    }
-    return toObject;
-}
 function contentToVertex(fromObject, rootObject) {
     const toObject = {};
     const fromParts = getValueByPath(fromObject, ['parts']);
@@ -105365,7 +105273,7 @@ function toolToVertex(fromObject, rootObject) {
     }
     const fromComputerUse = getValueByPath(fromObject, ['computerUse']);
     if (fromComputerUse != null) {
-        setValueByPath(toObject, ['computerUse'], computerUseToVertex(fromComputerUse));
+        setValueByPath(toObject, ['computerUse'], fromComputerUse);
     }
     const fromEnterpriseWebSearch = getValueByPath(fromObject, [
         'enterpriseWebSearch',
