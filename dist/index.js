@@ -60013,7 +60013,7 @@ const sleep = (ms, signal) => new Promise((resolve) => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/errors.mjs
 var errors = __nccwpck_require__(2533);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/version.mjs
-const sdk_version_VERSION = '0.131.0'; // x-release-please-version
+const sdk_version_VERSION = '0.133.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/detect-platform.mjs
 
@@ -62091,7 +62091,14 @@ var Stream = /* @__PURE__ */ (() => {
                             sse.event === 'session.thread_status_terminated' ||
                             sse.event === 'event_start' ||
                             sse.event === 'event_delta' ||
-                            sse.event === 'system.message') {
+                            sse.event === 'system.message' ||
+                            sse.event === 'workflow_run.created' ||
+                            sse.event === 'workflow_run.status_running' ||
+                            sse.event === 'workflow_run.status_idle' ||
+                            sse.event === 'workflow_run.status_ended' ||
+                            sse.event === 'workflow_run.error' ||
+                            sse.event === 'workflow_run.phase_started' ||
+                            sse.event === 'workflow_run.phase_ended') {
                             try {
                                 yield JSON.parse(sse.data);
                             }
@@ -64257,6 +64264,8 @@ var MessageStream = /* @__PURE__ */ (() => {
 })();
 //# sourceMappingURL=MessageStream.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/decoders/jsonl.mjs
+var _JSONLDecoder_consumed;
+
 
 
 
@@ -64264,9 +64273,14 @@ var JSONLDecoder = /* @__PURE__ */ (() => {
     class JSONLDecoder {
         constructor(iterator, controller) {
             this.iterator = iterator;
+            _JSONLDecoder_consumed.set(this, false);
             this.controller = controller;
         }
         async *decoder() {
+            if ((0,tslib/* __classPrivateFieldGet */.g)(this, _JSONLDecoder_consumed, "f")) {
+                throw new core_error/* AnthropicError */.pJ('Cannot iterate over a consumed stream.');
+            }
+            (0,tslib/* __classPrivateFieldSet */.G)(this, _JSONLDecoder_consumed, true, "f");
             const lineDecoder = new LineDecoder();
             for await (const chunk of this.iterator) {
                 for (const line of lineDecoder.decode(chunk)) {
@@ -64277,7 +64291,7 @@ var JSONLDecoder = /* @__PURE__ */ (() => {
                 yield JSON.parse(line);
             }
         }
-        [Symbol.asyncIterator]() {
+        [(_JSONLDecoder_consumed = new WeakMap(), Symbol.asyncIterator)]() {
             return this.decoder();
         }
         static fromResponse(response, controller) {
@@ -64337,6 +64351,13 @@ const createPathTagFunction = (pathEncoder = encodeURIPath) => function path(sta
                     .slice(8, -1)} is not a valid path parameter`,
             });
         }
+        if (!postPath && encoded === '') {
+            invalidSegments.push({
+                start: previousValue.length + currentValue.length,
+                length: 0,
+                error: 'Value "" can\'t be safely passed as a path parameter',
+            });
+        }
         return previousValue + currentValue + (index === params.length ? '' : encoded);
     }, '');
     const pathOnly = path.split(/[?#]/, 1)[0];
@@ -64352,13 +64373,13 @@ const createPathTagFunction = (pathEncoder = encodeURIPath) => function path(sta
     }
     invalidSegments.sort((a, b) => a.start - b.start);
     if (invalidSegments.length > 0) {
-        let lastEnd = 0;
-        const underline = invalidSegments.reduce((acc, segment) => {
-            const spaces = ' '.repeat(segment.start - lastEnd);
-            const arrows = '^'.repeat(segment.length);
-            lastEnd = segment.start + segment.length;
-            return acc + spaces + arrows;
-        }, '');
+        const marks = [];
+        for (const segment of invalidSegments) {
+            for (let i = segment.start; i < segment.start + Math.max(1, segment.length); i++) {
+                marks[i] = '^';
+            }
+        }
+        const underline = Array.from(marks, (mark) => mark ?? ' ').join('');
         throw new core_error/* AnthropicError */.pJ(`Path parameters result in path with invalid segments:\n${invalidSegments
             .map((e) => e.error)
             .join('\n')}\n${path}\n${underline}`);
@@ -64366,7 +64387,7 @@ const createPathTagFunction = (pathEncoder = encodeURIPath) => function path(sta
     return path;
 };
 /**
- * URI-encodes path params and ensures no unsafe /./ or /../ path segments are introduced.
+ * URI-encodes path params and ensures that none before any ? or # is empty and none introduces an unsafe /./ or /../ path segment.
  */
 const path_path = /* @__PURE__ */ createPathTagFunction(encodeURIPath);
 //# sourceMappingURL=path.mjs.map
@@ -64705,6 +64726,58 @@ var Messages = /* @__PURE__ */ (() => {
     Messages.Batches = Batches;
     return Messages;
 })();
+const BROWSER_MEMBER_NAME_VALUES = (/* unused pure expression or super */ null && ([
+    'navigate',
+    'list_tabs',
+    'new_tab',
+    'switch_tab',
+    'close_tab',
+    'read_page',
+    'get_page_text',
+    'read_console',
+    'read_network',
+    'find',
+    'form_input',
+    'file_upload',
+    'scroll_to',
+    'screenshot',
+    'zoom',
+    'left_click',
+    'right_click',
+    'middle_click',
+    'double_click',
+    'triple_click',
+    'hover',
+    'left_click_drag',
+    'left_mouse_down',
+    'left_mouse_up',
+    'mouse_move',
+    'scroll',
+    'type',
+    'key',
+    'hold_key',
+    'wait',
+    'javascript_exec',
+]));
+const COMPUTER_MEMBER_NAME_VALUES = (/* unused pure expression or super */ null && ([
+    'key',
+    'hold_key',
+    'type',
+    'cursor_position',
+    'mouse_move',
+    'left_mouse_down',
+    'left_mouse_up',
+    'left_click',
+    'left_click_drag',
+    'right_click',
+    'middle_click',
+    'double_click',
+    'triple_click',
+    'scroll',
+    'wait',
+    'screenshot',
+    'zoom',
+]));
 const DEPRECATED_MODELS = {
     'claude-sonnet-4-5': 'November 30th, 2026',
     'claude-sonnet-4-5-20250929': 'November 30th, 2026',
@@ -65367,8 +65440,8 @@ class RateLimits extends APIResource {
      * List Messages API rate limits for your organization.
      *
      * Each entry corresponds to one rate-limit group (either a model family or an
-     * API-surface category such as the Files API or Message Batches) and contains the
-     * set of limiter values that apply to it.
+     * API-surface category such as the Message Batches API or the web search tool) and
+     * contains the set of limiter values that apply to it.
      *
      * When `limit` is omitted, every matching entry is returned in a single page; when
      * `limit` truncates the result, follow `next_page` to fetch the remaining entries.
@@ -67959,8 +68032,102 @@ var AsyncQueue = /* @__PURE__ */ (() => {
 })();
 //# sourceMappingURL=async-queue.mjs.map
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/ToolError.mjs
-var ToolError = __nccwpck_require__(7618);
+var tools_ToolError = __nccwpck_require__(7618);
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/toolsets/sanitize.mjs
+/**
+ * C0 and C1 controls, the line separators and the bidi controls: anything that would break or reorder the one line a
+ * page- or model-supplied value goes into.
+ */
+const LINE_UNSAFE = '\\x00-\\x1f\\x7f-\\x9f\\u061c\\u200e\\u200f\\u2028\\u2029\\u202a-\\u202e\\u2066-\\u2069';
+const CONTROL_RE = /* @__PURE__ */ (() => new RegExp(`[${LINE_UNSAFE}]+`, 'g'))();
+// An unpaired surrogate cannot be encoded as UTF-8: in a page-chosen string it would fail every request for as long
+// as the driver keeps reporting it. Folded to U+FFFD wherever page text is normalised (with the `u` flag the class
+// matches a surrogate only when it stands alone).
+const LONE_SURROGATE_RE = /[\uD800-\uDFFF]/gu;
+/** `text` with each unpaired surrogate replaced by U+FFFD, so it can be sent. */
+function sanitize_wellFormed(text) {
+    return text.replace(LONE_SURROGATE_RE, '\uFFFD');
+}
+/**
+ * The API's limit for a text field of the block, for a URL, and the most of an exception's text an `is_error` result
+ * holds.
+ */
+const FIELD_MAX = 4096;
+const LOG_MAX = 200;
+/**
+ * A page- or model-supplied text on one line the model or an operator reads: a tab's title, a download's
+ * error, a field of a member's confirmation line. Line breaks, control and bidi characters are folded to
+ * spaces, a lone surrogate to U+FFFD, the ends trimmed, and the whole cut to `limit`.
+ */
+function oneLine(text, limit = FIELD_MAX) {
+    return cutPoints(sanitize_wellFormed(text).replace(CONTROL_RE, ' ').trim(), limit);
+}
+/** A model- or page-supplied name for a log record or an SDK-written error text: `oneLine`, cut short. @internal */
+function logSafe(name) {
+    return oneLine(name, LOG_MAX);
+}
+/**
+ * A model-chosen name as it is echoed inside single quotes in a text the model reads: one line, cut short, and without
+ * the quotes and runs of spaces that could make it read as part of the text around it.
+ * @internal
+ */
+function quotedName(name) {
+    return logSafe(name).replace(/[' ]+/g, ' ').trim();
+}
+/** `Error: <message>` for a thrown value other than a `ToolError`: an `Error`'s message, else it as a string. */
+function sanitize_thrownErrorText(e) {
+    return `Error: ${e instanceof Error ? e.message : String(e)}`;
+}
+/**
+ * A caught exception's text as the `is_error` result the model reads (the same `Error: <message>` a failing function
+ * tool produces), made well-formed and cut to the field limit: a driver's exception can embed a page-sized payload.
+ */
+function errorText(error) {
+    return cutPoints(sanitize_wellFormed(sanitize_thrownErrorText(error)), FIELD_MAX);
+}
+/**
+ * The first `limit` code points of `text`: a cut by UTF-16 units could split a surrogate pair, and a lone surrogate
+ * fails the request.
+ */
+function cutPoints(text, limit) {
+    if (text.length <= limit)
+        return text; // no more UTF-16 units than the limit: no more code points either
+    let end = 0;
+    let points = 0;
+    for (const ch of text) {
+        if (points === limit)
+            break;
+        points += 1;
+        end += ch.length;
+    }
+    return text.slice(0, end);
+}
+/**
+ * A tab's or download's URL as the model reads it: the driver's string folded to one line (line breaks, control and
+ * bidi characters a space, a lone surrogate U+FFFD) and held to the API's limit (`FIELD_MAX`, counted in code points).
+ * Nothing is parsed. A longer one becomes `…` and its first 4,095 code points, so that the cut text parses to no site.
+ */
+function boundedTabURL(url) {
+    const line = oneLine(url, Infinity);
+    return cutPoints(line, FIELD_MAX) === line ? line : '\u2026' + cutPoints(line, FIELD_MAX - 1);
+}
+/**
+ * The text blocks of a `ToolError`'s content. Deliberate, like the empty-content placeholder: the API accepts only
+ * text on an is_error result and answers anything else with a 400 that ends the run, so an image a member attached to
+ * its refusal is dropped here rather than ending the whole loop. The refusal's text still reaches the model.
+ */
+function errorTextContent(content) {
+    // The API rejects an `is_error` result whose content is empty or holds a non-text block. Empty text blocks are
+    // dropped too, so an error with no text left gets the placeholder from `toolsetResultBlock`.
+    if (typeof content === 'string')
+        return sanitize_wellFormed(content);
+    return content
+        .filter((block) => block.type === 'text' && block.text !== '')
+        .map((block) => ({ ...block, text: sanitize_wellFormed(block.text) }));
+}
+//# sourceMappingURL=sanitize.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/BetaRunnableTool.mjs
+
 
 /**
  * The name the model calls a tool by: `mcp_server_name` for MCP toolsets, `type` for nameless server
@@ -67973,7 +68140,7 @@ function toolName(tool) {
 }
 /** Tool-result content for a thrown value: a {@link ToolError}'s own content, otherwise `Error: <message>`. */
 function toolErrorContent(e) {
-    return e instanceof ToolError/* ToolError */.v ? e.content : `Error: ${e instanceof Error ? e.message : String(e)}`;
+    return e instanceof tools_ToolError/* ToolError */.v ? e.content : sanitize_thrownErrorText(e);
 }
 /** Parse the input, run the tool, and turn anything thrown into an error result. */
 async function runRunnableTool(tool, rawInput, context) {
@@ -71170,6 +71337,224 @@ var BetaMessageStream = /* @__PURE__ */ (() => {
     return BetaMessageStream;
 })();
 //# sourceMappingURL=BetaMessageStream.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/toolsets/family.mjs
+/** Dated `tools[]` entry `type` → the family stamped on member blocks. */
+const TOOLSET_TYPE_TO_FAMILY = {
+    browser_toolset_20260801: 'browser',
+    computer_toolset_20260801: 'computer',
+};
+function toolsetFamily(toolset) {
+    return TOOLSET_TYPE_TO_FAMILY[toolset.type];
+}
+/** Whether a `tools` entry is a toolset the runner can execute locally. */
+function isRunnableToolset(t) {
+    // `in` alone would accept inherited keys such as `toString`
+    return 'run' in t && t.type != null && Object.prototype.hasOwnProperty.call(TOOLSET_TYPE_TO_FAMILY, t.type);
+}
+//# sourceMappingURL=family.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/toolsets/errors.mjs
+
+
+
+/**
+ * Thrown when your code uses a toolset's API incorrectly. Catch it to catch all three kinds below.
+ *
+ * The only exception the tool runner propagates from a member call: anything else a member throws becomes an
+ * `is_error` result the model can react to, and the loop continues.
+ */
+class ToolsetUsageError extends core_error/* AnthropicError */.pJ {
+    constructor(message, options) {
+        super(message);
+        this.name = 'ToolsetUsageError';
+        if (options && 'cause' in options)
+            this.cause = options.cause;
+    }
+}
+/** A construction-time mistake: an option combination the toolset cannot honour. */
+class ToolsetConfigError extends ToolsetUsageError {
+    constructor(message, options) {
+        super(message, options);
+        this.name = 'ToolsetConfigError';
+    }
+}
+/** Misuse of the SDK's own API detected at call time (a `browserState` that threw, a misrouted `tool_use`). */
+class ToolsetContractError extends ToolsetUsageError {
+    constructor(message, options) {
+        super(message, options);
+        this.name = 'ToolsetContractError';
+    }
+}
+/** A member run on a toolset you already closed. */
+class ToolsetClosedError extends ToolsetUsageError {
+    constructor(message, options) {
+        super(message, options);
+        this.name = 'ToolsetClosedError';
+    }
+}
+// --- the SDK's own refusals ---------------------------------------------------------------------------
+// Each is a `ToolError`, so the model reads it as an `is_error` result and the loop continues. The subclass lets
+// your code (an `execute` override, a test) identify the refusal without comparing text.
+/** The refusal the model reads for a member name the toolset does not have. */
+class UnknownMemberError extends tools_ToolError/* ToolError */.v {
+    constructor(name, family) {
+        super(`Error: unknown ${family} toolset member '${quotedName(name)}'`);
+        this.name = 'UnknownMemberError';
+    }
+}
+/** The refusal the model reads for a member your application's `configs` disabled. */
+class DisabledMemberError extends tools_ToolError/* ToolError */.v {
+    constructor(name) {
+        super(`The '${name}' action is not permitted by this application's permissions and cannot be used in this session.`);
+        this.name = 'DisabledMemberError';
+    }
+}
+/** The refusal the model reads for a member the driver does not implement. */
+class UnavailableMemberError extends tools_ToolError/* ToolError */.v {
+    constructor(name, family) {
+        super(`The ${family} toolset member '${name}' is not available in this environment.`);
+        this.name = 'UnavailableMemberError';
+    }
+}
+/**
+ * The refusal the model reads when its `tool_use.input` does not fit the member: `problem` is the field and what was
+ * expected.
+ */
+class InvalidMemberInputError extends tools_ToolError/* ToolError */.v {
+    constructor(name, family, problem) {
+        super(`invalid input for ${family} member '${name}': ${problem}`);
+        this.name = 'InvalidMemberInputError';
+    }
+}
+/**
+ * The refusal the model reads when your `urlPolicy` threw something other than a `ToolError` (a `ToolError` it throws
+ * reaches the model as thrown). `reason` is the line it reads.
+ */
+class URLRefusedError extends tools_ToolError/* ToolError */.v {
+    constructor(reason) {
+        // one bounded line: a reason may echo a model-written address of any length
+        super(logSafe(reason));
+        this.name = 'URLRefusedError';
+    }
+}
+/** The refusal the model reads when your `confirm` callable answered anything but `true` for the member `name`. */
+class ConfirmDeclinedError extends tools_ToolError/* ToolError */.v {
+    constructor(name) {
+        super(`The user did not grant permission to run '${name}'. Do not retry it unless the user asks you to.`);
+        this.name = 'ConfirmDeclinedError';
+    }
+}
+/** The refusal the model reads when your `confirm` callable threw, so no answer could be obtained for `name`. */
+class ConfirmFailedError extends tools_ToolError/* ToolError */.v {
+    constructor(name) {
+        super(`Permission to run '${name}' could not be obtained (the confirmation prompt failed). Do not retry it unless the user asks you to.`);
+        this.name = 'ConfirmFailedError';
+    }
+}
+/**
+ * The refusal the model reads for a `file_upload` the file policy (or its absence) does not admit. `reason` is the line
+ * it reads.
+ */
+class UploadRefusedError extends tools_ToolError/* ToolError */.v {
+    constructor(reason) {
+        super(reason);
+        this.name = 'UploadRefusedError';
+    }
+}
+/** The refusal for a `file_upload` by path when no upload root is configured (no file policy, or one without roots). */
+const NO_UPLOAD_ROOTS = 'file_upload has no configured upload roots';
+//# sourceMappingURL=errors.mjs.map
+;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/toolsets/run.mjs
+
+
+
+
+
+/**
+ * What the runner answers for a toolset member it did not run because an earlier member of the same toolset failed
+ * in the same assistant turn: the model planned those actions as a sequence, and a later one rarely makes sense once
+ * an earlier one did not happen. The browser toolset's text; `notExecutedText` gives each family its own.
+ */
+const NOT_EXECUTED = 'Not executed: an earlier action in this turn failed.';
+const NOT_EXECUTED_BY_FAMILY = {
+    browser: NOT_EXECUTED,
+    computer: 'Not executed: an earlier computer action in this turn failed.',
+};
+/** The not-executed text for `family` (a `tool_use.toolset_name`), or the browser's for a family the SDK doesn't know. */
+function notExecutedText(family) {
+    return Object.prototype.hasOwnProperty.call(NOT_EXECUTED_BY_FAMILY, family) ?
+        NOT_EXECUTED_BY_FAMILY[family]
+        : NOT_EXECUTED;
+}
+/**
+ * The `tool_result` answering a member `tool_use`. `toolset_name` is required on a member result (the API rejects a
+ * mismatch), so it is echoed on error paths too.
+ */
+function toolsetResultBlock(toolUse, content, isError = false) {
+    if (isError && (content === '' || (Array.isArray(content) && content.length === 0))) {
+        // Deliberate: an empty ToolError (`throw new ToolError('')`, or one whose non-text blocks were dropped) would be
+        // an is_error result with empty content, which the API rejects with a 400, ending the whole run over a refusal
+        // the model could have recovered from. The model still learns the call failed, and the developer loses nothing
+        // they wrote.
+        content = 'The tool call failed with an empty error message.';
+    }
+    return {
+        type: 'tool_result',
+        tool_use_id: toolUse.id,
+        toolset_name: toolUse.toolset_name ?? null,
+        content,
+        ...(isError ? { is_error: true } : {}),
+    };
+}
+/**
+ * What never becomes a tool result: a `ToolsetUsageError` propagates as it is, and once the call's own `AbortSignal`
+ * has aborted the cancellation propagates as `APIUserAbortError`, whatever was thrown after it. An error named
+ * `AbortError` that a driver throws while that signal has not aborted (a page-aborted request, a driver's own timeout)
+ * is the driver's failure, not a cancellation.
+ */
+function throwIfPropagates(error, ctx) {
+    if (error instanceof ToolsetUsageError)
+        throw error;
+    throwIfAborted(ctx.signal);
+}
+/** Once `signal` has aborted, throws the `APIUserAbortError` an aborted request throws, so one `catch` covers both. */
+function throwIfAborted(signal) {
+    if (signal?.aborted)
+        throw new core_error/* APIUserAbortError */.cH();
+}
+/**
+ * How an exception out of a member call is classified, at the `execute` boundary and in the runner alike: what
+ * `throwIfPropagates` covers propagates, a `ToolError` is the member's own refusal, and anything else a driver throws
+ * (its `TypeError` included) becomes a refusal the model reads, so the loop continues.
+ */
+function classify(error, ctx) {
+    throwIfPropagates(error, ctx);
+    if (error instanceof ToolError)
+        return error;
+    // Not cut here: the toolset cuts the text to the field limit when it builds the result.
+    return new ToolError(wellFormed(thrownErrorText(error)));
+}
+/**
+ * Runs one member `tool_use` against `toolset` and builds its `tool_result`. Throws if `toolUse`
+ * is not a member call of this family: a block without `toolset_name` is a plain tool (possibly a
+ * custom tool sharing a member name) and must never be routed here.
+ */
+async function runToolsetMember(toolset, toolUse, options = {}) {
+    const family = toolsetFamily(toolset);
+    if (toolUse.toolset_name !== family) {
+        // a caller's routing mistake, like every other misuse of the toolset's API
+        throw new ToolsetContractError(`tool_use ${JSON.stringify(toolUse.id)} (toolset_name=${JSON.stringify(toolUse.toolset_name ?? null)}, name=${JSON.stringify(toolUse.name)}) is not a member call of the ${JSON.stringify(family)} toolset`);
+    }
+    const ctx = { ...options, toolUse, toolUseBlock: toolUse };
+    try {
+        return toolsetResultBlock(toolUse, await toolset.run(ctx, toolUse));
+    }
+    catch (e) {
+        // `classify`, as an is_error result: a converted exception is cut to the field limit here
+        throwIfPropagates(e, ctx);
+        return toolsetResultBlock(toolUse, errorTextContent(e instanceof tools_ToolError/* ToolError */.v ? e.content : errorText(e)), true);
+    }
+}
+//# sourceMappingURL=run.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/internal/BetaToolRunnerStream.mjs
 var _BetaToolRunnerStream_instances, _BetaToolRunnerStream_onToolCall, _BetaToolRunnerStream_emitted, _BetaToolRunnerStream_readers, _BetaToolRunnerStream_toolCalls, _BetaToolRunnerStream_closed, _BetaToolRunnerStream_ready, _BetaToolRunnerStream_fallback, _BetaToolRunnerStream_track, _BetaToolRunnerStream_release, _BetaToolRunnerStream_removeReader;
 
@@ -71311,7 +71696,7 @@ var BetaToolRunnerStream = /* @__PURE__ */ (() => {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/promise.mjs
 var promise = __nccwpck_require__(7793);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/lib/tools/BetaToolRunner.mjs
-var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_calls, _BetaToolRunner_lastStopReason, _BetaToolRunner_toolOverrides, _BetaToolRunner_pendingToolChanges, _BetaToolRunner_send, _BetaToolRunner_streamThatStartsTools, _BetaToolRunner_startedCallsSettled, _BetaToolRunner_compact, _BetaToolRunner_runnableTools, _BetaToolRunner_availableToolNames, _BetaToolRunner_recordRemovalsFromHistory, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse, _BetaToolRunner_flushPendingToolChanges, _BetaToolRunner_pendingToolChangesMessage;
+var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated, _BetaToolRunner_state, _BetaToolRunner_options, _BetaToolRunner_message, _BetaToolRunner_stream, _BetaToolRunner_toolResponse, _BetaToolRunner_completion, _BetaToolRunner_iterationCount, _BetaToolRunner_compaction, _BetaToolRunner_calls, _BetaToolRunner_lastStopReason, _BetaToolRunner_toolOverrides, _BetaToolRunner_pendingToolChanges, _BetaToolRunner_send, _BetaToolRunner_streamThatStartsTools, _BetaToolRunner_startedCallsSettled, _BetaToolRunner_compact, _BetaToolRunner_runnableTools, _BetaToolRunner_availableToolNames, _BetaToolRunner_recordRemovalsFromHistory, _BetaToolRunner_compactAfterFinalTurn, _BetaToolRunner_generateToolResponse, _BetaToolRunner_toolsetFamilies, _BetaToolRunner_flushPendingToolChanges, _BetaToolRunner_pendingToolChangesMessage;
 
 
 
@@ -71322,6 +71707,12 @@ var _BetaToolRunner_instances, _BetaToolRunner_consumed, _BetaToolRunner_mutated
 
 
 
+
+
+
+
+const USE_A_NEW_RUNNER = "a tool runner's toolsets come only from its tools param; change them with setMessagesParams(), or build a new runner";
+const REMOVE_WITH_A_NEW_RUNNER = "a tool runner's toolsets come only from its tools param; remove it there with setMessagesParams(), or build a new runner without it";
 /**
  * A ToolRunner handles the automatic conversation loop between the assistant and tools.
  *
@@ -71387,9 +71778,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
                     messages: JSON.parse(JSON.stringify(withToolDefinitions(params.messages))),
                 },
             }, "f");
-            // Cloning drops symbol-keyed properties, so collect helper marks
-            // from the original params here — the create()-side collector won't see
-            // them on the cloned messages.
+            // Cloning drops symbol-keyed properties, so collect helper marks from the original params here: the
+            // create()-side collector won't find them on the cloned messages, nor on a toolset's serialized entry.
             const collected = collectStainlessHelpers(params.tools, params.messages);
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_options, {
                 ...options,
@@ -71541,7 +71931,8 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          * With `runToolsEagerly` the runner otherwise starts each call while the reply streams, as soon as
          * the model has moved on from it: when the next block starts, or the reply stops with `tool_use`. A call
          * never starts before your stream listeners and any `for await` over the stream have handled that event, so
-         * you can call this from either once you have seen the call. The other calls of the reply still start early.
+         * you can call this from either once you have seen the call. The other calls of the reply still start early,
+         * except the later calls of the same toolset, which a toolset runs in order.
          * It does nothing for a call that has started, outside the loop body, and without `runToolsEagerly`.
          *
          * @param toolUse - The `tool_use` block of the call, or its id
@@ -71697,9 +72088,11 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          *
          * Each tool's whole definition is sent in a `tool_addition` block with the next request, and a
          * runnable tool replaces a runnable tool of the same name straight away, even for a call already in
-         * the message being handled. A call that started while the reply streamed keeps the old one. A raw
-         * definition is only sent: the runner never runs it, and stops running a tool of the same name.
-         * Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
+         * the message being handled. A call that started while the reply streamed keeps the old one. A raw definition
+         * is only sent: the runner never runs it, and stops running a tool of the same name. Passing a runnable toolset,
+         * or a raw definition of a toolset the runner has, throws `ToolsetContractError` and adds nothing: a runner's
+         * toolsets come only from `params.tools`. A tool named like one of its toolsets is left to the API, which rejects
+         * it with the next request. Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
          *
          * @param tools - Runnable tools (for example from `betaZodTool()`) or raw tool definitions
          *
@@ -71707,6 +72100,18 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          * runner.addTools(queryDatabaseTool);
          */
         addTools(...tools) {
+            const families = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_toolsetFamilies).call(this);
+            for (const tool of tools) {
+                if (isRunnableToolset(tool)) {
+                    throw new ToolsetContractError(`addTools() can't add the '${quotedName(toolsetFamily(tool))}' toolset: ${USE_A_NEW_RUNNER}`);
+                }
+                // The API treats a definition of one of the runner's families as replacing that toolset, which would leave the
+                // model with a toolset the runner doesn't run.
+                const family = definitionFamily(tool);
+                if (families.has(family)) {
+                    throw new ToolsetContractError(`addTools() can't replace the '${quotedName(family)}' toolset: ${USE_A_NEW_RUNNER}`);
+                }
+            }
             for (const tool of tools) {
                 // A definition without a `name` (an `mcp_toolset`) is nothing the runner runs or stops running.
                 if ('name' in tool) {
@@ -71719,10 +72124,11 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          * Take tools away from the model without changing `params.tools`, which would miss the prompt cache.
          *
          * The tools stop being run straight away: a call to one of them, even one in the message being
-         * handled, gets the same "not found" error result as a call to an unknown tool. A call that started
-         * while the reply streamed finishes as usual. The model is told in a `tool_removal` block with the
-         * next request. Use {@link addTools} to bring a tool back.
-         * Requires the `inline-tools-2026-09-15` beta, which the runner does not add for you.
+         * handled, gets the same "not found" error result as a call to an unknown tool. A call that started while the
+         * reply streamed finishes as usual. The model is told in a `tool_removal` block with the next request. Use
+         * {@link addTools} to bring a tool back. Passing the name of one of the runner's toolsets throws
+         * `ToolsetContractError` and removes nothing. Requires the `inline-tools-2026-09-15` beta, which the runner does
+         * not add for you.
          *
          * @param tools - The tools to remove, or their names
          *
@@ -71730,6 +72136,14 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
          * runner.removeTools('query_database');
          */
         removeTools(...tools) {
+            const families = (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_toolsetFamilies).call(this);
+            for (const tool of tools) {
+                // A toolset's name is always its own: the API rejects any other tool of that name.
+                const name = typeof tool === 'string' ? tool : tool.name;
+                if (families.has(name)) {
+                    throw new ToolsetContractError(`removeTools() can't remove the '${quotedName(name)}' toolset: ${REMOVE_WITH_A_NEW_RUNNER}`);
+                }
+            }
             for (const tool of tools) {
                 const name = typeof tool === 'string' ? tool : tool.name;
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolOverrides, "f").set(name, null);
@@ -71775,9 +72189,32 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
     }, _BetaToolRunner_streamThatStartsTools = function _BetaToolRunner_streamThatStartsTools(params) {
         const calls = new Map();
         (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_calls, calls, "f");
+        // A toolset runs its calls one at a time, in the model's order. So a toolset's call starts here only while the
+        // toolset is idle, and once one of its calls waits for the reply or fails, its later calls wait for the reply too.
+        const toolsets = new Map();
         return BetaToolRunnerStream.start(this.client.beta.messages, params, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), (toolUse) => {
             // Held, or started by `generateToolResponse()` before a reader that is behind got to the call.
-            if (calls.has(toolUse.id)) {
+            const known = calls.has(toolUse.id);
+            // A call named after a toolset is a toolset call with malformed actions, which `generateToolResponse()` answers.
+            const malformed = !toolUse.toolset_name && (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_toolsetFamilies).call(this).has(toolUse.name);
+            const family = malformed ? toolUse.name : toolUse.toolset_name;
+            if (family) {
+                if (known || malformed || toolsets.has(family)) {
+                    toolsets.set(family, 'waiting');
+                    return;
+                }
+                toolsets.set(family, 'running');
+                const result = runToolsetCall((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params, family, toolUse, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"));
+                calls.set(toolUse.id, { status: 'started', result });
+                result.then(({ is_error }) => {
+                    if (is_error || toolsets.get(family) === 'waiting')
+                        toolsets.set(family, 'waiting');
+                    else
+                        toolsets.delete(family);
+                }, () => toolsets.set(family, 'waiting'));
+                return;
+            }
+            if (known) {
                 return;
             }
             // The call looks its tool up now, so a later `addTools()` or `removeTools()` doesn't change it.
@@ -71818,7 +72255,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
     }, _BetaToolRunner_runnableTools = function _BetaToolRunner_runnableTools() {
         const runnable = new Map();
         for (const tool of (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.tools) {
-            if ('run' in tool) {
+            if ('run' in tool && 'name' in tool) {
                 runnable.set(tool.name, tool);
             }
         }
@@ -71875,8 +72312,10 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f") !== undefined) {
             return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
         }
-        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), lastMessage, { ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), signal }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f")), "f");
+        (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_toolResponse, generateToolResponse((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_runnableTools).call(this), (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_instances, "m", _BetaToolRunner_availableToolNames).call(this), lastMessage, { ...(0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_options, "f"), signal }, (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_calls, "f")), "f");
         return (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_toolResponse, "f");
+    }, _BetaToolRunner_toolsetFamilies = function _BetaToolRunner_toolsetFamilies() {
+        return new Set((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_state, "f").params.tools.filter(isRunnableToolset).map(toolsetFamily));
     }, _BetaToolRunner_flushPendingToolChanges = function _BetaToolRunner_flushPendingToolChanges() {
         // A paused turn has to go back as the last message, so the changes wait for the request after it.
         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_lastStopReason, "f") === 'pause_turn' || (0,tslib/* __classPrivateFieldGet */.g)(this, _BetaToolRunner_pendingToolChanges, "f").length === 0) {
@@ -71952,8 +72391,9 @@ function toolDefinition(tool) {
         return tool;
     }
     const apiKeys = BETA_CLIENT_TOOL_UNION_KEYS;
+    const fields = 'toJSON' in tool && typeof tool.toJSON === 'function' ? tool.toJSON() : tool;
     return {
-        ...Object.fromEntries(Object.entries(tool).filter(([key]) => apiKeys.includes(key))),
+        ...Object.fromEntries(Object.entries(fields).filter(([key]) => apiKeys.includes(key))),
         ...(wasCreatedByStainlessHelper(tool) && { [SDK_HELPER_SYMBOL]: tool[SDK_HELPER_SYMBOL] }),
     };
 }
@@ -71968,7 +72408,7 @@ function withToolDefinitions(messages) {
         return { ...message, content };
     });
 }
-async function generateToolResponse(runnable, available, lastMessage, requestOptions, calls) {
+async function generateToolResponse(params, runnable, available, lastMessage, requestOptions, calls) {
     // Only process if the last message is from the assistant and has tool use blocks
     if (!lastMessage ||
         lastMessage.role !== 'assistant' ||
@@ -71980,10 +72420,50 @@ async function generateToolResponse(runnable, available, lastMessage, requestOpt
     if (toolUseBlocks.length === 0) {
         return null;
     }
-    const toolResults = await Promise.all(toolUseBlocks.map((toolUse) => {
+    // A toolset's members run one at a time in the order the model wrote them, and once one is answered with is_error
+    // the rest of that toolset's members in this turn are not run (notExecutedText). Function tools run alongside them
+    // and neither wait on nor stop a toolset's members.
+    const sequences = new Map();
+    const toolResults = await Promise.all(toolUseBlocks.map(async (toolUse) => {
+        // The call may have started while the reply streamed, or in an earlier `generateToolResponse()`.
         const call = calls?.get(toolUse.id);
-        if (call?.status === 'started') {
-            return call.result;
+        const started = call?.status === 'started' ? call.result : undefined;
+        // Members dispatch by family, never by name: a custom tool may share the bare `name`.
+        if (toolUse.toolset_name) {
+            const family = toolUse.toolset_name;
+            const sequence = sequences.get(family) ?? { tail: Promise.resolve(), failed: false };
+            sequences.set(family, sequence);
+            const registered = params.tools.some((t) => isRunnableToolset(t) && toolsetFamily(t) === family);
+            const run = started ??
+                sequence.tail.then(() => sequence.failed ?
+                    toolsetResultBlock(toolUse, notExecutedText(family), true)
+                    : runToolsetCall(params, family, toolUse, requestOptions));
+            // A rejection (a usage error) propagates through Promise.all and stops the run. It also stops this toolset's
+            // later members here, which would otherwise still be dispatched after the run has failed.
+            sequence.tail = run.then(({ is_error }) => {
+                if (is_error && registered)
+                    sequence.failed = true;
+            }, () => {
+                sequence.failed = true;
+            });
+            calls?.set(toolUse.id, { status: 'started', result: run });
+            return run;
+        }
+        if (started) {
+            return started;
+        }
+        // A `tool_removal` is only a hint to the model, which may still emit a tool_use for a
+        // withdrawn tool — treat those exactly like a tool that was never defined.
+        const tool = available.has(toolUse.name) ? runnable.get(toolUse.name) : undefined;
+        if (!tool && params.tools.some((t) => isRunnableToolset(t) && toolsetFamily(t) === toolUse.name)) {
+            // A call named after a toolset in the run, but with no `toolset_name`, is a toolset call with malformed
+            // actions. It fails like one of the toolset's calls, so the toolset's later calls in this turn are not run.
+            const sequence = sequences.get(toolUse.name) ?? { tail: Promise.resolve(), failed: false };
+            sequences.set(toolUse.name, sequence);
+            sequence.tail = sequence.tail.then(() => {
+                sequence.failed = true;
+            });
+            return malformedToolsetCallResult(toolUse);
         }
         const result = runToolCall(runnable, available, toolUse, requestOptions);
         calls?.set(toolUse.id, { status: 'started', result });
@@ -71993,6 +72473,13 @@ async function generateToolResponse(runnable, available, lastMessage, requestOpt
         role: 'user',
         content: toolResults,
     };
+}
+/** Runs a toolset's call with the toolset of its family in the run. */
+async function runToolsetCall(params, family, toolUse, requestOptions) {
+    const toolset = params.tools.find((t) => isRunnableToolset(t) && toolsetFamily(t) === family);
+    return toolset ?
+        runToolsetMember(toolset, toolUse, { signal: requestOptions?.signal })
+        : toolsetResultBlock(toolUse, `Error: Toolset '${quotedName(family)}' member '${quotedName(toolUse.name)}' not found`, true);
 }
 async function runToolCall(runnable, available, toolUse, requestOptions) {
     // A `tool_removal` is only a hint to the model, which may still emit a tool_use for a
@@ -72021,9 +72508,7 @@ async function runToolCall(runnable, available, toolUse, requestOptions) {
         return {
             type: 'tool_result',
             tool_use_id: toolUse.id,
-            content: error instanceof ToolError/* ToolError */.v ?
-                error.content
-                : `Error: ${error instanceof Error ? error.message : String(error)}`,
+            content: toolErrorContent(error),
             is_error: true,
         };
     }
@@ -72036,6 +72521,13 @@ async function runToolCall(runnable, available, toolUse, requestOptions) {
 function asContentParam(content) {
     return content;
 }
+/**
+ * A definition's family, as the API computes it for a toolset: its type without the date, and without `_toolset`.
+ * So a later `browser_toolset_*` version is the browser family, and `computer_20250124` the computer family.
+ */
+function definitionFamily(tool) {
+    return (tool.type ?? 'custom').replace(/_\d{8}$/, '').replace(/_toolset$/, '');
+}
 function toolNotFoundResult(toolUse) {
     return {
         type: 'tool_result',
@@ -72043,6 +72535,41 @@ function toolNotFoundResult(toolUse) {
         content: `Error: Tool '${toolUse.name}' not found`,
         is_error: true,
     };
+}
+/** The error for a toolset call with malformed actions. None of its actions run. */
+function malformedToolsetCallResult(toolUse) {
+    return {
+        type: 'tool_result',
+        tool_use_id: toolUse.id,
+        content: `Error: the '${quotedName(toolUse.name)}' toolset could not run this call${malformedActions(toolUse.input)}; nothing in the batch was executed`,
+        is_error: true,
+    };
+}
+/** What is wrong with the call's `actions`. It quotes action names but no other part of the input. */
+function malformedActions(input) {
+    const fields = typeof input === 'object' && input !== null ? input : {};
+    if (!('actions' in fields)) {
+        const action = 'action' in fields ? fields.action : undefined;
+        return typeof action === 'string' ?
+            `: the call has no 'actions' list (action: '${quotedName(action)}')`
+            : ": the call has no 'actions' list";
+    }
+    const { actions } = fields;
+    if (typeof actions === 'string')
+        return ": 'actions' is text, not a list of actions";
+    if (!Array.isArray(actions))
+        return ": 'actions' is not a list of actions";
+    if (actions.length === 0)
+        return ": the 'actions' list is empty";
+    const names = [];
+    for (const [i, entry] of actions.entries()) {
+        const action = typeof entry === 'object' && entry !== null && 'action' in entry ? entry.action : undefined;
+        if (typeof action !== 'string')
+            return `: action ${i} must be an object with a string 'action' field`;
+        names.push(`'${quotedName(action)}'`);
+    }
+    const more = names.length > 10 ? `, and ${names.length - 10} more` : '';
+    return `: its actions could not be run as sent (actions: ${names.slice(0, 10).join(', ')}${more})`;
 }
 function applyToolChange(block, available) {
     switch (block.type) {
@@ -72237,7 +72764,7 @@ var messages_Messages = /* @__PURE__ */ (() => {
     }
     Messages.Batches = batches_Batches;
     Messages.BetaToolRunner = BetaToolRunner;
-    Messages.ToolError = ToolError/* ToolError */.v;
+    Messages.ToolError = tools_ToolError/* ToolError */.v;
     return Messages;
 })();
 /**
@@ -72261,6 +72788,39 @@ function transformOutputFormat(params) {
         },
     };
 }
+const BETA_BROWSER_MEMBER_NAME_VALUES = (/* unused pure expression or super */ null && ([
+    'navigate',
+    'list_tabs',
+    'new_tab',
+    'switch_tab',
+    'close_tab',
+    'read_page',
+    'get_page_text',
+    'read_console',
+    'read_network',
+    'find',
+    'form_input',
+    'file_upload',
+    'scroll_to',
+    'screenshot',
+    'zoom',
+    'left_click',
+    'right_click',
+    'middle_click',
+    'double_click',
+    'triple_click',
+    'hover',
+    'left_click_drag',
+    'left_mouse_down',
+    'left_mouse_up',
+    'mouse_move',
+    'scroll',
+    'type',
+    'key',
+    'hold_key',
+    'wait',
+    'javascript_exec',
+]));
 const BETA_CLIENT_TOOL_UNION_KEYS = [
     'input_schema',
     'name',
@@ -72279,6 +72839,25 @@ const BETA_CLIENT_TOOL_UNION_KEYS = [
     'enable_zoom',
     'max_characters',
 ];
+const BETA_COMPUTER_MEMBER_NAME_VALUES = (/* unused pure expression or super */ null && ([
+    'key',
+    'hold_key',
+    'type',
+    'cursor_position',
+    'mouse_move',
+    'left_mouse_down',
+    'left_mouse_up',
+    'left_click',
+    'left_click_drag',
+    'right_click',
+    'middle_click',
+    'double_click',
+    'triple_click',
+    'scroll',
+    'wait',
+    'screenshot',
+    'zoom',
+]));
 
 
 //# sourceMappingURL=messages.mjs.map
@@ -72803,8 +73382,8 @@ class organization_rate_limits_RateLimits extends APIResource {
      * List Messages API rate limits for your organization.
      *
      * Each entry corresponds to one rate-limit group (either a model family or an
-     * API-surface category such as the Files API or Message Batches) and contains the
-     * set of limiter values that apply to it.
+     * API-surface category such as the Message Batches API or the web search tool) and
+     * contains the set of limiter values that apply to it.
      *
      * When `limit` is omitted, every matching entry is returned in a single page; when
      * `limit` truncates the result, follow `next_page` to fetch the remaining entries.
@@ -73034,13 +73613,12 @@ class Summaries extends APIResource {
      * Returns one entry per day from `starting_date` (inclusive) to `ending_date`
      * (exclusive) in `data`, the same `data` / `next_page` envelope as the other
      * analytics list endpoints; the series is currently returned in full, so
-     * `next_page` is always null (`summaries` is a deprecated alias of `data`). Data
-     * is typically available with a 1-day lag and may be revised by a few percent over
-     * the following days: when `ending_date` is omitted it defaults to the most recent
-     * available day + 1, so the last entry covers the most recent available day. The
-     * series can be scoped to an RBAC group via `filter[]=rbac_group_id:{id}`.
-     * Available to organizations on a Claude Enterprise plan. Requires an API key with
-     * the `read:analytics` scope.
+     * `next_page` is always null. Data is typically available with a 1-day lag and may
+     * be revised by a few percent over the following days: when `ending_date` is
+     * omitted it defaults to the most recent available day + 1, so the last entry
+     * covers the most recent available day. The series can be scoped to an RBAC group
+     * via `filter[]=rbac_group_id:{id}`. Available to organizations on a Claude
+     * Enterprise plan. Requires an API key with the `read:analytics` scope.
      *
      * @example
      * ```ts
@@ -74960,7 +75538,8 @@ class Effective extends APIResource {
      *
      * Returns one row per (member, period) the member resolves a spend limit for, with
      * the `source` scope the spend limit was inherited from. Paginates by member, so a
-     * member's periods never split across pages.
+     * member's periods never split across pages. Listing Claude Console limits is in
+     * an early access preview. To request access, contact your Anthropic account team.
      *
      * @example
      * ```ts
@@ -75088,7 +75667,9 @@ var SpendLimits = /* @__PURE__ */ (() => {
          * A Claude Console organization's limits come in an order that is stable across
          * pages. A Claude Enterprise organization's are grouped by scope type, in the
          * order `organization`, `seat_tier`, `rbac_group`, `organization_service`, `user`;
-         * within a type they come in a fixed order that is not creation order.
+         * within a type they come in a fixed order that is not creation order. Listing
+         * Claude Console limits is in an early access preview. To request access, contact
+         * your Anthropic account team.
          *
          * @example
          * ```ts
@@ -75104,7 +75685,7 @@ var SpendLimits = /* @__PURE__ */ (() => {
                 query,
                 ...options,
                 headers: buildHeaders([
-                    { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
+                    { 'anthropic-beta': [...(betas ?? []), 'spend-limit-reads-2026-09-26'].toString() },
                     options?.headers,
                 ]),
             });
@@ -75151,8 +75732,16 @@ var SpendLimits = /* @__PURE__ */ (() => {
          *   });
          * ```
          */
-        set(body, options) {
-            return this._client.post('/v1/organizations/spend_limits?beta=true', { body, ...options });
+        set(params, options) {
+            const { betas, ...body } = params;
+            return this._client.post('/v1/organizations/spend_limits?beta=true', {
+                body,
+                ...options,
+                headers: buildHeaders([
+                    { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
+                    options?.headers,
+                ]),
+            });
         }
     }
     SpendLimits.Effective = Effective;
@@ -75952,7 +76541,7 @@ class events_Events extends APIResource {
      * ```ts
      * // Automatically fetches more pages as needed.
      * for await (const betaManagedAgentsSessionEvent of client.beta.sessions.threads.events.list(
-     *   'sthr_011CZkZVWa6oIjw0rgXZpnBt',
+     *   'sthr_011CZkZVWa6oJjw1rgXZpnBt',
      *   { session_id: 'sesn_011CZkZAtmR3yMPDzynEDxu7' },
      * )) {
      *   // ...
@@ -75980,7 +76569,7 @@ class events_Events extends APIResource {
      * ```ts
      * const betaManagedAgentsStreamSessionThreadEvents =
      *   await client.beta.sessions.threads.events.stream(
-     *     'sthr_011CZkZVWa6oIjw0rgXZpnBt',
+     *     'sthr_011CZkZVWa6oJjw1rgXZpnBt',
      *     { session_id: 'sesn_011CZkZAtmR3yMPDzynEDxu7' },
      *   );
      * ```
@@ -76022,7 +76611,7 @@ var Threads = /* @__PURE__ */ (() => {
          * ```ts
          * const betaManagedAgentsSessionThread =
          *   await client.beta.sessions.threads.retrieve(
-         *     'sthr_011CZkZVWa6oIjw0rgXZpnBt',
+         *     'sthr_011CZkZVWa6oJjw1rgXZpnBt',
          *     { session_id: 'sesn_011CZkZAtmR3yMPDzynEDxu7' },
          *   );
          * ```
@@ -76074,7 +76663,7 @@ var Threads = /* @__PURE__ */ (() => {
          * ```ts
          * const betaManagedAgentsSessionThread =
          *   await client.beta.sessions.threads.archive(
-         *     'sthr_011CZkZVWa6oIjw0rgXZpnBt',
+         *     'sthr_011CZkZVWa6oJjw1rgXZpnBt',
          *     { session_id: 'sesn_011CZkZAtmR3yMPDzynEDxu7' },
          *   );
          * ```
@@ -76125,6 +76714,17 @@ var Sessions = /* @__PURE__ */ (() => {
          *   await client.beta.sessions.create({
          *     agent: 'agent_011CZkYpogX7uDKUyvBTophP',
          *     environment_id: 'env_011CZkZ9X2dpNyB7HsEFoRfW',
+         *     initial_events: [
+         *       {
+         *         type: 'user.message',
+         *         content: [
+         *           {
+         *             type: 'text',
+         *             text: 'Where is my order #1234?',
+         *           },
+         *         ],
+         *       },
+         *     ],
          *   });
          * ```
          */
@@ -76903,7 +77503,7 @@ class Credentials extends APIResource {
      * ```ts
      * const betaManagedAgentsCredential =
      *   await client.beta.vaults.credentials.retrieve(
-     *     'vcrd_011CZkZEMt8gZan2iYOQfSkw',
+     *     'vcrd_011CZkZEMt8gZan2iYPQfSkw',
      *     { vault_id: 'vlt_011CZkZDLs7fYzm1hXNPeRjv' },
      *   );
      * ```
@@ -76928,7 +77528,7 @@ class Credentials extends APIResource {
      * ```ts
      * const betaManagedAgentsCredential =
      *   await client.beta.vaults.credentials.update(
-     *     'vcrd_011CZkZEMt8gZan2iYOQfSkw',
+     *     'vcrd_011CZkZEMt8gZan2iYPQfSkw',
      *     { vault_id: 'vlt_011CZkZDLs7fYzm1hXNPeRjv' },
      *   );
      * ```
@@ -76981,7 +77581,7 @@ class Credentials extends APIResource {
      * ```ts
      * const betaManagedAgentsDeletedCredential =
      *   await client.beta.vaults.credentials.delete(
-     *     'vcrd_011CZkZEMt8gZan2iYOQfSkw',
+     *     'vcrd_011CZkZEMt8gZan2iYPQfSkw',
      *     { vault_id: 'vlt_011CZkZDLs7fYzm1hXNPeRjv' },
      *   );
      * ```
@@ -77006,7 +77606,7 @@ class Credentials extends APIResource {
      * ```ts
      * const betaManagedAgentsCredential =
      *   await client.beta.vaults.credentials.archive(
-     *     'vcrd_011CZkZEMt8gZan2iYOQfSkw',
+     *     'vcrd_011CZkZEMt8gZan2iYPQfSkw',
      *     { vault_id: 'vlt_011CZkZDLs7fYzm1hXNPeRjv' },
      *   );
      * ```
@@ -77031,7 +77631,7 @@ class Credentials extends APIResource {
      * ```ts
      * const betaManagedAgentsCredentialValidation =
      *   await client.beta.vaults.credentials.mcpOAuthValidate(
-     *     'vcrd_011CZkZEMt8gZan2iYOQfSkw',
+     *     'vcrd_011CZkZEMt8gZan2iYPQfSkw',
      *     { vault_id: 'vlt_011CZkZDLs7fYzm1hXNPeRjv' },
      *   );
      * ```
@@ -107969,7 +108569,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.30.0'; // x-release-please-version
+const openai_version_VERSION = '7.32.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -110756,7 +111356,9 @@ function uploads_makeFile(fileBits, fileName, options) {
  * Directory components separated by either `/` or `\\` are discarded unless an
  * explicitly supplied `name` or `filename` opts into preserving its path. Preserved
  * paths must be safe and relative, and use forward slashes. Paths inferred from URLs and filesystem streams
- * discard their directories.
+ * discard their directories. URL filenames decode valid UTF-8 percent escapes,
+ * except that ASCII control characters stay escaped for multipart compatibility.
+ * A basename stays encoded if decoding would introduce literal multipart escape sequences.
  */
 function uploads_getName(value, options) {
     if (typeof value !== 'object' || value === null) {
@@ -110770,7 +111372,8 @@ function uploads_getName(value, options) {
     const url = 'url' in value && value.url && String(value.url);
     if (url) {
         try {
-            return basename(new URL(url).pathname);
+            const filename = basename(new URL(url).pathname);
+            return filename === undefined ? undefined : basename(decodeURLFilename(filename));
         }
         catch {
             return basename(url);
@@ -110781,6 +111384,21 @@ function uploads_getName(value, options) {
 }
 function basename(value) {
     return value.split(/[\\/]/).pop() || undefined;
+}
+function decodeURLFilename(filename) {
+    try {
+        const decodedFilename = decodeURIComponent(filename);
+        // Fetch multipart receivers interpret these spellings as CR, LF, or a quote.
+        if (/%(?:0[AD]|22)/i.test(decodedFilename)) {
+            return filename;
+        }
+        // oxlint-disable-next-line no-control-regex -- Multipart parsers reject unescaped ASCII controls in filenames.
+        return decodedFilename.replace(/[\u0000-\u001F\u007F]/gu, encodeURIComponent);
+    }
+    catch {
+        // A malformed escape leaves the original URL segment usable as a filename.
+        return filename;
+    }
 }
 function normalizeFilenamePath(value) {
     const normalized = value.replace(/\\/g, '/');
@@ -113440,6 +114058,7 @@ var _AbstractChatCompletionRunner_instances, AbstractChatCompletionRunner_a, _Ab
 
 
 
+
 const DEFAULT_MAX_CHAT_COMPLETIONS = 10;
 function normalizeToolCallIds(chatCompletion) {
     for (const choice of chatCompletion.choices) {
@@ -113879,6 +114498,28 @@ AbstractChatCompletionRunner_a = AbstractChatCompletionRunner, _AbstractChatComp
             total.completion_tokens += usage.completion_tokens;
             total.prompt_tokens += usage.prompt_tokens;
             total.total_tokens += usage.total_tokens;
+            for (const key of ['completion_tokens_details', 'prompt_tokens_details']) {
+                const details = usage[key];
+                if (isObj(details)) {
+                    // SAFETY: Both token detail types contain only optional numeric counts.
+                    const totalDetails = (total[key] ?? (total[key] = {}));
+                    for (const name in details) {
+                        if (!values_hasOwn(details, name)) {
+                            continue;
+                        }
+                        const count = details[name];
+                        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- API-compatible endpoints can return nonnumeric detail values despite the declared response type.
+                        if (typeof count === 'number') {
+                            Object.defineProperty(totalDetails, name, {
+                                value: (values_hasOwn(totalDetails, name) ? (totalDetails[name] ?? 0) : 0) + count,
+                                enumerable: true,
+                                configurable: true,
+                                writable: true,
+                            });
+                        }
+                    }
+                }
+            }
         }
     }
     return total;
@@ -120096,17 +120737,17 @@ function voices_resolveResourceRequestOptions(options, buildOptions) {
  */
 class voices_Voices extends resource_APIResource {
     /**
-     * Creates a voice from a text prompt or from a consent recording and an audio
-     * sample.
+     * Create a custom voice you can use for audio output (for example, in
+     * Text-to-Speech and the Realtime API). This requires an audio sample and a
+     * previously uploaded consent recording.
      *
-     * For prompt-based creation, send `type: "prompt"` with a `name` and `prompt` as
-     * JSON or multipart form data. For creation from an audio sample, send
-     * `type: "audio_sample"` with a `name`, `audio_sample`, and `consent` recording ID
-     * as multipart form data. The type defaults to `audio_sample` when omitted.
+     * Send `name`, `audio_sample`, and the `consent` recording ID as multipart form
+     * data. The optional `type` defaults to `audio_sample`.
      *
-     * Returns the saved voice's metadata. Voices created from text prompts are
-     * supported only in Live, not in Realtime or the speech endpoint. The response
-     * does not include preview audio.
+     * Returns the saved voice's metadata. See the
+     * [custom voices guide](https://developers.openai.com/api/docs/guides/text-to-speech#custom-voices)
+     * for requirements and best practices. Custom voices are limited to eligible
+     * customers.
      *
      * @example
      * ```ts
@@ -120782,14 +121423,94 @@ class Templates extends resource_APIResource {
 
 
 
+
 function environments_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const environments_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function environments_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => environments_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !environments_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
 }
 class environments_Environments extends resource_APIResource {
     constructor() {
         super(...arguments);
         this.files = new environments_files_Files(this._client);
         this.templates = new Templates(this._client);
+    }
+    /**
+     * Creates an OpenAI-hosted environment before creating a session. Requires access
+     * to the prewarming beta.
+     *
+     * @example
+     * ```ts
+     * const environmentInfo =
+     *   await client.beta.agents.environments.create({
+     *     environment: { type: 'openai_hosted' },
+     *   });
+     * ```
+     */
+    create(params, options) {
+        const { 'Idempotency-Key': idempotencyKey, ...body } = params;
+        return this._client.post('/agents/environments', environments_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            headers: headers_buildHeaders([
+                {
+                    'OpenAI-Beta': 'agents=v1',
+                    ...(idempotencyKey != null ? { 'Idempotency-Key': idempotencyKey } : undefined),
+                },
+                options?.headers,
+            ]),
+            __security: { bearerAuth: true },
+        })));
     }
     /**
      * Retrieves an execution environment's connection status and safe installed
@@ -120810,6 +121531,28 @@ class environments_Environments extends resource_APIResource {
             headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
+    }
+    list(query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = environments_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'type'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList('/agents/environments', EnvironmentInfosPage, environments_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+class EnvironmentInfosPage extends CursorPage {
+    constructor(client, response, body, options) {
+        super(client, response, body, options);
+        this.object = body.object;
+        this.first_id = body.first_id;
+        this.last_id = body.last_id;
     }
 }
 environments_Environments.Files = environments_files_Files;
@@ -127666,7 +128409,7 @@ function maybeParseResponse(response, params) {
  * Parses completed response text and strict function-tool arguments, matching
  * namespaced functions by both namespace and name.
  *
- * Incomplete or nonterminal responses keep their parsed values as `null`, and
+ * Incomplete responses and messages with an explicit non-final phase stay unparsed.
  * `output_parsed` returns the first successfully parsed output-text item.
  */
 function parseResponse(response, params) {
@@ -127680,7 +128423,9 @@ function parseResponse(response, params) {
                 if (content.type === 'output_text') {
                     return {
                         ...content,
-                        parsed: shouldParse ? parseTextFormat(params, content.text) : null,
+                        parsed: shouldParse && (item.phase == null || item.phase === 'final_answer')
+                            ? parseTextFormat(params, content.text)
+                            : null,
                     };
                 }
                 return content;

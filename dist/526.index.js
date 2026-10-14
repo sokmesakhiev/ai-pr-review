@@ -1163,7 +1163,7 @@ if (asyncDispose) {
 // EXTERNAL MODULE: ./node_modules/@anthropic-ai/sdk/tools/agent-toolset/sync-interval.mjs
 var sync_interval = __webpack_require__(8264);
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/tools/agent-toolset/memories.mjs
-var _SessionMemoryStores_instances, _SessionMemoryStores_client, _SessionMemoryStores_workdir, _SessionMemoryStores_syncIntervalMs, _SessionMemoryStores_syncDeletions, _SessionMemoryStores_log, _SessionMemoryStores_lastSyncAt, _SessionMemoryStores_finished, _SessionMemoryStores_stores, _SessionMemoryStores_storeRoot, _SessionMemoryStores_scanMarker, _SessionMemoryStores_syncStore, _SessionMemoryStores_flushStore, _SessionMemoryStores_recover, _SessionMemoryStores_stampAndPull, _SessionMemoryStores_syncPath, _SessionMemoryStores_removeLocal, _SessionMemoryStores_write, _SessionMemoryStores_pullAll, _SessionMemoryStores_uploadAll, _SessionMemoryStores_listMemories, _SessionMemoryStores_upload, _SessionMemoryStores_corroboratedDelete, _SessionMemoryStores_deleteRemote;
+var _SessionMemoryStores_instances, _SessionMemoryStores_client, _SessionMemoryStores_workdir, _SessionMemoryStores_syncIntervalMs, _SessionMemoryStores_syncDeletions, _SessionMemoryStores_log, _SessionMemoryStores_lastSyncAt, _SessionMemoryStores_finished, _SessionMemoryStores_stores, _SessionMemoryStores_storeRoot, _SessionMemoryStores_scanMarker, _SessionMemoryStores_syncStore, _SessionMemoryStores_flushStore, _SessionMemoryStores_recover, _SessionMemoryStores_settleSent, _SessionMemoryStores_stampAndPull, _SessionMemoryStores_syncPath, _SessionMemoryStores_removeLocal, _SessionMemoryStores_write, _SessionMemoryStores_pullAll, _SessionMemoryStores_uploadAll, _SessionMemoryStores_listMemories, _SessionMemoryStores_upload, _SessionMemoryStores_corroboratedDelete, _SessionMemoryStores_deleteRemote;
 
 /**
  * Session-level memory-store download and sync.
@@ -1283,6 +1283,10 @@ class DeletePass {
  * - a file the server refuses (too large, invalid content) is skipped —
  *   warned once and retried only after the file changes; other files keep
  *   syncing;
+ * - an upload whose response never arrives may still have been saved, so the
+ *   sha of the bytes sent is remembered until the next sync has listed the
+ *   server: a memory holding exactly that sha is this sync's own upload, not
+ *   a remote edit, and a newer local edit goes out over it;
  * - a file deleted locally is deleted on the server after a delay and a
  *   re-check — never on the first sync that notices, and only up to a
  *   per-sync cap. `syncDeletions` gates it;
@@ -1341,6 +1345,10 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
      * - a file the server refuses (too large, invalid content) is skipped —
      *   warned once and retried only after the file changes; other files keep
      *   syncing;
+     * - an upload whose response never arrives may still have been saved, so the
+     *   sha of the bytes sent is remembered until the next sync has listed the
+     *   server: a memory holding exactly that sha is this sync's own upload, not
+     *   a remote edit, and a newer local edit goes out over it;
      * - a file deleted locally is deleted on the server after a delay and a
      *   re-check — never on the first sync that notices, and only up to a
      *   per-sync cap. `syncDeletions` gates it;
@@ -1437,6 +1445,7 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
                         baseline: new Map(),
                         refusedShas: new Map(),
                         pendingDeletes: new Map(),
+                        sentShas: new Map(),
                     };
                     // A root `open` did not create is a dead run's leftovers; the first
                     // sync would upload them into the customer's store.
@@ -1594,15 +1603,17 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
                 await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_recover).call(this, store, 'the folder or its marker is gone');
                 return;
             }
-            // A lone file vanishing is an ordinary deletion; two or more at
-            // once with nothing left is a wiped folder.
-            if (Object.keys(local).length === 0 && store.baseline.size > 1) {
-                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_recover).call(this, store, 'every memory file is gone at once');
-                return;
-            }
             const remote = new Map();
             for await (const [rel, item] of (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_listMemories).call(this, store.memoryStoreId)) {
                 remote.set(rel, item);
+            }
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_settleSent).call(this, store, remote);
+            // A lone file vanishing is an ordinary deletion; two or more at
+            // once with nothing left is a wiped folder — counted after settling,
+            // so an upload that landed unheard counts.
+            if (Object.keys(local).length === 0 && store.baseline.size > 1) {
+                await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_recover).call(this, store, 'every memory file is gone at once');
+                return;
             }
             const deletes = new DeletePass((0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_syncDeletions, "f"), Math.max(DELETE_CAP_FLOOR, Math.min(DELETE_CAP_CEILING, Math.floor(store.baseline.size / 4))), final);
             const pulls = [];
@@ -1658,7 +1669,10 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
                 return;
             }
             for (const [rel, sha] of Object.entries(scan.files)) {
-                if (sha !== store.baseline.get(rel) && store.refusedShas.get(rel) !== sha) {
+                // A path with an unsettled send counts even at its baseline sha: the
+                // send may have landed, leaving the server ahead of the file.
+                const changed = sha !== store.baseline.get(rel) || store.sentShas.has(rel);
+                if (changed && store.refusedShas.get(rel) !== sha) {
                     dirty.set(rel, sha);
                     unsent.add(rel);
                 }
@@ -1671,11 +1685,18 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
                     return;
                 remote.set(rel, item);
             }
+            (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_settleSent).call(this, store, remote);
             const uploads = [];
             for (const rel of [...dirty.keys()].sort()) {
                 const localSha = dirty.get(rel);
                 const baseSha = store.baseline.get(rel);
                 const existing = remote.get(rel);
+                if (localSha === baseSha) {
+                    // Listed only for its unsettled send, which never landed: the file
+                    // holds nothing the server lacks.
+                    unsent.delete(rel);
+                    continue;
+                }
                 if (existing !== undefined && existing.content_sha256 === localSha) {
                     store.baseline.set(rel, existing.content_sha256);
                     unsent.delete(rel);
@@ -1711,6 +1732,12 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
         });
         await store.files.createRoot();
         await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_stampAndPull).call(this, store);
+    }, _SessionMemoryStores_settleSent = function _SessionMemoryStores_settleSent(store, remote) {
+        for (const [rel, sha] of store.sentShas) {
+            if (remote.get(rel)?.content_sha256 === sha)
+                store.baseline.set(rel, sha);
+        }
+        store.sentShas.clear();
     }, _SessionMemoryStores_stampAndPull = 
     /**
      * Write the marker, then pull every remote memory. Baseline is cleared
@@ -1720,6 +1747,7 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
      */
     async function _SessionMemoryStores_stampAndPull(store) {
         store.baseline = new Map();
+        store.sentShas.clear();
         store.pendingDeletes.clear();
         await store.files.put(MARKER_PATH, `version ${MARKER_VERSION}\n${store.memoryStoreId}`);
         for await (const [rel, item] of (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_instances, "m", _SessionMemoryStores_listMemories).call(this, store.memoryStoreId, 'full')) {
@@ -1969,6 +1997,8 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
             if (data === null)
                 return undefined;
             const content = (0,bytes/* decodeUTF8 */.CE)(data);
+            // Hashed as sent: decoding may have dropped a byte-order mark.
+            store.sentShas.set(rel, external_node_crypto_.createHash('sha256').update(content, 'utf-8').digest('hex'));
             const item = existing ?
                 await (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_client, "f").beta.memoryStores.memories.update(existing.id, {
                     memory_store_id: store.memoryStoreId,
@@ -1980,6 +2010,7 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
                     content,
                 });
             store.refusedShas.delete(rel);
+            store.sentShas.delete(rel);
             return item.content_sha256;
         }
         catch (e) {
@@ -1991,7 +2022,9 @@ var SessionMemoryStores = /* @__PURE__ */ (() => {
             if (existing && (0,backoff/* isStatus */.zM)(e, 409)) {
                 // The precondition lost a race: the remote moved under us, so the push
                 // is dropped. The local file is now stale — the next sync sees
-                // remoteChanged and pulls the winner over it.
+                // remoteChanged and pulls the winner over it. A client retry of an
+                // attempt that was saved ends here too, so the sent sha stays for the
+                // next listing to tell the two apart.
                 (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionMemoryStores_log, "f").warn('memory changed both locally and remotely; the upload was refused and the local edit loses', {
                     path: rel,
                     memory_store_id: store.memoryStoreId,
