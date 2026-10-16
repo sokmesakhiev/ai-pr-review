@@ -81969,6 +81969,17 @@ class GenerateContentResponse {
         }
         return (_j = codeExecutionResult === null || codeExecutionResult === void 0 ? void 0 : codeExecutionResult[0]) === null || _j === void 0 ? void 0 : _j.output;
     }
+    /**
+     * Returns the prompt token count from the initial request prior to any continuation hops.
+     */
+    get initialPromptTokenCount() {
+        var _a;
+        if (!this.usageMetadata) {
+            return undefined;
+        }
+        return ((_a = this.usageMetadata
+            ._initialPromptTokenCount) !== null && _a !== void 0 ? _a : this.usageMetadata.promptTokenCount);
+    }
 }
 /** Response for the embed_content method. */
 class EmbedContentResponse {
@@ -86601,6 +86612,9 @@ class Chats {
      * The config in the params will be used for all requests within the chat
      * session unless overridden by a per-request `config` in
      * @see {@link types.SendMessageParameters#config}.
+     * Automatic continuation (`config.automaticContinuation`) is enabled by
+     * default in chat sessions (`true`). Set `config.automaticContinuation =
+     * false` to disable it.
      *
      * @param params - Parameters for creating a chat session.
      * @returns A new chat session.
@@ -86647,7 +86661,9 @@ class node_Chat {
      *
      * @remarks
      * This method will wait for the previous message to be processed before
-     * sending the next message.
+     * sending the next message. Automatic continuation
+     * (`config.automaticContinuation`) is enabled by default (`true`); set
+     * `config.automaticContinuation = false` to disable it.
      *
      * @see {@link Chat#sendMessageStream} for streaming method.
      * @param params - parameters for sending messages within a chat session.
@@ -86700,7 +86716,9 @@ class node_Chat {
      *
      * @remarks
      * This method will wait for the previous message to be processed before
-     * sending the next message.
+     * sending the next message. Automatic continuation
+     * (`config.automaticContinuation`) is enabled by default (`true`); set
+     * `config.automaticContinuation = false` to disable it.
      *
      * @see {@link Chat#sendMessage} for non-streaming method.
      * @param params - parameters for sending the message.
@@ -86770,12 +86788,14 @@ class node_Chat {
     processStreamResponse(streamResponse, inputContent) {
         return __asyncGenerator(this, arguments, function* processStreamResponse_1() {
             var _a, e_1, _b, _c;
-            var _d, _e;
+            var _d, _e, _f, _g;
             const outputContent = [];
+            let isValid = true;
+            let finished = false;
             try {
-                for (var _f = true, streamResponse_1 = __asyncValues(streamResponse), streamResponse_1_1; streamResponse_1_1 = yield __await(streamResponse_1.next()), _a = streamResponse_1_1.done, !_a; _f = true) {
+                for (var _h = true, streamResponse_1 = __asyncValues(streamResponse), streamResponse_1_1; streamResponse_1_1 = yield __await(streamResponse_1.next()), _a = streamResponse_1_1.done, !_a; _h = true) {
                     _c = streamResponse_1_1.value;
-                    _f = false;
+                    _h = false;
                     const chunk = _c;
                     if (isValidResponse(chunk)) {
                         const content = (_e = (_d = chunk.candidates) === null || _d === void 0 ? void 0 : _d[0]) === null || _e === void 0 ? void 0 : _e.content;
@@ -86783,17 +86803,23 @@ class node_Chat {
                             outputContent.push(content);
                         }
                     }
+                    else {
+                        isValid = false;
+                    }
+                    if (((_g = (_f = chunk.candidates) === null || _f === void 0 ? void 0 : _f[0]) === null || _g === void 0 ? void 0 : _g.finishReason) !== undefined) {
+                        finished = true;
+                    }
                     yield yield __await(chunk);
                 }
             }
             catch (e_1_1) { e_1 = { error: e_1_1 }; }
             finally {
                 try {
-                    if (!_f && !_a && (_b = streamResponse_1.return)) yield __await(_b.call(streamResponse_1));
+                    if (!_h && !_a && (_b = streamResponse_1.return)) yield __await(_b.call(streamResponse_1));
                 }
                 finally { if (e_1) throw e_1.error; }
             }
-            this.recordHistory(inputContent, outputContent);
+            this.recordHistory(inputContent, isValid && finished ? outputContent : []);
         });
     }
     recordHistory(userInput, modelOutput, automaticFunctionCallingHistory) {
@@ -92409,34 +92435,43 @@ const CONTENT_TYPE_HEADER = 'Content-Type';
 const SERVER_TIMEOUT_HEADER = 'X-Server-Timeout';
 const USER_AGENT_HEADER = 'User-Agent';
 const GOOGLE_API_CLIENT_HEADER = 'x-goog-api-client';
-const SDK_VERSION = '2.28.0'; // x-release-please-version
+const SDK_VERSION = '2.29.1'; // x-release-please-version
 const LIBRARY_LABEL = `google-genai-sdk/${SDK_VERSION}`;
 const VERTEX_AI_API_DEFAULT_VERSION = 'v1beta1';
 const GOOGLE_AI_API_DEFAULT_VERSION = 'v1beta';
 const MULTI_REGIONAL_LOCATIONS = new Set(['us', 'eu']);
+const UNDICI_GLOBAL_DISPATCHER_SYMBOL$1 = Symbol.for('undici.globalDispatcher.1');
+function isNodeRuntime$1() {
+    var _a, _b;
+    const globals = globalThis;
+    return typeof ((_b = (_a = globals.process) === null || _a === void 0 ? void 0 : _a.versions) === null || _b === void 0 ? void 0 : _b.node) === 'string';
+}
 /**
- * Raises Undici's internal header/body timeouts to at least `timeout` ms.
+ * Returns a per-request Undici dispatcher that delegates to the global
+ * dispatcher with Undici's own header/body timeouts disabled (0).
  *
- * In Node > 18 the built-in fetch is backed by Undici, which sets a global
- * dispatcher tracking its own headersTimeout and bodyTimeout via Symbol
- * properties. Those would otherwise fire before a longer caller-supplied
- * timeout.
+ * In Node.js, the built-in fetch is backed by Undici, whose default 300s
+ * headersTimeout/bodyTimeout would kill long requests (e.g. long-decode) on
+ * their own. Like the other SDKs, there is no client-side timeout by default
+ * (the server bounds requests: 10 min unary, 20 min streaming); an explicit
+ * `httpOptions.timeout` is enforced separately by the SDK's abort timer.
  */
-function raiseUndiciTimeouts(timeout) {
-    const dispatcherSymbol = Symbol.for('undici.globalDispatcher.1');
-    const globalDispatcher = globalThis[dispatcherSymbol];
-    if (!globalDispatcher) {
-        return;
-    }
-    for (const sym of Object.getOwnPropertySymbols(globalDispatcher)) {
-        const desc = sym.description;
-        if ((desc === null || desc === void 0 ? void 0 : desc.includes('headers timeout')) || (desc === null || desc === void 0 ? void 0 : desc.includes('body timeout'))) {
-            const currentTimeout = globalDispatcher[sym];
-            if (typeof currentTimeout === 'number') {
-                globalDispatcher[sym] = Math.max(currentTimeout, timeout);
+function createUndiciNoTimeoutDispatcher$1() {
+    return {
+        dispatch(opts, handler) {
+            let globalDispatcher = globalThis[UNDICI_GLOBAL_DISPATCHER_SYMBOL$1];
+            if (!globalDispatcher && typeof Headers !== 'undefined') {
+                // Trigger Node's lazy Undici initialization if not yet initialized.
+                new Headers();
+                globalDispatcher = globalThis[UNDICI_GLOBAL_DISPATCHER_SYMBOL$1];
             }
-        }
-    }
+            if (!globalDispatcher ||
+                typeof globalDispatcher.dispatch !== 'function') {
+                throw new Error('Undici globalDispatcher is not available.');
+            }
+            return globalDispatcher.dispatch(Object.assign(Object.assign({}, opts), { headersTimeout: 0, bodyTimeout: 0 }), handler);
+        },
+    };
 }
 /**
  * Creates the abort plumbing for one attempt.
@@ -92604,6 +92639,13 @@ class ApiClient {
         var _a;
         return (_a = this.clientOptions.httpOptions) === null || _a === void 0 ? void 0 : _a.fetch;
     }
+    /**
+     * Returns the configured HTTP timeout in milliseconds, if any.
+     */
+    getTimeout() {
+        var _a;
+        return (_a = this.clientOptions.httpOptions) === null || _a === void 0 ? void 0 : _a.timeout;
+    }
     getRequestUrlInternal(httpOptions) {
         if (!httpOptions ||
             httpOptions.baseUrl === undefined ||
@@ -92737,8 +92779,11 @@ class ApiClient {
         return this.streamApiCall(url, requestInit, request.httpMethod, patchedHttpOptions.retryOptions, patchedHttpOptions.timeout, request.abortSignal, patchedHttpOptions.fetch);
     }
     async includeExtraHttpOptionsToRequestInit(requestInit, httpOptions, url) {
-        if ((httpOptions === null || httpOptions === void 0 ? void 0 : httpOptions.timeout) && httpOptions.timeout > 0) {
-            raiseUndiciTimeouts(httpOptions.timeout);
+        if (isNodeRuntime$1() &&
+            !(httpOptions === null || httpOptions === void 0 ? void 0 : httpOptions.fetch) &&
+            !('dispatcher' in requestInit)) {
+            requestInit['dispatcher'] =
+                createUndiciNoTimeoutDispatcher$1();
         }
         if (httpOptions && httpOptions.extraBody !== null) {
             includeExtraBodyToRequestInit(requestInit, httpOptions.extraBody);
@@ -94120,6 +94165,357 @@ function shouldAppendAfcHistory(config) {
     var _a;
     return !((_a = config === null || config === void 0 ? void 0 : config.automaticFunctionCalling) === null || _a === void 0 ? void 0 : _a.ignoreCallHistory);
 }
+/**
+ * Returns whether automatic continuation token resumption is enabled.
+ */
+function shouldEnableAutomaticContinuation(config, defaultEnabled = true) {
+    if (!config) {
+        return defaultEnabled;
+    }
+    if (config.automaticContinuation === undefined ||
+        config.automaticContinuation === null) {
+        return defaultEnabled;
+    }
+    return Boolean(config.automaticContinuation);
+}
+/**
+ * Returns true if finishReason is eligible for automatic continuation.
+ *
+ * Per the continuation protocol, when a continuationToken is present the
+ * backend only sets finishReason to undefined (intermediate checkpoint chunk)
+ * or FinishReason.CONTINUATION (stream end).
+ */
+function isResumableFinishReason(finishReason) {
+    return (finishReason === undefined ||
+        finishReason === FinishReason.CONTINUATION);
+}
+/**
+ * Returns true if a streaming hop should resume with the next request.
+ */
+function canResumeStream(enableContinuation, continuationToken, finishReason) {
+    return (enableContinuation &&
+        Boolean(continuationToken) &&
+        isResumableFinishReason(finishReason));
+}
+/**
+ * Clears finishReason on intermediate streaming continuation chunks.
+ */
+function clearIntermediateFinishReason(chunk, enableContinuation, continuationToken) {
+    var _a;
+    const firstCandidate = (_a = chunk.candidates) === null || _a === void 0 ? void 0 : _a[0];
+    if ((firstCandidate === null || firstCandidate === void 0 ? void 0 : firstCandidate.finishReason) !== undefined &&
+        canResumeStream(enableContinuation, continuationToken, firstCandidate.finishReason)) {
+        firstCandidate.finishReason = undefined;
+    }
+}
+/**
+ * Processes a single streaming chunk during continuation-aware streaming:
+ * merges or attaches usage metadata (including initialPromptTokenCount),
+ * updates the hop's continuationToken and finishReason state, and clears
+ * intermediate finishReason values when the stream will auto-resume.
+ */
+function processContinuationStreamChunk(chunk, enableContinuation, accumulatedUsage, hopState) {
+    var _a;
+    if (chunk.usageMetadata) {
+        if (accumulatedUsage) {
+            const mergedUsage = mergeUsageMetadata(accumulatedUsage, chunk.usageMetadata);
+            chunk = Object.assign(new GenerateContentResponse(), chunk, {
+                usageMetadata: mergedUsage,
+            });
+            hopState.hopUsage = mergedUsage;
+        }
+        else {
+            attachInitialPromptTokenCount(chunk.usageMetadata);
+            hopState.hopUsage = chunk.usageMetadata;
+        }
+    }
+    const firstCandidate = (_a = chunk.candidates) === null || _a === void 0 ? void 0 : _a[0];
+    if (firstCandidate) {
+        if (firstCandidate.finishReason !== undefined) {
+            hopState.hopFinishReason = firstCandidate.finishReason;
+        }
+        if (firstCandidate.continuationToken) {
+            hopState.continuationToken = firstCandidate.continuationToken;
+        }
+        else if (firstCandidate.finishReason !== undefined &&
+            !isResumableFinishReason(firstCandidate.finishReason)) {
+            hopState.continuationToken = undefined;
+        }
+        clearIntermediateFinishReason(chunk, enableContinuation, hopState.continuationToken);
+    }
+    return chunk;
+}
+/**
+ * Returns true if a mid-stream error should be re-thrown instead of resuming
+ * from a checkpoint continuationToken.
+ */
+function shouldRethrowStreamError(err, config, enableContinuation, hopState) {
+    var _a;
+    return (Boolean((_a = config === null || config === void 0 ? void 0 : config.abortSignal) === null || _a === void 0 ? void 0 : _a.aborted) ||
+        (err instanceof Error && err.name === 'AbortError') ||
+        !canResumeStream(enableContinuation, hopState.continuationToken, hopState.hopFinishReason));
+}
+/**
+ * Returns continuationToken if generation should auto-resume, else undefined.
+ */
+function shouldContinueGeneration(response) {
+    var _a;
+    const candidate = (_a = response === null || response === void 0 ? void 0 : response.candidates) === null || _a === void 0 ? void 0 : _a[0];
+    if (!(candidate === null || candidate === void 0 ? void 0 : candidate.continuationToken)) {
+        return undefined;
+    }
+    if (isResumableFinishReason(candidate.finishReason)) {
+        return candidate.continuationToken;
+    }
+    return undefined;
+}
+/**
+ * Returns a shallow copy of baseConfig with continuationToken set.
+ */
+function prepareContinuationConfig(baseConfig, continuationToken, clearAutomaticContinuation = false) {
+    const hasAutoCont = (baseConfig === null || baseConfig === void 0 ? void 0 : baseConfig.automaticContinuation) !== undefined &&
+        (baseConfig === null || baseConfig === void 0 ? void 0 : baseConfig.automaticContinuation) !== null;
+    const needClearAutoCont = clearAutomaticContinuation && hasAutoCont;
+    if (!continuationToken && !needClearAutoCont) {
+        return baseConfig;
+    }
+    if (!baseConfig) {
+        return continuationToken ? { continuationToken } : undefined;
+    }
+    const copied = Object.assign({}, baseConfig);
+    if (continuationToken) {
+        copied.continuationToken = continuationToken;
+    }
+    if (needClearAutoCont) {
+        delete copied.automaticContinuation;
+    }
+    return copied;
+}
+/**
+ * Sums tokenCount per modality across two lists of ModalityTokenCount.
+ */
+function mergeModalityTokenCounts(prevList, currList) {
+    var _a, _b;
+    const countsByModality = new Map();
+    const order = [];
+    for (const item of [...prevList, ...currList]) {
+        const modality = item.modality;
+        if (!countsByModality.has(modality)) {
+            countsByModality.set(modality, 0);
+            order.push(modality);
+        }
+        countsByModality.set(modality, ((_a = countsByModality.get(modality)) !== null && _a !== void 0 ? _a : 0) + ((_b = item.tokenCount) !== null && _b !== void 0 ? _b : 0));
+    }
+    return order.map((modality) => {
+        var _a;
+        return ({
+            modality,
+            tokenCount: (_a = countsByModality.get(modality)) !== null && _a !== void 0 ? _a : 0,
+        });
+    });
+}
+/**
+ * Deduplicates safety ratings by category, keeping the latest hop's rating.
+ */
+function mergeSafetyRatings(prevList, currList) {
+    const byCategory = new Map();
+    const order = [];
+    for (const rating of [...prevList, ...currList]) {
+        const category = rating.category;
+        if (!byCategory.has(category)) {
+            order.push(category);
+        }
+        byCategory.set(category, rating);
+    }
+    return order.map((cat) => byCategory.get(cat));
+}
+function isMergeableObject(val) {
+    if (typeof val !== 'object' || val === null || Array.isArray(val)) {
+        return false;
+    }
+    if (val instanceof HttpResponse) {
+        return false;
+    }
+    const proto = Object.getPrototypeOf(val);
+    return (proto === null ||
+        proto === Object.prototype ||
+        val instanceof GenerateContentResponse ||
+        val instanceof GenerateContentResponsePromptFeedback ||
+        val instanceof GenerateContentResponseUsageMetadata);
+}
+function isModalityTokenCountArray(fieldName, arr) {
+    if (fieldName.endsWith('TokensDetails')) {
+        return true;
+    }
+    return (arr.length > 0 &&
+        typeof arr[0] === 'object' &&
+        arr[0] !== null &&
+        'modality' in arr[0]);
+}
+/**
+ * Merges candidate lists element-wise across continuation hops.
+ */
+function mergeCandidates(prevCandidates, currCandidates) {
+    if (prevCandidates.length === 0) {
+        return currCandidates;
+    }
+    if (currCandidates.length === 0) {
+        return prevCandidates;
+    }
+    const merged = [];
+    const minLen = Math.min(prevCandidates.length, currCandidates.length);
+    for (let i = 0; i < minLen; i++) {
+        merged.push(mergeResponseObjects(prevCandidates[i], currCandidates[i], true, false));
+    }
+    if (prevCandidates.length > minLen) {
+        merged.push(...prevCandidates.slice(minLen));
+    }
+    if (currCandidates.length > minLen) {
+        merged.push(...currCandidates.slice(minLen));
+    }
+    return merged;
+}
+/**
+ * Returns the prompt token count from the initial request prior to any
+ * continuation hops.
+ */
+function getInitialPromptTokenCount(usage) {
+    var _a;
+    if (!usage) {
+        return undefined;
+    }
+    return ((_a = usage._initialPromptTokenCount) !== null && _a !== void 0 ? _a : usage.promptTokenCount);
+}
+/**
+ * Attaches a non-enumerable _initialPromptTokenCount property and
+ * initialPromptTokenCount getter to a usageMetadata object.
+ */
+function attachInitialPromptTokenCount(usage, initialPromptTokenCount) {
+    const resolved = initialPromptTokenCount !== null && initialPromptTokenCount !== void 0 ? initialPromptTokenCount : getInitialPromptTokenCount(usage);
+    if (resolved !== undefined) {
+        Object.defineProperty(usage, '_initialPromptTokenCount', {
+            value: resolved,
+            enumerable: false,
+            configurable: true,
+            writable: true,
+        });
+    }
+    if (!(usage instanceof GenerateContentResponseUsageMetadata) &&
+        !Object.prototype.hasOwnProperty.call(usage, 'initialPromptTokenCount')) {
+        Object.defineProperty(usage, 'initialPromptTokenCount', {
+            get() {
+                return getInitialPromptTokenCount(this);
+            },
+            enumerable: false,
+            configurable: true,
+        });
+    }
+    return usage;
+}
+/**
+ * Merges usageMetadata across continuation hops by summing billed token counts
+ * while preserving the initial hop's promptTokenCount in
+ * initialPromptTokenCount.
+ */
+function mergeUsageMetadata(prev, curr) {
+    var _a;
+    if (!curr) {
+        return prev ? attachInitialPromptTokenCount(prev) : prev;
+    }
+    if (!prev) {
+        return attachInitialPromptTokenCount(curr);
+    }
+    const initialPrompt = (_a = getInitialPromptTokenCount(prev)) !== null && _a !== void 0 ? _a : getInitialPromptTokenCount(curr);
+    const merged = mergeResponseObjects(prev, curr, false, true);
+    return attachInitialPromptTokenCount(merged, initialPrompt);
+}
+/**
+ * Recursively merges two response/metadata objects across continuation hops.
+ */
+function mergeResponseObjects(prev, curr, isCandidate = false, isUsageMetadata = false) {
+    const mergedData = {};
+    const keys = new Set([...Object.keys(prev), ...Object.keys(curr)]);
+    for (const fieldName of keys) {
+        const prevVal = prev[fieldName];
+        const currVal = curr[fieldName];
+        if (isCandidate &&
+            (fieldName === 'continuationToken' ||
+                fieldName === 'finishReason' ||
+                fieldName === 'finishMessage')) {
+            if (currVal !== undefined) {
+                mergedData[fieldName] = currVal;
+            }
+            continue;
+        }
+        if (fieldName === 'usageMetadata') {
+            const mergedUsage = mergeUsageMetadata(prevVal, currVal);
+            if (mergedUsage !== undefined) {
+                mergedData[fieldName] = mergedUsage;
+            }
+            continue;
+        }
+        if (currVal === undefined || currVal === null) {
+            if (prevVal !== undefined) {
+                mergedData[fieldName] = prevVal;
+            }
+        }
+        else if (prevVal === undefined || prevVal === null) {
+            mergedData[fieldName] = currVal;
+        }
+        else if (typeof prevVal === 'number' &&
+            typeof currVal === 'number' &&
+            (isUsageMetadata ||
+                fieldName === 'tokenCount' ||
+                fieldName.endsWith('TokenCount') ||
+                fieldName.endsWith('Count') ||
+                fieldName.endsWith('Sum'))) {
+            mergedData[fieldName] = prevVal + currVal;
+        }
+        else if (Array.isArray(prevVal) && Array.isArray(currVal)) {
+            if (fieldName === 'candidates') {
+                mergedData[fieldName] = mergeCandidates(prevVal, currVal);
+            }
+            else if (isModalityTokenCountArray(fieldName, prevVal) ||
+                isModalityTokenCountArray(fieldName, currVal)) {
+                mergedData[fieldName] = mergeModalityTokenCounts(prevVal, currVal);
+            }
+            else if (fieldName === 'safetyRatings') {
+                mergedData[fieldName] = mergeSafetyRatings(prevVal, currVal);
+            }
+            else {
+                mergedData[fieldName] = [...prevVal, ...currVal];
+            }
+        }
+        else if (isMergeableObject(prevVal) && isMergeableObject(currVal)) {
+            mergedData[fieldName] = mergeResponseObjects(prevVal, currVal, false, fieldName === 'usageMetadata' || isUsageMetadata);
+        }
+        else {
+            mergedData[fieldName] = currVal;
+        }
+    }
+    return mergedData;
+}
+/**
+ * Merges a list of GenerateContentResponses from continuation hops.
+ */
+function mergeContinuationResponses(responses) {
+    if (responses.length === 0) {
+        return new GenerateContentResponse();
+    }
+    if (responses.length === 1) {
+        if (responses[0].usageMetadata) {
+            attachInitialPromptTokenCount(responses[0].usageMetadata);
+        }
+        return responses[0];
+    }
+    let mergedRecord = responses[0];
+    for (let i = 1; i < responses.length; i++) {
+        mergedRecord = mergeResponseObjects(mergedRecord, responses[i], false, false);
+    }
+    const mergedResponse = new GenerateContentResponse();
+    Object.assign(mergedResponse, mergedRecord);
+    return mergedResponse;
+}
 
 /**
  * @license
@@ -94196,7 +94592,9 @@ class node_Models extends BaseModule {
          * for example:
          * 'tunedModels/1234567890123456789'
          *
-         * Some models support multimodal input and output.
+         * Some models support multimodal input and output. Automatic continuation
+         * (`config.automaticContinuation`) is enabled by default (`true`); set
+         * `config.automaticContinuation = false` to disable it.
          *
          * @param params - The parameters for generating content.
          * @return The response from generating content.
@@ -94218,7 +94616,11 @@ class node_Models extends BaseModule {
             const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
             this.maybeMoveToResponseJsonSchema(params);
             if (!hasCallableTools(params) || shouldDisableAfc(params.config)) {
-                return await this.generateContentInternal(transformedParams);
+                const enableContinuation = shouldEnableAutomaticContinuation(params.config, true);
+                if (!enableContinuation) {
+                    return await this.generateContentInternal(transformedParams);
+                }
+                return await this.generateContentWithContinuation(transformedParams);
             }
             const incompatibleToolIndexes = findAfcIncompatibleToolIndexes(params);
             if (incompatibleToolIndexes.length > 0) {
@@ -94233,7 +94635,7 @@ class node_Models extends BaseModule {
             const maxRemoteCalls = (_c = (_b = (_a = transformedParams.config) === null || _a === void 0 ? void 0 : _a.automaticFunctionCalling) === null || _b === void 0 ? void 0 : _b.maximumRemoteCalls) !== null && _c !== void 0 ? _c : DEFAULT_MAX_REMOTE_CALLS;
             let remoteCalls = 0;
             while (remoteCalls < maxRemoteCalls) {
-                response = await this.generateContentInternal(transformedParams);
+                response = await this.generateContentWithContinuation(transformedParams);
                 if (!response.functionCalls || response.functionCalls.length === 0) {
                     break;
                 }
@@ -94287,7 +94689,9 @@ class node_Models extends BaseModule {
          * for example:
          *  'tunedModels/1234567890123456789'
          *
-         * Some models support multimodal input and output.
+         * Some models support multimodal input and output. Automatic continuation
+         * (`config.automaticContinuation`) is enabled by default (`true`); set
+         * `config.automaticContinuation = false` to disable it.
          *
          * @param params - The parameters for generating content with streaming response.
          * @return The response from generating content.
@@ -94311,7 +94715,11 @@ class node_Models extends BaseModule {
             this.maybeMoveToResponseJsonSchema(params);
             if (shouldDisableAfc(params.config)) {
                 const transformedParams = await this.processParamsMaybeAddMcpUsage(params);
-                return await this.generateContentStreamInternal(transformedParams);
+                const enableContinuation = shouldEnableAutomaticContinuation(params.config, true);
+                if (!enableContinuation) {
+                    return await this.generateContentStreamInternal(transformedParams);
+                }
+                return await this.generateContentStreamWithContinuation(transformedParams);
             }
             const incompatibleToolIndexes = findAfcIncompatibleToolIndexes(params);
             if (incompatibleToolIndexes.length > 0) {
@@ -94540,6 +94948,72 @@ class node_Models extends BaseModule {
             return await this.generateVideosInternal(params);
         };
     }
+    async generateContentWithContinuation(params) {
+        const enableContinuation = shouldEnableAutomaticContinuation(params.config, true);
+        let continuationToken = undefined;
+        const responses = [];
+        while (responses.length === 0 ||
+            (enableContinuation && Boolean(continuationToken))) {
+            const callConfig = prepareContinuationConfig(params.config, continuationToken);
+            const callParams = callConfig === params.config ? params : Object.assign(Object.assign({}, params), { config: callConfig });
+            const response = await this.generateContentInternal(callParams);
+            responses.push(response);
+            continuationToken = shouldContinueGeneration(response);
+        }
+        return mergeContinuationResponses(responses);
+    }
+    async generateContentStreamWithContinuation(params) {
+        const enableContinuation = shouldEnableAutomaticContinuation(params.config, true);
+        const firstStream = await this.generateContentStreamInternal(params);
+        return (function (models, initialParams, initialStream) {
+            return __asyncGenerator(this, arguments, function* () {
+                var _a, e_1, _b, _c;
+                let currentStream = initialStream;
+                let hopState = {};
+                let accumulatedUsage = undefined;
+                let isFirstHop = true;
+                while (isFirstHop ||
+                    canResumeStream(enableContinuation, hopState.continuationToken, hopState.hopFinishReason)) {
+                    if (!isFirstHop) {
+                        const callConfig = prepareContinuationConfig(initialParams.config, hopState.continuationToken);
+                        const callParams = Object.assign(Object.assign({}, initialParams), { config: callConfig });
+                        currentStream =
+                            yield __await(models.generateContentStreamInternal(callParams));
+                    }
+                    isFirstHop = false;
+                    hopState = {};
+                    try {
+                        try {
+                            for (var _d = true, currentStream_1 = (e_1 = void 0, __asyncValues(currentStream)), currentStream_1_1; currentStream_1_1 = yield __await(currentStream_1.next()), _a = currentStream_1_1.done, !_a; _d = true) {
+                                _c = currentStream_1_1.value;
+                                _d = false;
+                                let chunk = _c;
+                                chunk = processContinuationStreamChunk(chunk, enableContinuation, accumulatedUsage, hopState);
+                                yield yield __await(chunk);
+                            }
+                        }
+                        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                        finally {
+                            try {
+                                if (!_d && !_a && (_b = currentStream_1.return)) yield __await(_b.call(currentStream_1));
+                            }
+                            finally { if (e_1) throw e_1.error; }
+                        }
+                    }
+                    catch (err) {
+                        // If a mid-stream error occurs after an intermediate checkpoint
+                        // continuationToken was received, resume from that checkpoint.
+                        if (shouldRethrowStreamError(err, params.config, enableContinuation, hopState)) {
+                            throw err;
+                        }
+                    }
+                    if (hopState.hopUsage) {
+                        accumulatedUsage = hopState.hopUsage;
+                    }
+                }
+            });
+        })(this, params, firstStream);
+    }
     /**
      * This logic is needed for GenerateContentConfig only.
      * Previously we made GenerateContentConfig.responseSchema field to accept
@@ -94624,7 +95098,7 @@ class node_Models extends BaseModule {
         const afcToolsMap = await this.initAfcToolsMap(params);
         return (function (models, afcTools, params) {
             return __asyncGenerator(this, arguments, function* () {
-                var _a, e_1, _b, _c;
+                var _a, e_2, _b, _c;
                 var _d, _e;
                 while (remoteCallCount < maxRemoteCalls) {
                     if (wereFunctionsCalled) {
@@ -94632,11 +95106,11 @@ class node_Models extends BaseModule {
                         wereFunctionsCalled = false;
                     }
                     const transformedParams = yield __await(models.processParamsMaybeAddMcpUsage(params));
-                    const response = yield __await(models.generateContentStreamInternal(transformedParams));
+                    const response = yield __await(models.generateContentStreamWithContinuation(transformedParams));
                     const functionResponses = [];
                     const responseContents = [];
                     try {
-                        for (var _f = true, response_1 = (e_1 = void 0, __asyncValues(response)), response_1_1; response_1_1 = yield __await(response_1.next()), _a = response_1_1.done, !_a; _f = true) {
+                        for (var _f = true, response_1 = (e_2 = void 0, __asyncValues(response)), response_1_1; response_1_1 = yield __await(response_1.next()), _a = response_1_1.done, !_a; _f = true) {
                             _c = response_1_1.value;
                             _f = false;
                             const chunk = _c;
@@ -94662,12 +95136,12 @@ class node_Models extends BaseModule {
                             }
                         }
                     }
-                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
                     finally {
                         try {
                             if (!_f && !_a && (_b = response_1.return)) yield __await(_b.call(response_1));
                         }
-                        finally { if (e_1) throw e_1.error; }
+                        finally { if (e_2) throw e_2.error; }
                     }
                     if (functionResponses.length > 0) {
                         wereFunctionsCalled = true;
@@ -94787,7 +95261,7 @@ class node_Models extends BaseModule {
             });
             return response.then(function (apiResponse) {
                 return __asyncGenerator(this, arguments, function* () {
-                    var _a, e_2, _b, _c;
+                    var _a, e_3, _b, _c;
                     try {
                         for (var _d = true, apiResponse_1 = __asyncValues(apiResponse), apiResponse_1_1; apiResponse_1_1 = yield __await(apiResponse_1.next()), _a = apiResponse_1_1.done, !_a; _d = true) {
                             _c = apiResponse_1_1.value;
@@ -94802,12 +95276,12 @@ class node_Models extends BaseModule {
                             yield yield __await(typedResp);
                         }
                     }
-                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                    catch (e_3_1) { e_3 = { error: e_3_1 }; }
                     finally {
                         try {
                             if (!_d && !_a && (_b = apiResponse_1.return)) yield __await(_b.call(apiResponse_1));
                         }
-                        finally { if (e_2) throw e_2.error; }
+                        finally { if (e_3) throw e_3.error; }
                     }
                 });
             });
@@ -94829,7 +95303,7 @@ class node_Models extends BaseModule {
             });
             return response.then(function (apiResponse) {
                 return __asyncGenerator(this, arguments, function* () {
-                    var _a, e_3, _b, _c;
+                    var _a, e_4, _b, _c;
                     try {
                         for (var _d = true, apiResponse_2 = __asyncValues(apiResponse), apiResponse_2_1; apiResponse_2_1 = yield __await(apiResponse_2.next()), _a = apiResponse_2_1.done, !_a; _d = true) {
                             _c = apiResponse_2_1.value;
@@ -94844,12 +95318,12 @@ class node_Models extends BaseModule {
                             yield yield __await(typedResp);
                         }
                     }
-                    catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                    catch (e_4_1) { e_4 = { error: e_4_1 }; }
                     finally {
                         try {
                             if (!_d && !_a && (_b = apiResponse_2.return)) yield __await(_b.call(apiResponse_2));
                         }
-                        finally { if (e_3) throw e_3.error; }
+                        finally { if (e_4) throw e_4.error; }
                     }
                 });
             });
@@ -97181,6 +97655,7 @@ function fillGlobals(options) {
  *
  * g3-prettier-ignore-file
  */
+const UNDICI_GLOBAL_DISPATCHER_SYMBOL = Symbol.for("undici.globalDispatcher.1");
 class GoogleGenAISecurityProvider {
     constructor(options) {
         this.options = options;
@@ -97193,8 +97668,17 @@ class GoogleGenAISecurityProvider {
     }
 }
 class GoogleGenAIAuthHook {
-    beforeCreateRequest(_hookCtx, input) {
-        return Object.assign(Object.assign({}, input), { url: decodeSDKLevelAPIVersionPath(input.url) });
+    beforeCreateRequest(hookCtx, input) {
+        var _a;
+        const options = Object.assign({}, ((_a = input.options) !== null && _a !== void 0 ? _a : {}));
+        if (isNodeRuntime() &&
+            !hasCustomHttpClient(hookCtx.options.http_client) &&
+            !("dispatcher" in options)) {
+            // Disable Undici's own 300s header/body timeouts. An explicit timeout_ms
+            // is still enforced by the SDK via AbortSignal.timeout().
+            options["dispatcher"] = createUndiciNoTimeoutDispatcher();
+        }
+        return Object.assign(Object.assign({}, input), { url: decodeSDKLevelAPIVersionPath(input.url), options: options });
     }
     async beforeRequest(hookCtx, request) {
         applyDefaultHeaders(request.headers, getStaticDefaultHeaders(hookCtx.security_source));
@@ -97317,6 +97801,39 @@ function hasSecurityValue(security) {
     return (security.api_key !== undefined ||
         security.access_token !== undefined ||
         security.default_headers !== undefined);
+}
+function isNodeRuntime() {
+    var _a, _b;
+    const globals = globalThis;
+    return typeof ((_b = (_a = globals.process) === null || _a === void 0 ? void 0 : _a.versions) === null || _b === void 0 ? void 0 : _b.node) === "string";
+}
+function hasCustomHttpClient(httpClient) {
+    if (!httpClient || typeof httpClient !== "object") {
+        return false;
+    }
+    if ("options" in httpClient) {
+        const opts = httpClient.options;
+        return Boolean(opts === null || opts === void 0 ? void 0 : opts.fetcher);
+    }
+    return true;
+}
+/**
+ * Returns a per-request Undici dispatcher that delegates to the global
+ * dispatcher with Undici's own header/body timeouts disabled (0), so there is
+ * no client-side timeout by default (the server bounds requests: 10 min unary,
+ * 20 min streaming).
+ */
+function createUndiciNoTimeoutDispatcher() {
+    return {
+        dispatch(opts, handler) {
+            const globalDispatcher = globalThis[UNDICI_GLOBAL_DISPATCHER_SYMBOL];
+            if (!globalDispatcher ||
+                typeof globalDispatcher.dispatch !== "function") {
+                throw new TypeError("Undici globalDispatcher is not available in this Node.js runtime.");
+            }
+            return globalDispatcher.dispatch(Object.assign(Object.assign({}, opts), { headersTimeout: 0, bodyTimeout: 0 }), handler);
+        },
+    };
 }
 
 /**
@@ -102994,15 +103511,15 @@ async function $do$3(client, api_version, page_size, page_token, options) {
 /**
  * Sends a ping event to a Webhook.
  */
-function webhooksPing(client, id, api_version, body, options) {
-    return new node_APIPromise($do$2(client, id, api_version, body, options));
+function webhooksPing(client, id, body, api_version, options) {
+    return new node_APIPromise($do$2(client, id, body, api_version, options));
 }
-async function $do$2(client, id, api_version, body, options) {
+async function $do$2(client, id, body, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
-        api_version: api_version,
         body: body,
+        api_version: api_version,
     };
     const payload = input;
     const body$ = encodeJSON("body", payload.body, { explode: true });
@@ -103084,15 +103601,15 @@ async function $do$2(client, id, api_version, body, options) {
 /**
  * Generates a new signing secret for a Webhook.
  */
-function webhooksRotateSigningSecret(client, id, api_version, body, options) {
-    return new node_APIPromise($do$1(client, id, api_version, body, options));
+function webhooksRotateSigningSecret(client, id, body, api_version, options) {
+    return new node_APIPromise($do$1(client, id, body, api_version, options));
 }
-async function $do$1(client, id, api_version, body, options) {
+async function $do$1(client, id, body, api_version, options) {
     var _a, _b, _c;
     const input = {
         id: id,
-        api_version: api_version,
         body: body,
+        api_version: api_version,
     };
     const payload = input;
     const body$ = encodeJSON("body", payload.body, { explode: true });
@@ -103174,16 +103691,16 @@ async function $do$1(client, id, api_version, body, options) {
 /**
  * Updates an existing Webhook.
  */
-function webhooksUpdate(client, id, api_version, update_mask, body, options) {
-    return new node_APIPromise($do(client, id, api_version, update_mask, body, options));
+function webhooksUpdate(client, id, body, api_version, update_mask, options) {
+    return new node_APIPromise($do(client, id, body, api_version, update_mask, options));
 }
-async function $do(client, id, api_version, update_mask, body, options) {
+async function $do(client, id, body, api_version, update_mask, options) {
     var _a, _b, _c;
     const input = {
         id: id,
+        body: body,
         api_version: api_version,
         update_mask: update_mask,
-        body: body,
     };
     const payload = input;
     const body$ = encodeJSON("body", payload.body, { explode: true });
@@ -103296,23 +103813,20 @@ class node_Webhooks extends ClientSDK {
      * Updates an existing Webhook.
      */
     update(id, params, options) {
-        const _a = params !== null && params !== void 0 ? params : {}, { api_version, update_mask } = _a, body$body = __rest(_a, ["api_version", "update_mask"]);
-        const body = params === undefined || Object.keys(body$body).length === 0
-            ? undefined
-            : body$body;
-        return unwrapAsAPIPromise(webhooksUpdate(this, id, api_version, update_mask, body, options));
+        const { api_version, update_mask } = params, body = __rest(params, ["api_version", "update_mask"]);
+        return unwrapAsAPIPromise(webhooksUpdate(this, id, body, api_version, update_mask, options));
     }
     /**
      * Sends a ping event to a Webhook.
      */
-    ping(id, api_version, body, options) {
-        return unwrapAsAPIPromise(webhooksPing(this, id, api_version, body, options));
+    ping(id, body, api_version, options) {
+        return unwrapAsAPIPromise(webhooksPing(this, id, body, api_version, options));
     }
     /**
      * Generates a new signing secret for a Webhook.
      */
-    rotateSigningSecret(id, api_version, body, options) {
-        return unwrapAsAPIPromise(webhooksRotateSigningSecret(this, id, api_version, body, options));
+    rotateSigningSecret(id, body, api_version, options) {
+        return unwrapAsAPIPromise(webhooksRotateSigningSecret(this, id, body, api_version, options));
     }
 }
 
@@ -103386,13 +103900,15 @@ function getGoogleGenAIAPIVersion(parentClient) {
     return apiVersion;
 }
 function buildGoogleGenAIClient(parentClient, options = {}) {
-    var _a, _b, _c, _d, _e, _f, _g;
-    const fetchFn = options.http_client ? undefined : (_a = parentClient.getFetch) === null || _a === void 0 ? void 0 : _a.call(parentClient);
-    const httpClient = (_b = options.http_client) !== null && _b !== void 0 ? _b : (fetchFn ? new HTTPClient({ fetcher: fetchFn }) : undefined);
-    const sdk = new GoogleGenAI$1(Object.assign(Object.assign({}, options), { http_client: httpClient, api_version: (_c = options.api_version) !== null && _c !== void 0 ? _c : getGoogleGenAIAPIVersion(parentClient), security: (_d = options.security) !== null && _d !== void 0 ? _d : new GoogleGenAISecurityProvider({
-            defaultHeaders: Object.assign(Object.assign({}, (_e = parentClient.getDefaultHeaders) === null || _e === void 0 ? void 0 : _e.call(parentClient)), (_f = parentClient.getHeaders) === null || _f === void 0 ? void 0 : _f.call(parentClient)),
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    const { timeout } = options, rest = __rest(options, ["timeout"]);
+    const fetchFn = rest.http_client ? undefined : (_a = parentClient.getFetch) === null || _a === void 0 ? void 0 : _a.call(parentClient);
+    const httpClient = (_b = rest.http_client) !== null && _b !== void 0 ? _b : (fetchFn ? new HTTPClient({ fetcher: fetchFn }) : undefined);
+    const timeout_ms = (_d = (_c = rest.timeout_ms) !== null && _c !== void 0 ? _c : timeout) !== null && _d !== void 0 ? _d : (_e = parentClient.getTimeout) === null || _e === void 0 ? void 0 : _e.call(parentClient);
+    const sdk = new GoogleGenAI$1(Object.assign(Object.assign({}, rest), { http_client: httpClient, api_version: (_f = rest.api_version) !== null && _f !== void 0 ? _f : getGoogleGenAIAPIVersion(parentClient), security: (_g = rest.security) !== null && _g !== void 0 ? _g : new GoogleGenAISecurityProvider({
+            defaultHeaders: Object.assign(Object.assign({}, (_h = parentClient.getDefaultHeaders) === null || _h === void 0 ? void 0 : _h.call(parentClient)), (_j = parentClient.getHeaders) === null || _j === void 0 ? void 0 : _j.call(parentClient)),
             getAuthHeaders: (url) => parentClient.getAuthHeaders(url),
-        }), server_url: (_g = options.server_url) !== null && _g !== void 0 ? _g : getGoogleGenAIServerURL(parentClient) }));
+        }), server_url: (_k = rest.server_url) !== null && _k !== void 0 ? _k : getGoogleGenAIServerURL(parentClient), timeout_ms }));
     return sdk;
 }
 class GeminiNextGenInteractions {
@@ -103480,18 +103996,18 @@ class GeminiNextGenWebhooks {
     }
     async update(id, params = {}, options) {
         const _a = params !== null && params !== void 0 ? params : {}, { api_version, update_mask } = _a, body = __rest(_a, ["api_version", "update_mask"]);
-        return unwrapWithSdkHttpResponse(webhooksUpdate(this.getClient(), id, api_version, update_mask, body, toGoogleGenAIRequestOptions(options)));
+        return unwrapWithSdkHttpResponse(webhooksUpdate(this.getClient(), id, body, api_version, update_mask, toGoogleGenAIRequestOptions(options)));
     }
     async delete(id, params = {}, options) {
         return unwrapWithSdkHttpResponse(webhooksDelete(this.getClient(), id, params === null || params === void 0 ? void 0 : params.api_version, toGoogleGenAIRequestOptions(options)));
     }
     async rotateSigningSecret(id, params = {}, options) {
         const _a = params !== null && params !== void 0 ? params : {}, { api_version } = _a, body = __rest(_a, ["api_version"]);
-        return unwrapWithSdkHttpResponse(webhooksRotateSigningSecret(this.getClient(), id, api_version, body, toGoogleGenAIRequestOptions(options)));
+        return unwrapWithSdkHttpResponse(webhooksRotateSigningSecret(this.getClient(), id, body, api_version, toGoogleGenAIRequestOptions(options)));
     }
     async ping(id, params = undefined, options) {
         const { api_version, body } = params !== null && params !== void 0 ? params : {};
-        return unwrapWithSdkHttpResponse(webhooksPing(this.getClient(), id, api_version, body, toGoogleGenAIRequestOptions(options)));
+        return unwrapWithSdkHttpResponse(webhooksPing(this.getClient(), id, body !== null && body !== void 0 ? body : {}, api_version, toGoogleGenAIRequestOptions(options)));
     }
     getClient() {
         var _a;
@@ -103716,10 +104232,16 @@ function addOutputProperties(interaction) {
         if (step.type === "user_input") {
             break;
         }
-        if (step.type !== "model_output" || !step.content) {
+        if (step.type === "thought") {
+            continue;
+        }
+        if (step.type !== "model_output") {
             if (collecting) {
                 break;
             }
+            continue;
+        }
+        if (!step.content) {
             continue;
         }
         const content = step.content;
