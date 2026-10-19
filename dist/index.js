@@ -63158,7 +63158,7 @@ const appendHeaderValue = (existing, addition) => {
     }
     return tokens.join(', ');
 };
-const buildHeaders = (newHeaders) => {
+const headers_buildHeaders = (newHeaders) => {
     const targetHeaders = new Headers();
     const nullHeaders = new Set();
     for (const headers of newHeaders) {
@@ -63214,7 +63214,7 @@ class Completions extends APIResource {
             body,
             timeout: this._client._options.timeout ?? 600000,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64432,7 +64432,7 @@ class Batches extends APIResource {
         return this._client.post('/v1/messages/batches', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64460,7 +64460,7 @@ class Batches extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/messages/batches/${messageBatchID}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64486,7 +64486,7 @@ class Batches extends APIResource {
         return this._client.getAPIList('/v1/messages/batches', (Page), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64511,7 +64511,7 @@ class Batches extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.delete(path_path `/v1/messages/batches/${messageBatchID}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64542,7 +64542,7 @@ class Batches extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/messages/batches/${messageBatchID}/cancel`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64573,7 +64573,7 @@ class Batches extends APIResource {
         return this._client
             .get(batch.results_url, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     Accept: 'application/binary',
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64634,7 +64634,7 @@ var Messages = /* @__PURE__ */ (() => {
                 body,
                 timeout: timeout ?? 600000,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64713,7 +64713,7 @@ var Messages = /* @__PURE__ */ (() => {
             return this._client.post('/v1/messages/count_tokens', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64805,7 +64805,7 @@ class Models extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/models/${modelID}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64833,7 +64833,7 @@ class Models extends APIResource {
         return this._client.getAPIList('/v1/models', (Page), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64868,7 +64868,7 @@ class Files extends APIResource {
         return this._client.getAPIList('/v1/files', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64886,7 +64886,7 @@ class Files extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.delete(path_path `/v1/files/${fileID}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64907,7 +64907,7 @@ class Files extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/files/${fileID}/content`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     Accept: 'application/binary',
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -64931,7 +64931,7 @@ class Files extends APIResource {
         const { workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/files/${fileID}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -64952,7 +64952,7 @@ class Files extends APIResource {
         return this._client.post('/v1/files', multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 stainlessHelperHeaderFromFile(body.file),
                 options?.headers,
@@ -64984,7 +64984,7 @@ class Versions extends APIResource {
         return this._client.post(path_path `/v1/skills/${skillID}/versions`, multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -65005,7 +65005,7 @@ class Versions extends APIResource {
         const { skill_id, workspace_id } = params;
         return this._client.get(path_path `/v1/skills/${skill_id}/versions/${version}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -65029,7 +65029,7 @@ class Versions extends APIResource {
         return this._client.getAPIList(path_path `/v1/skills/${skillID}/versions`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -65050,7 +65050,7 @@ class Versions extends APIResource {
         const { skill_id, workspace_id } = params;
         return this._client.delete(path_path `/v1/skills/${skill_id}/versions/${version}`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                 options?.headers,
             ]),
@@ -65087,7 +65087,7 @@ var Skills = /* @__PURE__ */ (() => {
             return this._client.post('/v1/skills', multipartFormRequestOptions({
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                     options?.headers,
                 ]),
@@ -65105,7 +65105,7 @@ var Skills = /* @__PURE__ */ (() => {
             const { workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/skills/${skillID}`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                     options?.headers,
                 ]),
@@ -65127,7 +65127,7 @@ var Skills = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/skills', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                     options?.headers,
                 ]),
@@ -65145,7 +65145,7 @@ var Skills = /* @__PURE__ */ (() => {
             const { workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/skills/${skillID}`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined) },
                     options?.headers,
                 ]),
@@ -66621,7 +66621,7 @@ class DeploymentRuns extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/deployment_runs/${deploymentRunID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66646,7 +66646,7 @@ class DeploymentRuns extends APIResource {
         return this._client.getAPIList('/v1/deployment_runs?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66692,7 +66692,7 @@ class Deployments extends APIResource {
         return this._client.post('/v1/deployments?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66716,7 +66716,7 @@ class Deployments extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/deployments/${deploymentID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66741,7 +66741,7 @@ class Deployments extends APIResource {
         return this._client.post(path_path `/v1/deployments/${deploymentID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66766,7 +66766,7 @@ class Deployments extends APIResource {
         return this._client.getAPIList('/v1/deployments?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66790,7 +66790,7 @@ class Deployments extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/deployments/${deploymentID}/archive?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66814,7 +66814,7 @@ class Deployments extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/deployments/${deploymentID}/pause?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66838,7 +66838,7 @@ class Deployments extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/deployments/${deploymentID}/run?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66862,7 +66862,7 @@ class Deployments extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/deployments/${deploymentID}/unpause?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66905,7 +66905,7 @@ class Dreams extends APIResource {
         return this._client.post('/v1/dreams?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'dreaming-2026-04-21'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66934,7 +66934,7 @@ class Dreams extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/dreams/${dreamID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'dreaming-2026-04-21'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66965,7 +66965,7 @@ class Dreams extends APIResource {
         return this._client.getAPIList('/v1/dreams?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'dreaming-2026-04-21'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -66997,7 +66997,7 @@ class Dreams extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/dreams/${dreamID}/archive?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'dreaming-2026-04-21'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67029,7 +67029,7 @@ class Dreams extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/dreams/${dreamID}/cancel?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'dreaming-2026-04-21'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67064,7 +67064,7 @@ class files_Files extends APIResource {
         return this._client.getAPIList('/v1/files?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67087,7 +67087,7 @@ class files_Files extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.delete(path_path `/v1/files/${fileID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67113,7 +67113,7 @@ class files_Files extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/files/${fileID}/content?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     Accept: 'application/binary',
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
@@ -67137,7 +67137,7 @@ class files_Files extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/files/${fileID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67161,7 +67161,7 @@ class files_Files extends APIResource {
         return this._client.post('/v1/files?beta=true', multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67196,7 +67196,7 @@ class models_Models extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/models/${modelID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67224,7 +67224,7 @@ class models_Models extends APIResource {
         return this._client.getAPIList('/v1/models?beta=true', (Page), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67255,7 +67255,7 @@ class UserProfiles extends APIResource {
         return this._client.post('/v1/user_profiles?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'user-profiles-2026-08-18'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67279,7 +67279,7 @@ class UserProfiles extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/user_profiles/${userProfileID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'user-profiles-2026-08-18'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67304,7 +67304,7 @@ class UserProfiles extends APIResource {
         return this._client.post(path_path `/v1/user_profiles/${userProfileID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'user-profiles-2026-08-18'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67329,7 +67329,7 @@ class UserProfiles extends APIResource {
         return this._client.getAPIList('/v1/user_profiles?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'user-profiles-2026-08-18'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67353,7 +67353,7 @@ class UserProfiles extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/user_profiles/${userProfileID}/enrollment_url?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'user-profiles-2026-08-18'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67419,7 +67419,7 @@ class versions_Versions extends APIResource {
         return this._client.getAPIList(path_path `/v1/agents/${agentID}/versions?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67460,7 +67460,7 @@ var Agents = /* @__PURE__ */ (() => {
             return this._client.post('/v1/agents?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67485,7 +67485,7 @@ var Agents = /* @__PURE__ */ (() => {
             return this._client.get(path_path `/v1/agents/${agentID}?beta=true`, {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67511,7 +67511,7 @@ var Agents = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/agents/${agentID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67536,7 +67536,7 @@ var Agents = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/agents?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67560,7 +67560,7 @@ var Agents = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/agents/${agentID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -67578,10 +67578,10 @@ var Agents = /* @__PURE__ */ (() => {
 /**
  * https://stackoverflow.com/a/2117523
  */
-let uuid4 = function () {
+let uuid_uuid4 = function () {
     const { crypto } = globalThis;
     if (crypto?.randomUUID) {
-        uuid4 = crypto.randomUUID.bind(crypto);
+        uuid_uuid4 = crypto.randomUUID.bind(crypto);
         return crypto.randomUUID();
     }
     const u8 = new Uint8Array(1);
@@ -67657,7 +67657,7 @@ function copyClientForHelper(client, { authToken, helper }) {
             return lower !== 'authorization' && lower !== 'x-api-key';
         }))
         : undefined;
-    const defaultHeaders = buildHeaders([
+    const defaultHeaders = headers_buildHeaders([
         inheritedAuthExtraHeaders,
         parentDefaults,
         { [STAINLESS_HELPER_HEADER]: helper },
@@ -67794,7 +67794,7 @@ var WorkPoller = /* @__PURE__ */ (() => {
                             ...((0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_reclaimOlderThanMs, "f") !== null ?
                                 { reclaim_older_than_ms: (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_reclaimOlderThanMs, "f") }
                                 : {}),
-                        }, { headers: buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]), signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_controller, "f").signal });
+                        }, { headers: headers_buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]), signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_controller, "f").signal });
                     }
                     catch (e) {
                         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_controller, "f").signal.aborted)
@@ -67830,7 +67830,7 @@ var WorkPoller = /* @__PURE__ */ (() => {
                         work_type: work.data.type,
                     });
                     try {
-                        await (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_runnerClient, "f").beta.environments.work.ack(work.id, { environment_id: work.environment_id }, { headers: buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]), signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_controller, "f").signal });
+                        await (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_runnerClient, "f").beta.environments.work.ack(work.id, { environment_id: work.environment_id }, { headers: headers_buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]), signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_controller, "f").signal });
                     }
                     catch (e) {
                         log.error('ack failed', { work_id: work.id, error: String(e) });
@@ -67845,7 +67845,7 @@ var WorkPoller = /* @__PURE__ */ (() => {
                         // owns the stop itself (`autoStop: false`).
                         if ((0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_autoStop, "f")) {
                             try {
-                                await (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_runnerClient, "f").beta.environments.work.stop(work.id, { environment_id: work.environment_id }, { headers: buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]) });
+                                await (0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_runnerClient, "f").beta.environments.work.stop(work.id, { environment_id: work.environment_id }, { headers: headers_buildHeaders([(0,tslib/* __classPrivateFieldGet */.g)(this, _WorkPoller_requestOpts, "f")?.headers]) });
                             }
                             catch (e) {
                                 if (!(0,utils_backoff/* isStatus */.zM)(e, 409))
@@ -67913,7 +67913,7 @@ function defaultWorkerId() {
     // on the uuid for uniqueness.
     const env = globalThis.process?.env;
     const host = env?.['HOSTNAME'];
-    return host ? `${host}-${uuid4()}` : uuid4();
+    return host ? `${host}-${uuid_uuid4()}` : uuid_uuid4();
 }
 //# sourceMappingURL=poller.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/@anthropic-ai/sdk/internal/utils/base64.mjs
@@ -68500,7 +68500,7 @@ var SessionToolRunner = /* @__PURE__ */ (() => {
     _SessionToolRunner_requestOptions = function _SessionToolRunner_requestOptions() {
         return {
             ...(0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f"),
-            headers: buildHeaders([helperHeader('session-tool-runner'), (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f")?.headers]),
+            headers: headers_buildHeaders([helperHeader('session-tool-runner'), (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_requestOpts, "f")?.headers]),
             signal: (0,tslib/* __classPrivateFieldGet */.g)(this, _SessionToolRunner_controller, "f").signal,
         };
     }, _SessionToolRunner_streamLoop = 
@@ -69433,7 +69433,7 @@ async function forceStop(client, work, log, requestOptions) {
         // Caller's headers pass through; the helper-tag header is on the scoped
         // sub-client's default_headers via copyClientForHelper, so no per-call
         // re-stamping needed.
-        { ...requestOptions, headers: buildHeaders([requestOptions?.headers]) });
+        { ...requestOptions, headers: headers_buildHeaders([requestOptions?.headers]) });
     }
     catch (e) {
         if (!(0,utils_backoff/* isStatus */.zM)(e, 409)) {
@@ -69503,7 +69503,7 @@ onLeaseTtl) {
         const detach = linkAbort(lease.signal, beatCtrl);
         const cutoff = setTimeout(() => beatCtrl.abort(), intervalMs);
         try {
-            const resp = await client.beta.environments.work.heartbeat(work.id, { environment_id: work.environment_id, expected_last_heartbeat: last }, { ...requestOptions, headers: buildHeaders([requestOptions?.headers]), signal: beatCtrl.signal });
+            const resp = await client.beta.environments.work.heartbeat(work.id, { environment_id: work.environment_id, expected_last_heartbeat: last }, { ...requestOptions, headers: headers_buildHeaders([requestOptions?.headers]), signal: beatCtrl.signal });
             lastSuccessMs = Date.now();
             last = resp.last_heartbeat;
             if (resp.ttl_seconds > 0) {
@@ -69593,7 +69593,7 @@ var Work = /* @__PURE__ */ (() => {
             const { environment_id, betas, workspace_id } = params;
             return this._client.get(path_path `/v1/environments/${environment_id}/work/${workID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69624,7 +69624,7 @@ var Work = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/environments/${environment_id}/work/${workID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69656,7 +69656,7 @@ var Work = /* @__PURE__ */ (() => {
             return this._client.getAPIList(path_path `/v1/environments/${environmentID}/work?beta=true`, (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString() },
                     options?.headers,
                 ]),
@@ -69683,7 +69683,7 @@ var Work = /* @__PURE__ */ (() => {
             const { environment_id, betas } = params;
             return this._client.post(path_path `/v1/environments/${environment_id}/work/${workID}/ack?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString() },
                     options?.headers,
                 ]),
@@ -69710,7 +69710,7 @@ var Work = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/environments/${environment_id}/work/${workID}/heartbeat?beta=true`, {
                 query: { desired_ttl_seconds, expected_last_heartbeat },
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString() },
                     options?.headers,
                 ]),
@@ -69737,7 +69737,7 @@ var Work = /* @__PURE__ */ (() => {
             return this._client.get(path_path `/v1/environments/${environmentID}/work/poll?beta=true`, {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(anthropicWorkerID != null ? { 'Anthropic-Worker-ID': anthropicWorkerID } : undefined),
@@ -69761,7 +69761,7 @@ var Work = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/environments/${environmentID}/work/stats?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69791,7 +69791,7 @@ var Work = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/environments/${environment_id}/work/${workID}/stop?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69859,7 +69859,7 @@ var Environments = /* @__PURE__ */ (() => {
             return this._client.post('/v1/environments?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69883,7 +69883,7 @@ var Environments = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/environments/${environmentID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69908,7 +69908,7 @@ var Environments = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/environments/${environmentID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69933,7 +69933,7 @@ var Environments = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/environments?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69957,7 +69957,7 @@ var Environments = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/environments/${environmentID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -69982,7 +69982,7 @@ var Environments = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/environments/${environmentID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70020,7 +70020,7 @@ class Memories extends APIResource {
             query: { view },
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70046,7 +70046,7 @@ class Memories extends APIResource {
         return this._client.get(path_path `/v1/memory_stores/${memory_store_id}/memories/${memoryID}?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70073,7 +70073,7 @@ class Memories extends APIResource {
             query: { view },
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70100,7 +70100,7 @@ class Memories extends APIResource {
         return this._client.getAPIList(path_path `/v1/memory_stores/${memoryStoreID}/memories?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70126,7 +70126,7 @@ class Memories extends APIResource {
         return this._client.delete(path_path `/v1/memory_stores/${memory_store_id}/memories/${memoryID}?beta=true`, {
             query: { expected_content_sha256 },
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70160,7 +70160,7 @@ class MemoryVersions extends APIResource {
         return this._client.get(path_path `/v1/memory_stores/${memory_store_id}/memory_versions/${memoryVersionID}?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70187,7 +70187,7 @@ class MemoryVersions extends APIResource {
         return this._client.getAPIList(path_path `/v1/memory_stores/${memoryStoreID}/memory_versions?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70212,7 +70212,7 @@ class MemoryVersions extends APIResource {
         const { memory_store_id, betas, workspace_id } = params;
         return this._client.post(path_path `/v1/memory_stores/${memory_store_id}/memory_versions/${memoryVersionID}/redact?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70253,7 +70253,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             return this._client.post('/v1/memory_stores?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70277,7 +70277,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/memory_stores/${memoryStoreID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70300,7 +70300,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/memory_stores/${memoryStoreID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70325,7 +70325,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/memory_stores?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70347,7 +70347,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/memory_stores/${memoryStoreID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70369,7 +70369,7 @@ var MemoryStores = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/memory_stores/${memoryStoreID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'agent-memory-2026-07-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70426,7 +70426,7 @@ class batches_Batches extends APIResource {
         return this._client.post('/v1/messages/batches?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
@@ -70456,7 +70456,7 @@ class batches_Batches extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.get(path_path `/v1/messages/batches/${messageBatchID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70485,7 +70485,7 @@ class batches_Batches extends APIResource {
         return this._client.getAPIList('/v1/messages/batches?beta=true', (Page), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70515,7 +70515,7 @@ class batches_Batches extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.delete(path_path `/v1/messages/batches/${messageBatchID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70550,7 +70550,7 @@ class batches_Batches extends APIResource {
         const { betas, workspace_id } = params ?? {};
         return this._client.post(path_path `/v1/messages/batches/${messageBatchID}/cancel?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -70586,7 +70586,7 @@ class batches_Batches extends APIResource {
         return this._client
             .get(batch.results_url, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'message-batches-2024-09-24'].toString(),
                     Accept: 'application/binary',
@@ -71783,7 +71783,7 @@ var BetaToolRunner = /* @__PURE__ */ (() => {
             const collected = collectStainlessHelpers(params.tools, params.messages);
             (0,tslib/* __classPrivateFieldSet */.G)(this, _BetaToolRunner_options, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     helperHeader('BetaToolRunner'),
                     collected.length ? { [STAINLESS_HELPER_HEADER]: collected.join(', ') } : undefined,
                     options?.headers,
@@ -72679,7 +72679,7 @@ var messages_Messages = /* @__PURE__ */ (() => {
                 body,
                 timeout: timeout ?? 600000,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                         ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
@@ -72710,7 +72710,7 @@ var messages_Messages = /* @__PURE__ */ (() => {
         parse(params, options) {
             options = {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(params.betas ?? []), 'structured-outputs-2025-12-15'].toString() },
                     options?.headers,
                 ]),
@@ -72748,7 +72748,7 @@ var messages_Messages = /* @__PURE__ */ (() => {
             return this._client.post('/v1/messages/count_tokens?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'token-counting-2024-11-01'].toString(),
                         ...(user_profile_id != null ? { 'anthropic-user-profile-id': user_profile_id } : undefined),
@@ -73182,7 +73182,7 @@ class PluginMarketplaces extends APIResource {
         return this._client.get(path_path `/v1/organizations/plugin_marketplaces/${marketplaceID}?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -73219,7 +73219,7 @@ class PluginMarketplaces extends APIResource {
         return this._client.post(path_path `/v1/organizations/plugin_marketplaces/${marketplaceID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -73259,7 +73259,7 @@ class PluginMarketplaces extends APIResource {
         return this._client.getAPIList('/v1/organizations/plugin_marketplaces?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -73311,7 +73311,7 @@ class PluginMarketplaces extends APIResource {
         return this._client.post('/v1/organizations/plugin_marketplaces/validate_archive?beta=true', multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -73366,7 +73366,7 @@ class PluginMarketplaces extends APIResource {
         return this._client.post('/v1/organizations/plugin_marketplaces/validate_repository?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -73895,7 +73895,7 @@ class issuers_Issuers extends APIResource {
         return this._client.post('/v1/organizations/federation_issuers?beta=true', {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -73921,7 +73921,7 @@ class issuers_Issuers extends APIResource {
         const { betas } = params ?? {};
         return this._client.get(path_path `/v1/organizations/federation_issuers/${federationIssuerID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -73954,7 +73954,7 @@ class issuers_Issuers extends APIResource {
         return this._client.post(path_path `/v1/organizations/federation_issuers/${federationIssuerID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -73983,7 +73983,7 @@ class issuers_Issuers extends APIResource {
         return this._client.getAPIList('/v1/organizations/federation_issuers?beta=true', (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -74014,7 +74014,7 @@ class issuers_Issuers extends APIResource {
         const { betas } = params ?? {};
         return this._client.post(path_path `/v1/organizations/federation_issuers/${federationIssuerID}/archive?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -74057,7 +74057,7 @@ class rules_workspaces_Workspaces extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/federation_rules/${federationRuleID}/workspaces?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -74093,7 +74093,7 @@ class rules_workspaces_Workspaces extends APIResource {
         return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}/workspaces?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -74124,7 +74124,7 @@ class rules_workspaces_Workspaces extends APIResource {
         const { federation_rule_id, betas } = params;
         return this._client.delete(path_path `/v1/organizations/federation_rules/${federation_rule_id}/workspaces/${workspaceID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -74186,7 +74186,7 @@ var rules_Rules = /* @__PURE__ */ (() => {
             return this._client.post('/v1/organizations/federation_rules?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -74212,7 +74212,7 @@ var rules_Rules = /* @__PURE__ */ (() => {
             const { betas } = params ?? {};
             return this._client.get(path_path `/v1/organizations/federation_rules/${federationRuleID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -74254,7 +74254,7 @@ var rules_Rules = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -74284,7 +74284,7 @@ var rules_Rules = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/organizations/federation_rules?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -74317,7 +74317,7 @@ var rules_Rules = /* @__PURE__ */ (() => {
             const { betas } = params ?? {};
             return this._client.post(path_path `/v1/organizations/federation_rules/${federationRuleID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -74387,7 +74387,7 @@ class InstallationSettings extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/installation_settings?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74435,7 +74435,7 @@ class InstallationSettings extends APIResource {
         const { plugin_id, betas } = params;
         return this._client.delete(path_path `/v1/organizations/plugins/${plugin_id}/installation_settings/${target}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74482,7 +74482,7 @@ class InstallationSettings extends APIResource {
         return this._client.post(path_path `/v1/organizations/plugins/${plugin_id}/installation_settings/${target}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74532,7 +74532,7 @@ class Shares extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/shares?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74593,7 +74593,7 @@ class plugins_versions_Versions extends APIResource {
         return this._client.post(path_path `/v1/organizations/plugins/${pluginID}/versions?beta=true`, multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74627,7 +74627,7 @@ class plugins_versions_Versions extends APIResource {
         return this._client.get(path_path `/v1/organizations/plugins/${plugin_id}/versions/${version}?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74665,7 +74665,7 @@ class plugins_versions_Versions extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/plugins/${pluginID}/versions?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                 options?.headers,
             ]),
@@ -74718,7 +74718,7 @@ class plugins_versions_Versions extends APIResource {
         return this._client.get(path_path `/v1/organizations/plugins/${plugin_id}/versions/${version}/content?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString(),
                     Accept: 'application/binary',
@@ -74801,7 +74801,7 @@ var plugins_Plugins = /* @__PURE__ */ (() => {
             return this._client.post('/v1/organizations/plugins?beta=true', multipartFormRequestOptions({
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                     options?.headers,
                 ]),
@@ -74834,7 +74834,7 @@ var plugins_Plugins = /* @__PURE__ */ (() => {
             return this._client.get(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                     options?.headers,
                 ]),
@@ -74890,7 +74890,7 @@ var plugins_Plugins = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                     options?.headers,
                 ]),
@@ -74930,7 +74930,7 @@ var plugins_Plugins = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/organizations/plugins?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                     options?.headers,
                 ]),
@@ -74971,7 +74971,7 @@ var plugins_Plugins = /* @__PURE__ */ (() => {
             const { betas } = params ?? {};
             return this._client.delete(path_path `/v1/organizations/plugins/${pluginID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'ce-plugins-2026-09-01'].toString() },
                     options?.headers,
                 ]),
@@ -75277,7 +75277,7 @@ class service_accounts_workspaces_Workspaces extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/service_accounts/${serviceAccountID}/workspaces?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -75314,7 +75314,7 @@ class service_accounts_workspaces_Workspaces extends APIResource {
         return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}/workspaces?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -75349,7 +75349,7 @@ class service_accounts_workspaces_Workspaces extends APIResource {
         const { service_account_id, betas } = params;
         return this._client.delete(path_path `/v1/organizations/service_accounts/${service_account_id}/workspaces/${workspaceID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -75398,7 +75398,7 @@ var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
             return this._client.post('/v1/organizations/service_accounts?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75424,7 +75424,7 @@ var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
             const { betas } = params ?? {};
             return this._client.get(path_path `/v1/organizations/service_accounts/${serviceAccountID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75456,7 +75456,7 @@ var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75487,7 +75487,7 @@ var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/organizations/service_accounts?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75518,7 +75518,7 @@ var service_accounts_service_accounts_ServiceAccounts = /* @__PURE__ */ (() => {
             const { betas } = params ?? {};
             return this._client.post(path_path `/v1/organizations/service_accounts/${serviceAccountID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75684,7 +75684,7 @@ var SpendLimits = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/organizations/spend_limits?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { 'anthropic-beta': [...(betas ?? []), 'spend-limit-reads-2026-09-26'].toString() },
                     options?.headers,
                 ]),
@@ -75737,7 +75737,7 @@ var SpendLimits = /* @__PURE__ */ (() => {
             return this._client.post('/v1/organizations/spend_limits?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -75912,7 +75912,7 @@ class workspaces_service_accounts_ServiceAccounts extends APIResource {
         const { workspace_id, betas } = params;
         return this._client.get(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -75949,7 +75949,7 @@ class workspaces_service_accounts_ServiceAccounts extends APIResource {
         return this._client.post(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -75984,7 +75984,7 @@ class workspaces_service_accounts_ServiceAccounts extends APIResource {
         return this._client.getAPIList(path_path `/v1/organizations/workspaces/${workspaceID}/service_accounts?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -76023,7 +76023,7 @@ class workspaces_service_accounts_ServiceAccounts extends APIResource {
         return this._client.post(path_path `/v1/organizations/workspaces/${workspaceID}/service_accounts?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -76056,7 +76056,7 @@ class workspaces_service_accounts_ServiceAccounts extends APIResource {
         const { workspace_id, betas } = params;
         return this._client.delete(path_path `/v1/organizations/workspaces/${workspace_id}/service_accounts/${serviceAccountID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -76099,7 +76099,7 @@ var organization_workspaces_workspaces_Workspaces = /* @__PURE__ */ (() => {
             return this._client.post('/v1/organizations/workspaces?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     { ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined) },
                     options?.headers,
                 ]),
@@ -76284,7 +76284,7 @@ var Events = /* @__PURE__ */ (() => {
             return this._client.getAPIList(path_path `/v1/sessions/${sessionID}/events?beta=true`, (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76322,7 +76322,7 @@ var Events = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/sessions/${sessionID}/events?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76347,7 +76347,7 @@ var Events = /* @__PURE__ */ (() => {
             return this._client.get(path_path `/v1/sessions/${sessionID}/events/stream?beta=true`, {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76407,7 +76407,7 @@ class Resources extends APIResource {
         const { session_id, betas, workspace_id } = params;
         return this._client.get(path_path `/v1/sessions/${session_id}/resources/${resourceID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76436,7 +76436,7 @@ class Resources extends APIResource {
         return this._client.post(path_path `/v1/sessions/${session_id}/resources/${resourceID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76463,7 +76463,7 @@ class Resources extends APIResource {
         return this._client.getAPIList(path_path `/v1/sessions/${sessionID}/resources?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76488,7 +76488,7 @@ class Resources extends APIResource {
         const { session_id, betas, workspace_id } = params;
         return this._client.delete(path_path `/v1/sessions/${session_id}/resources/${resourceID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76517,7 +76517,7 @@ class Resources extends APIResource {
         return this._client.post(path_path `/v1/sessions/${sessionID}/resources?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76553,7 +76553,7 @@ class events_Events extends APIResource {
         return this._client.getAPIList(path_path `/v1/sessions/${session_id}/threads/${threadID}/events?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76579,7 +76579,7 @@ class events_Events extends APIResource {
         return this._client.get(path_path `/v1/sessions/${session_id}/threads/${threadID}/stream?beta=true`, {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76620,7 +76620,7 @@ var Threads = /* @__PURE__ */ (() => {
             const { session_id, betas, workspace_id } = params;
             return this._client.get(path_path `/v1/sessions/${session_id}/threads/${threadID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76647,7 +76647,7 @@ var Threads = /* @__PURE__ */ (() => {
             return this._client.getAPIList(path_path `/v1/sessions/${sessionID}/threads?beta=true`, (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76672,7 +76672,7 @@ var Threads = /* @__PURE__ */ (() => {
             const { session_id, betas, workspace_id } = params;
             return this._client.post(path_path `/v1/sessions/${session_id}/threads/${threadID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76733,7 +76733,7 @@ var Sessions = /* @__PURE__ */ (() => {
             return this._client.post('/v1/sessions?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76757,7 +76757,7 @@ var Sessions = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/sessions/${sessionID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76782,7 +76782,7 @@ var Sessions = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/sessions/${sessionID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76807,7 +76807,7 @@ var Sessions = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/sessions?beta=true', (BidirectionalPageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76831,7 +76831,7 @@ var Sessions = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/sessions/${sessionID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76855,7 +76855,7 @@ var Sessions = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/sessions/${sessionID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76894,7 +76894,7 @@ class skills_versions_Versions extends APIResource {
         return this._client.post(path_path `/v1/skills/${skillID}/versions?beta=true`, multipartFormRequestOptions({
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76918,7 +76918,7 @@ class skills_versions_Versions extends APIResource {
         const { skill_id, betas, workspace_id } = params;
         return this._client.get(path_path `/v1/skills/${skill_id}/versions/${version}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76945,7 +76945,7 @@ class skills_versions_Versions extends APIResource {
         return this._client.getAPIList(path_path `/v1/skills/${skillID}/versions?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76969,7 +76969,7 @@ class skills_versions_Versions extends APIResource {
         const { skill_id, betas, workspace_id } = params;
         return this._client.delete(path_path `/v1/skills/${skill_id}/versions/${version}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -76996,7 +76996,7 @@ class skills_versions_Versions extends APIResource {
         const { skill_id, betas, workspace_id } = params;
         return this._client.get(path_path `/v1/skills/${skill_id}/versions/${version}/content?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     Accept: 'application/binary',
                     ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
@@ -77038,7 +77038,7 @@ var skills_skills_Skills = /* @__PURE__ */ (() => {
             return this._client.post('/v1/skills?beta=true', multipartFormRequestOptions({
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77061,7 +77061,7 @@ var skills_skills_Skills = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/skills/${skillID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77086,7 +77086,7 @@ var skills_skills_Skills = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/skills?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77109,7 +77109,7 @@ var skills_skills_Skills = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/skills/${skillID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         ...(betas?.toString() != null ? { 'anthropic-beta': betas?.toString() } : undefined),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77153,7 +77153,7 @@ class Certificates extends APIResource {
         return this._client.post(path_path `/v1/tunnels/${tunnelID}/certificates?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77183,7 +77183,7 @@ class Certificates extends APIResource {
         const { tunnel_id, betas, workspace_id } = params;
         return this._client.get(path_path `/v1/tunnels/${tunnel_id}/certificates/${certificateID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77216,7 +77216,7 @@ class Certificates extends APIResource {
         return this._client.getAPIList(path_path `/v1/tunnels/${tunnelID}/certificates?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77249,7 +77249,7 @@ class Certificates extends APIResource {
         const { tunnel_id, betas, workspace_id } = params;
         return this._client.post(path_path `/v1/tunnels/${tunnel_id}/certificates/${certificateID}/archive?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77293,7 +77293,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             return this._client.post('/v1/tunnels?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77321,7 +77321,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/tunnels/${tunnelID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77352,7 +77352,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/tunnels?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77383,7 +77383,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/tunnels/${tunnelID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77413,7 +77413,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/tunnels/${tunnelID}/reveal_token?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77443,7 +77443,7 @@ var Tunnels = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/tunnels/${tunnelID}/rotate_token?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'mcp-tunnels-2026-06-22'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77487,7 +77487,7 @@ class Credentials extends APIResource {
         return this._client.post(path_path `/v1/vaults/${vaultID}/credentials?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77512,7 +77512,7 @@ class Credentials extends APIResource {
         const { vault_id, betas, workspace_id } = params;
         return this._client.get(path_path `/v1/vaults/${vault_id}/credentials/${credentialID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77538,7 +77538,7 @@ class Credentials extends APIResource {
         return this._client.post(path_path `/v1/vaults/${vault_id}/credentials/${credentialID}?beta=true`, {
             body,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77565,7 +77565,7 @@ class Credentials extends APIResource {
         return this._client.getAPIList(path_path `/v1/vaults/${vaultID}/credentials?beta=true`, (PageCursor), {
             query,
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77590,7 +77590,7 @@ class Credentials extends APIResource {
         const { vault_id, betas, workspace_id } = params;
         return this._client.delete(path_path `/v1/vaults/${vault_id}/credentials/${credentialID}?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77615,7 +77615,7 @@ class Credentials extends APIResource {
         const { vault_id, betas, workspace_id } = params;
         return this._client.post(path_path `/v1/vaults/${vault_id}/credentials/${credentialID}/archive?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77640,7 +77640,7 @@ class Credentials extends APIResource {
         const { vault_id, betas, workspace_id } = params;
         return this._client.post(path_path `/v1/vaults/${vault_id}/credentials/${credentialID}/mcp_oauth_validate?beta=true`, {
             ...options,
-            headers: buildHeaders([
+            headers: headers_buildHeaders([
                 {
                     'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                     ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77680,7 +77680,7 @@ var Vaults = /* @__PURE__ */ (() => {
             return this._client.post('/v1/vaults?beta=true', {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77704,7 +77704,7 @@ var Vaults = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.get(path_path `/v1/vaults/${vaultID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77729,7 +77729,7 @@ var Vaults = /* @__PURE__ */ (() => {
             return this._client.post(path_path `/v1/vaults/${vaultID}?beta=true`, {
                 body,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77754,7 +77754,7 @@ var Vaults = /* @__PURE__ */ (() => {
             return this._client.getAPIList('/v1/vaults?beta=true', (PageCursor), {
                 query,
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77778,7 +77778,7 @@ var Vaults = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.delete(path_path `/v1/vaults/${vaultID}?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -77802,7 +77802,7 @@ var Vaults = /* @__PURE__ */ (() => {
             const { betas, workspace_id } = params ?? {};
             return this._client.post(path_path `/v1/vaults/${vaultID}/archive?beta=true`, {
                 ...options,
-                headers: buildHeaders([
+                headers: headers_buildHeaders([
                     {
                         'anthropic-beta': [...(betas ?? []), 'managed-agents-2026-04-01'].toString(),
                         ...(workspace_id != null ? { 'anthropic-workspace-id': workspace_id } : undefined),
@@ -78253,21 +78253,21 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
             if (this._authState.tokenCache && this.apiKey == null) {
                 const token = await this._authState.tokenCache.getToken();
                 this._authFlags(opts).usedTokenCache = true;
-                return buildHeaders([{ Authorization: `Bearer ${token}` }]);
+                return headers_buildHeaders([{ Authorization: `Bearer ${token}` }]);
             }
-            return buildHeaders([await this.apiKeyAuth(opts), await this.bearerAuth(opts)]);
+            return headers_buildHeaders([await this.apiKeyAuth(opts), await this.bearerAuth(opts)]);
         }
         async apiKeyAuth(opts) {
             if (this.apiKey == null) {
                 return undefined;
             }
-            return buildHeaders([{ 'X-Api-Key': this.apiKey }]);
+            return headers_buildHeaders([{ 'X-Api-Key': this.apiKey }]);
         }
         async bearerAuth(opts) {
             if (this.authToken == null) {
                 return undefined;
             }
-            return buildHeaders([{ Authorization: `Bearer ${this.authToken}` }]);
+            return headers_buildHeaders([{ Authorization: `Bearer ${this.authToken}` }]);
         }
         stringifyQuery(query) {
             return stringifyQuery(query);
@@ -78723,7 +78723,7 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
             return { req, url, timeout: options.timeout };
         }
         async buildHeaders({ options, method, bodyHeaders, retryCount, timeout, }) {
-            const headers = buildHeaders([
+            const headers = headers_buildHeaders([
                 {
                     Accept: 'application/json',
                     'User-Agent': this.getUserAgent(),
@@ -78752,7 +78752,7 @@ var BaseAnthropic = /* @__PURE__ */ (() => {
             if (!body) {
                 return { bodyHeaders: undefined, body: undefined };
             }
-            const headers = buildHeaders([rawHeaders]);
+            const headers = headers_buildHeaders([rawHeaders]);
             if (
             // Pass raw type verbatim
             ArrayBuffer.isView(body) ||
@@ -98487,13 +98487,13 @@ function stringToBase64(str) {
 /*
  * Code generated by Speakeasy (https://speakeasy.com). DO NOT EDIT.
  */
-const hasOwn = Object.prototype.hasOwnProperty;
+const node_hasOwn = Object.prototype.hasOwnProperty;
 function pathToFunc(pathPattern, options) {
     const paramRE = /\{([a-zA-Z0-9_][a-zA-Z0-9_-]*?)\}/g;
     return function buildURLPath(params = {}) {
         return pathPattern
             .replace(paramRE, function (_, placeholder) {
-            if (!hasOwn.call(params, placeholder)) {
+            if (!node_hasOwn.call(params, placeholder)) {
                 throw new Error(`Parameter '${placeholder}' is required`);
             }
             const value = params[placeholder];
@@ -107362,10 +107362,10 @@ function __classPrivateFieldIn(state, receiver) {
 /**
  * https://stackoverflow.com/a/2117523
  */
-let uuid_uuid4 = function () {
+let utils_uuid_uuid4 = function () {
     const { crypto } = globalThis;
     if (crypto?.randomUUID) {
-        uuid_uuid4 = crypto.randomUUID.bind(crypto);
+        utils_uuid_uuid4 = crypto.randomUUID.bind(crypto);
         return crypto.randomUUID();
     }
     const u8 = new Uint8Array(1);
@@ -107587,7 +107587,7 @@ function isEmptyObj(obj) {
 function values_hasOwn(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj, key);
 }
-function isObj(obj) {
+function values_isObj(obj) {
     return obj != null && typeof obj === 'object' && !Array.isArray(obj);
 }
 const ensurePresent = (value) => {
@@ -108183,6 +108183,10 @@ const sensitiveQueryNames = new Set([
     'password',
     'clientsecret',
     'signingsecret',
+    'sig',
+    'signature',
+    'xgoogsignature',
+    'xgoogcredential',
     'xamzsecuritytoken',
     'xamzsignature',
     'xamzcredential',
@@ -108999,7 +109003,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.32.0'; // x-release-please-version
+const openai_version_VERSION = '7.35.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -110678,7 +110682,7 @@ function* headers_iterateHeaders(headers) {
         }
     }
 }
-const headers_buildHeaders = (newHeaders) => {
+const internal_headers_buildHeaders = (newHeaders) => {
     const targetHeaders = new Headers();
     const nullHeaders = new Set();
     for (const headers of newHeaders) {
@@ -111019,13 +111023,13 @@ class X509WorkloadIdentityAuth {
     }
     /** Preserves explicitly headerless requests without presenting a certificate to the issuer. */
     static shouldAuthenticate(options, defaultHeaders, requestHeaders = options.headers) {
-        return !headers_buildHeaders([defaultHeaders, requestHeaders]).nulls.has('authorization');
+        return !internal_headers_buildHeaders([defaultHeaders, requestHeaders]).nulls.has('authorization');
     }
     /** Snapshots each caller-owned header layer once while preserving nulls and precedence. */
     snapshotHeaders(defaultHeaders, requestHeaders) {
         const scope = __classPrivateFieldGet(this, _X509WorkloadIdentityAuth_instances, "m", _X509WorkloadIdentityAuth_scope).call(this);
-        scope.defaultHeaders ?? (scope.defaultHeaders = headers_buildHeaders([defaultHeaders]));
-        scope.requestHeaders ?? (scope.requestHeaders = headers_buildHeaders([requestHeaders]));
+        scope.defaultHeaders ?? (scope.defaultHeaders = internal_headers_buildHeaders([defaultHeaders]));
+        scope.requestHeaders ?? (scope.requestHeaders = internal_headers_buildHeaders([requestHeaders]));
         return this.headerSnapshots();
     }
     /** Returns the already rendered caller headers without touching mutable inputs again. */
@@ -111560,7 +111564,7 @@ x509_workload_identity_auth_a = X509WorkloadIdentityAuth, _X509WorkloadIdentityA
         throw new error_OpenAIError('X.509 workload identity cannot override its enrolled organization or project.');
     }
     assertX509APIOrigin(context.apiURL);
-    const supplied = headers_buildHeaders([context.defaultHeaders, context.requestHeaders]);
+    const supplied = internal_headers_buildHeaders([context.defaultHeaders, context.requestHeaders]);
     if ((__classPrivateFieldGet(this, _X509WorkloadIdentityAuth_organization, "f") !== null && supplied.nulls.has('openai-organization')) ||
         (__classPrivateFieldGet(this, _X509WorkloadIdentityAuth_project, "f") !== null && supplied.nulls.has('openai-project'))) {
         throw new error_OpenAIError('X.509 workload identity cannot omit its enrolled organization or project.');
@@ -112008,7 +112012,7 @@ const createStreamingFormRequestOptions = (opts, options = {}) => {
     return {
         ...opts,
         body,
-        headers: headers_buildHeaders([{ 'content-type': `multipart/form-data; boundary=${boundary}` }, opts.headers]),
+        headers: internal_headers_buildHeaders([{ 'content-type': `multipart/form-data; boundary=${boundary}` }, opts.headers]),
     };
 };
 async function* iterateMultipartBody(entries, boundary, options, preservedFilenames) {
@@ -114497,7 +114501,7 @@ function normalizeToolCallIds(chatCompletion) {
             // Generate a unique ID before the completion is stored or emitted so the assistant
             // tool call and its result message always reference the same value.
             if (!toolCall.id) {
-                toolCall.id = `call_${uuid_uuid4()}`;
+                toolCall.id = `call_${utils_uuid_uuid4()}`;
             }
         }
     }
@@ -114930,7 +114934,7 @@ AbstractChatCompletionRunner_a = AbstractChatCompletionRunner, _AbstractChatComp
             total.total_tokens += usage.total_tokens;
             for (const key of ['completion_tokens_details', 'prompt_tokens_details']) {
                 const details = usage[key];
-                if (isObj(details)) {
+                if (values_isObj(details)) {
                     // SAFETY: Both token detail types contain only optional numeric counts.
                     const totalDetails = (total[key] ?? (total[key] = {}));
                     for (const name in details) {
@@ -116946,7 +116950,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
                                 }
                                 return {
                                     ...toolRest,
-                                    id: id || `call_${uuid_uuid4()}`,
+                                    id: id || `call_${utils_uuid_uuid4()}`,
                                     type,
                                     custom: { ...customRest, name, input },
                                 };
@@ -116961,7 +116965,7 @@ function finalizeChatCompletion(snapshot, params, audioDoneChoiceIndexes, valida
                             }
                             return {
                                 ...toolRest,
-                                id: id || `call_${uuid_uuid4()}`,
+                                id: id || `call_${utils_uuid_uuid4()}`,
                                 type,
                                 function: { ...fnRest, name, arguments: args },
                             };
@@ -118451,6 +118455,25 @@ class Usage extends resource_APIResource {
         })));
     }
     /**
+     * Get Decisions API usage details for the organization.
+     *
+     * @example
+     * ```ts
+     * const response =
+     *   await client.admin.organization.usage.decisions({
+     *     start_time: 0,
+     *   });
+     * ```
+     */
+    decisions(query, options) {
+        return this._client.get('/organization/usage/decisions', usage_resolveResourceRequestOptions(options, (options) => ({
+            // Null optional filters mean unset; empty query values fail backend parsing.
+            query: Object.fromEntries(Object.entries(query).filter(([, value]) => value !== null)),
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
      * Get embeddings usage details for the organization.
      *
      * @example
@@ -119057,6 +119080,47 @@ class projects_api_keys_APIKeys extends resource_APIResource {
     retrieve(apiKeyID, params, options) {
         const { project_id } = params;
         return this._client.get(utils_path_path `/organization/projects/${project_id}/api_keys/${apiKeyID}`, api_keys_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Updates the scopes and/or expiration of an existing API key in the project,
+     * including a service-account-owned key. Requires permission to write project API
+     * keys.
+     *
+     * Provide at least one of `scopes` or `expires_in_seconds`. Omitted fields stay
+     * unchanged; neither field accepts `null`. Both changes are saved together.
+     *
+     * `scopes` replaces the key's scope restrictions using the same scope identifiers
+     * as the dashboard. An empty array means All permissions, subject to the owner's
+     * effective access; it does not mean no access. Use `["api.all.read"]` for
+     * read-only access or specific scopes such as `["api.files.read"]` for restricted
+     * access. This does not change user or service-account roles or grant admin
+     * permissions. Scope changes follow the same authentication-cache propagation as
+     * dashboard edits.
+     *
+     * Provide `expires_in_seconds` to set the expiration relative to this request. The
+     * value must satisfy the organization's and project's expiry policies. Expired
+     * keys cannot be updated. Retrying resets the expiration relative to the new
+     * request. The response contains only the redacted key, not its secret.
+     *
+     * @example
+     * ```ts
+     * const projectAPIKey =
+     *   await client.admin.organization.projects.apiKeys.update(
+     *     'api_key_id',
+     *     {
+     *       project_id: 'project_id',
+     *       scopes: ['api.all.read'],
+     *     },
+     *   );
+     * ```
+     */
+    update(apiKeyID, params, options) {
+        const { project_id, ...body } = params;
+        return this._client.post(utils_path_path `/organization/projects/${project_id}/api_keys/${apiKeyID}`, api_keys_resolveResourceRequestOptions(options, (options) => ({
+            body,
             ...options,
             __security: { adminAPIKeyAuth: true },
         })));
@@ -121110,7 +121174,7 @@ class Speech extends resource_APIResource {
         return this._client.post('/audio/speech', speech_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/octet-stream' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/octet-stream' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -121167,17 +121231,17 @@ function voices_resolveResourceRequestOptions(options, buildOptions) {
  */
 class voices_Voices extends resource_APIResource {
     /**
-     * Create a custom voice you can use for audio output (for example, in
-     * Text-to-Speech and the Realtime API). This requires an audio sample and a
-     * previously uploaded consent recording.
+     * Creates a voice from a text prompt or from a consent recording and an audio
+     * sample.
      *
-     * Send `name`, `audio_sample`, and the `consent` recording ID as multipart form
-     * data. The optional `type` defaults to `audio_sample`.
+     * For prompt-based creation, send `type: "prompt"` with a `name` and `prompt` as
+     * JSON or multipart form data. For creation from an audio sample, send
+     * `type: "audio_sample"` with a `name`, `audio_sample`, and `consent` recording ID
+     * as multipart form data. The type defaults to `audio_sample` when omitted.
      *
-     * Returns the saved voice's metadata. See the
-     * [custom voices guide](https://developers.openai.com/api/docs/guides/text-to-speech#custom-voices)
-     * for requirements and best practices. Custom voices are limited to eligible
-     * customers.
+     * Returns the saved voice's metadata. Voices created from text prompts are
+     * supported only in Live, not in Realtime or the speech endpoint. The response
+     * does not include preview audio.
      *
      * @example
      * ```ts
@@ -121395,7 +121459,7 @@ class Assistants extends resource_APIResource {
         return this._client.post('/assistants', assistants_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121407,7 +121471,7 @@ class Assistants extends resource_APIResource {
     retrieve(assistantID, options) {
         return this._client.get(utils_path_path `/assistants/${assistantID}`, assistants_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121420,7 +121484,7 @@ class Assistants extends resource_APIResource {
         return this._client.post(utils_path_path `/assistants/${assistantID}`, assistants_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121434,7 +121498,7 @@ class Assistants extends resource_APIResource {
         return this._client.getAPIList('/assistants', (CursorPage), assistants_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121446,7 +121510,7 @@ class Assistants extends resource_APIResource {
     delete(assistantID, options) {
         return this._client.delete(utils_path_path `/assistants/${assistantID}`, assistants_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121475,7 +121539,7 @@ class sessions_Sessions extends resource_APIResource {
         return this._client.post('/realtime/sessions', {
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         });
     }
@@ -121504,7 +121568,7 @@ class TranscriptionSessions extends resource_APIResource {
         return this._client.post('/realtime/transcription_sessions', {
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         });
     }
@@ -121558,7 +121622,7 @@ function validateAgentFilePath(path) {
 }
 function preflight(files, options) {
     const entries = Object.entries(files);
-    const headers = headers_buildHeaders([options.headers]);
+    const headers = internal_headers_buildHeaders([options.headers]);
     if (entries.length > 1 &&
         (headers.values.has('idempotency-key') ||
             (!headers.nulls.has('idempotency-key') && options?.idempotencyKey !== undefined))) {
@@ -121579,7 +121643,7 @@ function preflight(files, options) {
 async function prepareAgentFiles(client, files, options) {
     const requestOptions = { ...options };
     // Internal SDK read: capture effective headers once, including defaults and explicit omissions.
-    const headers = headers_buildHeaders([client['_options'].defaultHeaders, requestOptions.headers]);
+    const headers = internal_headers_buildHeaders([client['_options'].defaultHeaders, requestOptions.headers]);
     requestOptions.headers = headers;
     const entries = preflight(files, requestOptions);
     if (entries.length > 1) {
@@ -121636,8 +121700,9 @@ class environments_files_Files extends resource_APIResource {
         return uploadAgentFile(this._client, this, environmentID, params, options);
     }
     /**
-     * Copies inline bytes or a Files API file into a connected execution environment.
-     * See
+     * Copies inline bytes or a Files API file into a connected execution environment,
+     * replacing an existing regular file at the same path. Upload between turns and
+     * wait for success before starting the next turn. See
      * [environment files](https://developers.openai.com/api/docs/guides/agents-api/environments/files).
      *
      * @example
@@ -121657,7 +121722,7 @@ class environments_files_Files extends resource_APIResource {
         return this._client.post(utils_path_path `/agents/environments/${environmentID}/files`, files_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121680,7 +121745,7 @@ class environments_files_Files extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/environments/${environmentID}/files`, (pagination_TokenPage), files_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121763,7 +121828,7 @@ class Templates extends resource_APIResource {
         return this._client.post('/agents/environments/templates', templates_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121783,7 +121848,7 @@ class Templates extends resource_APIResource {
     retrieve(environmentTemplateID, options) {
         return this._client.get(utils_path_path `/agents/environments/templates/${environmentTemplateID}`, templates_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121804,7 +121869,7 @@ class Templates extends resource_APIResource {
         return this._client.post(utils_path_path `/agents/environments/templates/${environmentTemplateID}`, templates_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121818,7 +121883,7 @@ class Templates extends resource_APIResource {
         return this._client.getAPIList('/agents/environments/templates', (CursorPage), templates_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121838,7 +121903,7 @@ class Templates extends resource_APIResource {
     delete(environmentTemplateID, options) {
         return this._client.delete(utils_path_path `/agents/environments/templates/${environmentTemplateID}`, templates_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121932,7 +121997,7 @@ class environments_Environments extends resource_APIResource {
         return this._client.post('/agents/environments', environments_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 {
                     'OpenAI-Beta': 'agents=v1',
                     ...(idempotencyKey != null ? { 'Idempotency-Key': idempotencyKey } : undefined),
@@ -121958,7 +122023,7 @@ class environments_Environments extends resource_APIResource {
     retrieve(environmentID, options) {
         return this._client.get(utils_path_path `/agents/environments/${environmentID}`, environments_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -121972,7 +122037,7 @@ class environments_Environments extends resource_APIResource {
         return this._client.getAPIList('/agents/environments', EnvironmentInfosPage, environments_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -122054,7 +122119,7 @@ _TurnState_turnID = new WeakMap(), _TurnState_turnEnded = new WeakMap(), _TurnSt
  * @internal
  */
 function isInputContent(value) {
-    if (!isObj(value)) {
+    if (!values_isObj(value)) {
         return false;
     }
     const content = value;
@@ -122095,7 +122160,7 @@ function normalizedOutput(value) {
 }
 // oxlint-disable-next-line anti-slop/no-object-parameters -- The public AgentToolOutput contract accepts arbitrary JSON-serializable object results.
 function toolResult(call, value) {
-    const output = isObj(value) ? JSON.stringify(value) : value;
+    const output = values_isObj(value) ? JSON.stringify(value) : value;
     // Detect unserializable callback results inside the redacted failure boundary.
     const serialized = JSON.stringify(output);
     if (serialized === undefined) {
@@ -122122,7 +122187,7 @@ class AgentToolDispatcher {
         __classPrivateFieldSet(this, _AgentToolDispatcher_controller, controller, "f");
         __classPrivateFieldSet(this, _AgentToolDispatcher_onToolError, onToolError, "f");
         __classPrivateFieldSet(this, _AgentToolDispatcher_handlers, new Map(Object.entries(handlers)), "f");
-        const headers = headers_buildHeaders([options?.headers]);
+        const headers = internal_headers_buildHeaders([options?.headers]);
         headers.values.delete('idempotency-key');
         headers.nulls.delete('idempotency-key');
         const { idempotencyKey: _key, ...rest } = options ?? {};
@@ -122153,7 +122218,7 @@ _AgentToolDispatcher_handlers = new WeakMap(), _AgentToolDispatcher_options = ne
     let stage = 'arguments';
     try {
         const args = typeof call.arguments === 'string' ? JSON.parse(call.arguments) : call.arguments;
-        if (!isObj(args)) {
+        if (!values_isObj(args)) {
             throw new error_OpenAIError('Function arguments must be a JSON object');
         }
         stage = 'execution';
@@ -122225,7 +122290,7 @@ _AgentToolDispatcher_handlers = new WeakMap(), _AgentToolDispatcher_options = ne
             __classPrivateFieldGet(this, _AgentToolDispatcher_controller, "f").signal.removeEventListener('abort', onAbort);
         }
     }
-}, _AgentToolDispatcher_submit = async function _AgentToolDispatcher_submit(sessionID, result, key = uuid_uuid4(), attempt = 0) {
+}, _AgentToolDispatcher_submit = async function _AgentToolDispatcher_submit(sessionID, result, key = utils_uuid_uuid4(), attempt = 0) {
     __classPrivateFieldGet(this, _AgentToolDispatcher_instances, "m", _AgentToolDispatcher_checkAbort).call(this);
     try {
         await __classPrivateFieldGet(this, _AgentToolDispatcher_sessions, "f").events.create(sessionID, { events: [result], 'Idempotency-Key': key }, __classPrivateFieldGet(this, _AgentToolDispatcher_options, "f"));
@@ -122708,13 +122773,13 @@ class AgentSessionStream {
         __classPrivateFieldSet(this, _AgentSessionStream_sessions, sessions, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_sessionID, sessionID, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_input, { type: 'agent.session.input.message', input }, "f");
-        const headers = headers_buildHeaders([options?.headers]);
+        const headers = internal_headers_buildHeaders([options?.headers]);
         __classPrivateFieldSet(this, _AgentSessionStream_inputKey, headers.nulls.has('idempotency-key')
             ? undefined
             : (headers.values.get('idempotency-key') ??
                 params.idempotencyKey ??
                 options?.idempotencyKey ??
-                uuid_uuid4()), "f");
+                utils_uuid_uuid4()), "f");
         headers.values.delete('idempotency-key');
         headers.nulls.delete('idempotency-key');
         const { idempotencyKey: _key, ...rest } = options ?? {};
@@ -122774,7 +122839,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
             ...(__classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") === undefined ? {} : { 'Idempotency-Key': __classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") }),
         }, {
             ...options,
-            headers: headers_buildHeaders([options.headers, { 'Idempotency-Key': __classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") ?? null }]),
+            headers: internal_headers_buildHeaders([options.headers, { 'Idempotency-Key': __classPrivateFieldGet(this, _AgentSessionStream_inputKey, "f") ?? null }]),
         });
         __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
         __classPrivateFieldSet(this, _AgentSessionStream_reading, true, "f");
@@ -122896,7 +122961,7 @@ function captureCreationTools(body, options) {
     if (stream !== true) {
         throw new error_OpenAIError('toolHandlers requires stream: true');
     }
-    capturedOptions.headers = headers_buildHeaders([capturedOptions.headers]);
+    capturedOptions.headers = internal_headers_buildHeaders([capturedOptions.headers]);
     descriptors.stream = { value: stream, enumerable: true, configurable: true, writable: true };
     // SAFETY: Preserve request fields, omitting callbacks and fixing the validated streaming mode.
     const request = Object.create(Object.getPrototypeOf(body), descriptors);
@@ -122929,7 +122994,7 @@ async function* agentItems(load) {
         // oxlint-disable-next-line unicorn/prefer-at -- Keep published source compatible with ES2020 declarations.
         const last = page.data[page.data.length - 1];
         // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate only the opaque cursor from response metadata.
-        const cursor = isObj(body) && typeof body['last_id'] === 'string' ? body['last_id'] : last?.id;
+        const cursor = values_isObj(body) && typeof body['last_id'] === 'string' ? body['last_id'] : last?.id;
         if (!cursor || cursor === after) {
             throw new error_OpenAIError('Agent pagination cannot advance to the next page');
         }
@@ -123085,7 +123150,7 @@ class artifacts_Artifacts extends resource_APIResource {
         const { session_id } = params;
         return this._client.get(utils_path_path `/agents/sessions/${session_id}/artifacts/${artifactID}`, artifacts_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123099,7 +123164,7 @@ class artifacts_Artifacts extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/artifacts`, (CursorPage), artifacts_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123121,7 +123186,7 @@ class artifacts_Artifacts extends resource_APIResource {
         const { session_id } = params;
         return this._client.delete(utils_path_path `/agents/sessions/${session_id}/artifacts/${artifactID}`, artifacts_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123146,7 +123211,7 @@ class artifacts_Artifacts extends resource_APIResource {
         const { session_id } = params;
         return this._client.get(utils_path_path `/agents/sessions/${session_id}/artifacts/${artifactID}/content`, artifacts_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { 'OpenAI-Beta': 'agents=v1', Accept: 'application/octet-stream' },
                 options?.headers,
             ]),
@@ -123202,7 +123267,7 @@ class sessions_events_Events extends resource_APIResource {
         return this._client.post(utils_path_path `/agents/sessions/${sessionID}/events`, events_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 {
                     'OpenAI-Beta': 'agents=v1',
                     Accept: '*/*',
@@ -123228,7 +123293,7 @@ class sessions_events_Events extends resource_APIResource {
     stream(sessionID, options) {
         return this._client.get(utils_path_path `/agents/sessions/${sessionID}/events`, events_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { 'OpenAI-Beta': 'agents=v1', Accept: 'text/event-stream' },
                 options?.headers,
             ]),
@@ -123310,7 +123375,7 @@ class Items extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/items`, (CursorPage), items_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123388,7 +123453,7 @@ class Traces extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/traces`, (CursorPage), traces_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123424,7 +123489,7 @@ class items_Items extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/subagents/${subagentID}/items`, (CursorPage), subagents_items_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123460,7 +123525,7 @@ class turns_items_Items extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/subagents/${subagent_id}/turns/${turnID}/items`, (CursorPage), turns_items_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123502,7 +123567,7 @@ class Turns extends resource_APIResource {
         const { session_id, subagent_id } = params;
         return this._client.get(utils_path_path `/agents/sessions/${session_id}/subagents/${subagent_id}/turns/${turnID}`, turns_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123526,7 +123591,7 @@ class Turns extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/subagents/${subagentID}/turns`, (CursorPage), turns_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123621,7 +123686,7 @@ class Subagents extends resource_APIResource {
         const { session_id } = params;
         return this._client.get(utils_path_path `/agents/sessions/${session_id}/subagents/${subagentID}`, subagents_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123635,7 +123700,7 @@ class Subagents extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/subagents`, (CursorPage), subagents_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123674,7 +123739,7 @@ class sessions_turns_items_Items extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${session_id}/turns/${turnID}/items`, (ConversationCursorPage), sessions_turns_items_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123766,7 +123831,7 @@ class turns_Turns extends resource_APIResource {
         const { session_id } = params;
         return this._client.get(utils_path_path `/agents/sessions/${session_id}/turns/${turnID}`, turns_turns_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123780,7 +123845,7 @@ class turns_Turns extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/agents/sessions/${sessionID}/turns`, (CursorPage), turns_turns_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123884,7 +123949,7 @@ class sessions_sessions_Sessions extends resource_APIResource {
             .post('/agents/sessions', sessions_resolveResourceRequestOptions(output.options, (options) => ({
             body: output.body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             stream: output.body.stream ?? false,
             __security: { bearerAuth: true },
         })))
@@ -123909,7 +123974,7 @@ class sessions_sessions_Sessions extends resource_APIResource {
     retrieve(sessionID, options) {
         return this._client.get(utils_path_path `/agents/sessions/${sessionID}`, sessions_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123928,7 +123993,7 @@ class sessions_sessions_Sessions extends resource_APIResource {
         return this._client.post(utils_path_path `/agents/sessions/${sessionID}`, sessions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123942,7 +124007,7 @@ class sessions_sessions_Sessions extends resource_APIResource {
         return this._client.getAPIList('/agents/sessions', (CursorPage), sessions_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -123962,7 +124027,7 @@ class sessions_sessions_Sessions extends resource_APIResource {
     delete(sessionID, options) {
         return this._client.delete(utils_path_path `/agents/sessions/${sessionID}`, sessions_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124061,7 +124126,7 @@ class credentials_Credentials extends resource_APIResource {
         return this._client.post(utils_path_path `/vaults/${vaultID}/credentials`, credentials_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124082,7 +124147,7 @@ class credentials_Credentials extends resource_APIResource {
         const { vault_id } = params;
         return this._client.get(utils_path_path `/vaults/${vault_id}/credentials/${credentialID}`, credentials_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124104,12 +124169,12 @@ class credentials_Credentials extends resource_APIResource {
         return this._client.post(utils_path_path `/vaults/${vault_id}/credentials/${credentialID}`, credentials_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
     list(vaultID, query = {}, options) {
-        const normalizeRequestOptionsForQueryOptions = credentials_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'status'], options);
+        const normalizeRequestOptionsForQueryOptions = credentials_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'metadata', 'order', 'status'], options);
         if (normalizeRequestOptionsForQueryOptions !== undefined) {
             options = normalizeRequestOptionsForQueryOptions;
             query = {};
@@ -124118,7 +124183,7 @@ class credentials_Credentials extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/vaults/${vaultID}/credentials`, (CursorPage), credentials_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124139,7 +124204,7 @@ class credentials_Credentials extends resource_APIResource {
         const { vault_id } = params;
         return this._client.delete(utils_path_path `/vaults/${vault_id}/credentials/${credentialID}`, credentials_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124226,7 +124291,7 @@ class vaults_Vaults extends resource_APIResource {
         return this._client.post('/vaults', vaults_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124244,12 +124309,33 @@ class vaults_Vaults extends resource_APIResource {
     retrieve(vaultID, options) {
         return this._client.get(utils_path_path `/vaults/${vaultID}`, vaults_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Updates the name or metadata of an active vault. Omitted fields remain
+     * unchanged. See
+     * [vaults](https://developers.openai.com/api/docs/guides/agents-api/tools/vaults).
+     *
+     * @example
+     * ```ts
+     * const vault = await client.beta.agents.vaults.update(
+     *   'vault_id',
+     *   { name: 'Research vault' },
+     * );
+     * ```
+     */
+    update(vaultID, body, options) {
+        return this._client.post(utils_path_path `/vaults/${vaultID}`, vaults_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
     list(query = {}, options) {
-        const normalizeRequestOptionsForQueryOptions = vaults_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'status'], options);
+        const normalizeRequestOptionsForQueryOptions = vaults_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'metadata', 'order', 'status'], options);
         if (normalizeRequestOptionsForQueryOptions !== undefined) {
             options = normalizeRequestOptionsForQueryOptions;
             query = {};
@@ -124258,7 +124344,7 @@ class vaults_Vaults extends resource_APIResource {
         return this._client.getAPIList('/vaults', (CursorPage), vaults_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124276,7 +124362,7 @@ class vaults_Vaults extends resource_APIResource {
     delete(vaultID, options) {
         return this._client.delete(utils_path_path `/vaults/${vaultID}`, vaults_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124372,7 +124458,7 @@ class agents_Agents extends resource_APIResource {
         return this._client.post('/agents', agents_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124388,7 +124474,7 @@ class agents_Agents extends resource_APIResource {
     retrieve(agentID, options) {
         return this._client.get(utils_path_path `/agents/${agentID}`, agents_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124405,7 +124491,7 @@ class agents_Agents extends resource_APIResource {
         return this._client.post(utils_path_path `/agents/${agentID}`, agents_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124419,7 +124505,7 @@ class agents_Agents extends resource_APIResource {
         return this._client.getAPIList('/agents', (CursorPage), agents_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124437,7 +124523,7 @@ class agents_Agents extends resource_APIResource {
     delete(agentID, options) {
         return this._client.delete(utils_path_path `/agents/${agentID}`, agents_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124471,7 +124557,7 @@ class chatkit_sessions_Sessions extends resource_APIResource {
         return this._client.post('/chatkit/sessions', chatkit_sessions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124489,7 +124575,7 @@ class chatkit_sessions_Sessions extends resource_APIResource {
     cancel(sessionID, options) {
         return this._client.post(utils_path_path `/chatkit/sessions/${sessionID}/cancel`, chatkit_sessions_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124569,7 +124655,7 @@ class threads_Threads extends resource_APIResource {
     retrieve(threadID, options) {
         return this._client.get(utils_path_path `/chatkit/threads/${threadID}`, threads_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124583,7 +124669,7 @@ class threads_Threads extends resource_APIResource {
         return this._client.getAPIList('/chatkit/threads', (ConversationCursorPage), threads_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124600,7 +124686,7 @@ class threads_Threads extends resource_APIResource {
     delete(threadID, options) {
         return this._client.delete(utils_path_path `/chatkit/threads/${threadID}`, threads_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124614,7 +124700,7 @@ class threads_Threads extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/chatkit/threads/${threadID}/items`, (ConversationCursorPage), threads_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'chatkit_beta=v1' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -124713,7 +124799,7 @@ class InputItems extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/responses/${responseID}/input_items?beta=true`, (CursorPage), input_items_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -124750,7 +124836,7 @@ class InputTokens extends resource_APIResource {
         return this._client.post('/responses/input_tokens?beta=true', input_tokens_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -124837,7 +124923,7 @@ class Responses extends resource_APIResource {
         return this._client.post('/responses?beta=true', responses_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -124856,7 +124942,7 @@ class Responses extends resource_APIResource {
         return this._client.get(utils_path_path `/responses/${responseID}?beta=true`, responses_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -124878,7 +124964,7 @@ class Responses extends resource_APIResource {
         const { betas } = params ?? {};
         return this._client.delete(utils_path_path `/responses/${responseID}?beta=true`, responses_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 {
                     Accept: '*/*',
                     ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined),
@@ -124904,7 +124990,7 @@ class Responses extends resource_APIResource {
         const { betas } = params ?? {};
         return this._client.post(utils_path_path `/responses/${responseID}/cancel?beta=true`, responses_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -124932,7 +125018,7 @@ class Responses extends resource_APIResource {
         return this._client.post('/responses/compact?beta=true', responses_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([
+            headers: internal_headers_buildHeaders([
                 { ...(betas?.toString() != null ? { 'openai-beta': betas?.toString() } : undefined) },
                 options?.headers,
             ]),
@@ -125019,7 +125105,7 @@ class threads_messages_Messages extends resource_APIResource {
         return this._client.post(utils_path_path `/threads/${threadID}/messages`, messages_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125032,7 +125118,7 @@ class threads_messages_Messages extends resource_APIResource {
         const { thread_id } = params;
         return this._client.get(utils_path_path `/threads/${thread_id}/messages/${messageID}`, messages_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125046,7 +125132,7 @@ class threads_messages_Messages extends resource_APIResource {
         return this._client.post(utils_path_path `/threads/${thread_id}/messages/${messageID}`, messages_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125060,7 +125146,7 @@ class threads_messages_Messages extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/threads/${threadID}/messages`, (CursorPage), messages_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125073,7 +125159,7 @@ class threads_messages_Messages extends resource_APIResource {
         const { thread_id } = params;
         return this._client.delete(utils_path_path `/threads/${thread_id}/messages/${messageID}`, messages_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125104,7 +125190,7 @@ class Steps extends resource_APIResource {
         return this._client.get(utils_path_path `/threads/${thread_id}/runs/${run_id}/steps/${stepID}`, steps_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125118,7 +125204,7 @@ class Steps extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/threads/${thread_id}/runs/${runID}/steps`, (CursorPage), steps_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -125318,7 +125404,7 @@ function assertValidAssistantStreamArrayDelta(accumulator, delta, kind, projecti
         projection.arrays.set(accumulator, projectedArray);
     }
     for (const deltaEntry of delta) {
-        if (!isObj(deltaEntry)) {
+        if (!values_isObj(deltaEntry)) {
             throw new Error('Expected array delta entry to be an object but got an invalid value');
         }
         const validatedIndex = getAssistantStreamDeltaIndex(deltaEntry, kind, projectedArray.baselineLength);
@@ -125341,7 +125427,7 @@ function assertValidAssistantStreamArrayDelta(accumulator, delta, kind, projecti
             projectedLength - projectedArray.ownEntryCount > MAX_ASSISTANT_STREAM_ARRAY_GROWTH) {
             throw new error_OpenAIError(`Assistant stream delta contains an invalid ${kind} index: ${validatedIndex}`);
         }
-        if (isObj(accumulatedEntry)) {
+        if (values_isObj(accumulatedEntry)) {
             validateRecord(accumulatedEntry, deltaEntry, projection);
         }
         projectedArray.length = projectedLength;
@@ -125368,7 +125454,7 @@ function assertValidAssistantStreamDeltaIndices(accumulator, delta, projection) 
             projectedValues.set(key, deltaValue);
             continue;
         }
-        if (isObj(accumulatedValue) && isObj(deltaValue)) {
+        if (values_isObj(accumulatedValue) && values_isObj(deltaValue)) {
             assertValidAssistantStreamDeltaIndices(accumulatedValue, deltaValue, projection);
         }
         else if (Array.isArray(accumulatedValue) &&
@@ -125379,10 +125465,10 @@ function assertValidAssistantStreamDeltaIndices(accumulator, delta, projection) 
     }
 }
 function isAssistantStreamValueExternallyMutable(value) {
-    return (isObj(value) || Array.isArray(value)) && externallyMutableAssistantStreamValues.has(value);
+    return (values_isObj(value) || Array.isArray(value)) && externallyMutableAssistantStreamValues.has(value);
 }
 function markAssistantStreamValueExternallyMutable(value) {
-    if ((!isObj(value) && !Array.isArray(value)) || externallyMutableAssistantStreamValues.has(value)) {
+    if ((!values_isObj(value) && !Array.isArray(value)) || externallyMutableAssistantStreamValues.has(value)) {
         return;
     }
     externallyMutableAssistantStreamValues.add(value);
@@ -125424,7 +125510,7 @@ function applyAssistantStreamArrayDelta(accumulator, delta, applyRecord) {
         return;
     }
     for (const deltaEntry of delta) {
-        if (!isObj(deltaEntry)) {
+        if (!values_isObj(deltaEntry)) {
             throw new Error('Expected array delta entry to be an object but got an invalid value');
         }
         const index = getRequiredAssistantStreamArrayIndex(deltaEntry);
@@ -125477,7 +125563,7 @@ function applyAssistantStreamDelta(accumulator, delta) {
         else if (typeof accumulatedValue === 'number' && typeof deltaValue === 'number') {
             accumulatedValue += deltaValue;
         }
-        else if (isObj(accumulatedValue) && isObj(deltaValue)) {
+        else if (values_isObj(accumulatedValue) && values_isObj(deltaValue)) {
             accumulatedValue = applyAssistantStreamDelta(accumulatedValue, deltaValue);
         }
         else if (Array.isArray(accumulatedValue) && Array.isArray(deltaValue)) {
@@ -125492,7 +125578,7 @@ function applyAssistantStreamDelta(accumulator, delta) {
     return accumulator;
 }
 function assertSafeAssistantStreamDelta(value) {
-    if (!isObj(value) && !Array.isArray(value)) {
+    if (!values_isObj(value) && !Array.isArray(value)) {
         return;
     }
     for (const [key, nestedValue] of Object.entries(value)) {
@@ -126336,7 +126422,7 @@ function sleepUntilAborted(milliseconds, signal) {
  * @internal
  */
 async function pollWithResponse(retrieve, intermediateStatuses, terminalStatuses, options) {
-    const headers = headers_buildHeaders([
+    const headers = internal_headers_buildHeaders([
         options?.headers,
         {
             'X-Stainless-Poll-Helper': 'true',
@@ -126469,7 +126555,7 @@ class Runs extends resource_APIResource {
             query: { include },
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             stream: params.stream ?? false,
             __synthesizeEventData: true,
             __security: { bearerAuth: true },
@@ -126484,7 +126570,7 @@ class Runs extends resource_APIResource {
         const { thread_id } = params;
         return this._client.get(utils_path_path `/threads/${thread_id}/runs/${runID}`, runs_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126498,7 +126584,7 @@ class Runs extends resource_APIResource {
         return this._client.post(utils_path_path `/threads/${thread_id}/runs/${runID}`, runs_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126512,7 +126598,7 @@ class Runs extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/threads/${threadID}/runs`, (CursorPage), runs_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126525,7 +126611,7 @@ class Runs extends resource_APIResource {
         const { thread_id } = params;
         return this._client.post(utils_path_path `/threads/${thread_id}/runs/${runID}/cancel`, runs_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126565,7 +126651,7 @@ class Runs extends resource_APIResource {
         return this._client.post(utils_path_path `/threads/${thread_id}/runs/${runID}/submit_tool_outputs`, runs_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             stream: params.stream ?? false,
             __synthesizeEventData: true,
             __security: { bearerAuth: true },
@@ -126624,7 +126710,7 @@ class threads_threads_Threads extends resource_APIResource {
         return this._client.post('/threads', threads_threads_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126636,7 +126722,7 @@ class threads_threads_Threads extends resource_APIResource {
     retrieve(threadID, options) {
         return this._client.get(utils_path_path `/threads/${threadID}`, threads_threads_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126649,7 +126735,7 @@ class threads_threads_Threads extends resource_APIResource {
         return this._client.post(utils_path_path `/threads/${threadID}`, threads_threads_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126661,7 +126747,7 @@ class threads_threads_Threads extends resource_APIResource {
     delete(threadID, options) {
         return this._client.delete(utils_path_path `/threads/${threadID}`, threads_threads_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126669,7 +126755,7 @@ class threads_threads_Threads extends resource_APIResource {
         return this._client.post('/threads/runs', threads_threads_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             stream: body.stream ?? false,
             __synthesizeEventData: true,
             __security: { bearerAuth: true },
@@ -126763,7 +126849,7 @@ class Content extends resource_APIResource {
         const { container_id } = params;
         return this._client.get(utils_path_path `/containers/${container_id}/files/${fileID}/content`, content_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -126875,7 +126961,7 @@ class files_files_Files extends resource_APIResource {
         const { container_id } = params;
         return this._client.delete(utils_path_path `/containers/${container_id}/files/${fileID}`, files_files_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -126985,7 +127071,7 @@ class Containers extends resource_APIResource {
     delete(containerID, options) {
         return this._client.delete(utils_path_path `/containers/${containerID}`, containers_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -127185,17 +127271,8 @@ function decisions_resolveResourceRequestOptions(options, buildOptions) {
 }
 class Decisions extends resource_APIResource {
     /**
-     * Evaluate ordered classification and scoring questions against shared input.
-     * Answers are returned in question order.
-     *
-     * Supply input as a string or user messages containing text and inline images.
-     * Only user messages with `input_text` and `input_image` parts are supported;
-     * non-user roles, function calls, files, audio, and item references are not
-     * supported. Images require a data URL, not an external URL or file ID. At most
-     * 128 images are allowed across the request.
-     *
-     * Each question can return a refusal instead of a scored answer. A refusal has
-     * type `refusal` and the corresponding question name, or null if unnamed.
+     * Use this endpoint to quickly answer classification or scoring questions about
+     * some input. You can ask multiple questions in one request.
      */
     create(body, options) {
         return this._client.post('/decisions', decisions_resolveResourceRequestOptions(options, (options) => ({
@@ -127708,7 +127785,7 @@ class resources_files_Files extends resource_APIResource {
     content(fileID, options) {
         return this._client.get(utils_path_path `/files/${fileID}/content`, resources_files_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -128324,7 +128401,7 @@ class live_sessions_Sessions extends resource_APIResource {
         return this._client.post(utils_path_path `/live/sessions/${sessionID}/accept`, live_sessions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128343,7 +128420,7 @@ class live_sessions_Sessions extends resource_APIResource {
     downloadRecording(sessionID, options) {
         return this._client.get(utils_path_path `/live/sessions/${sessionID}/content`, live_sessions_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -128377,7 +128454,7 @@ class live_sessions_Sessions extends resource_APIResource {
     hangup(sessionID, options) {
         return this._client.post(utils_path_path `/live/sessions/${sessionID}/hangup`, live_sessions_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128396,7 +128473,7 @@ class live_sessions_Sessions extends resource_APIResource {
         return this._client.post(utils_path_path `/live/sessions/${sessionID}/refer`, live_sessions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128415,7 +128492,7 @@ class live_sessions_Sessions extends resource_APIResource {
         return this._client.post(utils_path_path `/live/sessions/${sessionID}/reject`, live_sessions_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128554,7 +128631,7 @@ async function encodedMultipartFormRequestOptions(options, client, encodings, ra
         return {
             ...options,
             body: value,
-            headers: headers_buildHeaders([options.headers, { 'content-type': encodings[rawBodyField].content_type }]),
+            headers: internal_headers_buildHeaders([options.headers, { 'content-type': encodings[rawBodyField].content_type }]),
         };
     }
     const encoded = [];
@@ -128580,7 +128657,7 @@ async function encodedMultipartFormRequestOptions(options, client, encodings, ra
     return {
         ...options,
         body: form,
-        headers: headers_buildHeaders([options.headers, { 'content-type': null }]),
+        headers: internal_headers_buildHeaders([options.headers, { 'content-type': null }]),
     };
 }
 //# sourceMappingURL=multipart-encoding.mjs.map
@@ -128609,7 +128686,7 @@ class Calls extends resource_APIResource {
         return this._client.post('/realtime/calls', calls_resolveResourceRequestOptions(options, (options) => encodedMultipartFormRequestOptions({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/sdp' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/sdp' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         }, this._client, {
@@ -128632,7 +128709,7 @@ class Calls extends resource_APIResource {
         return this._client.post(utils_path_path `/realtime/calls/${callID}/accept`, calls_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128647,7 +128724,7 @@ class Calls extends resource_APIResource {
     hangup(callID, options) {
         return this._client.post(utils_path_path `/realtime/calls/${callID}/hangup`, calls_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128665,7 +128742,7 @@ class Calls extends resource_APIResource {
         return this._client.post(utils_path_path `/realtime/calls/${callID}/refer`, calls_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -128681,7 +128758,7 @@ class Calls extends resource_APIResource {
         return this._client.post(utils_path_path `/realtime/calls/${callID}/reject`, calls_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -129248,7 +129325,7 @@ function getOutputItemIdentityKeys(output, eventType) {
     const identities = [];
     if (values_hasOwn(output, 'id')) {
         // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
-        if (typeof output.id !== 'string' || output.id.length === 0) {
+        if (typeof output.id !== 'string' || (output.id.length === 0 && output.type !== 'computer_call')) {
             throw new error_OpenAIError(`expected a non-empty output item id for ${eventType}`);
         }
         identities.push(`id:${output.id}`);
@@ -129257,8 +129334,10 @@ function getOutputItemIdentityKeys(output, eventType) {
         throw new error_OpenAIError(`expected a non-empty output item id for ${eventType}`);
     }
     if (hasRoutedOutputCallIdentity(output)) {
-        // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed item identifiers and discriminators before mutating the response snapshot.
-        if (!values_hasOwn(output, 'call_id') || typeof output.call_id !== 'string' || output.call_id.length === 0) {
+        if (!values_hasOwn(output, 'call_id') ||
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Validate untrusted streamed call identifiers before mutating the response snapshot.
+            typeof output.call_id !== 'string' ||
+            (output.call_id.length === 0 && output.type !== 'function_call')) {
             throw new error_OpenAIError(`expected a non-empty output item call_id for ${eventType}`);
         }
         identities.push(`call:${output.type}:${output.call_id}`);
@@ -129362,17 +129441,16 @@ function getExpectedOutputItemType(event) {
     }
     return expectedOutputItemTypes[event.type];
 }
-function validateCompletedOutputItemIdentity(event, snapshot) {
-    const output = getOutput(snapshot, event.output_index);
-    const replacement = event.item;
-    getOutputItemIdentityKeys(output, event.type);
-    getOutputItemIdentityKeys(replacement, event.type);
+function validateResponseOutputItemIdentity(output, replacement, eventType) {
+    getOutputItemIdentityKeys(output, eventType);
+    getOutputItemIdentityKeys(replacement, eventType);
     if (!values_hasOwn(replacement, 'type') || output.type !== replacement.type) {
         throw new error_OpenAIError(`expected output item type '${output.type}', got '${replacement.type}'`);
     }
     const outputID = values_hasOwn(output, 'id') ? output.id : undefined;
     const replacementID = values_hasOwn(replacement, 'id') ? replacement.id : undefined;
-    if (outputID !== replacementID) {
+    const addsOptionalID = outputID === undefined && (output.type === 'function_call' || output.type === 'custom_tool_call');
+    if (outputID !== replacementID && !addsOptionalID) {
         throw new error_OpenAIError(`expected output item id '${outputID}', got '${replacementID}'`);
     }
     if (hasRoutedOutputCallIdentity(output) &&
@@ -129383,7 +129461,7 @@ function validateCompletedOutputItemIdentity(event, snapshot) {
 }
 function validateOutputItemIdentity(event, snapshot, rejectInvalidShellTargets) {
     if (event.type === 'response.output_item.done') {
-        validateCompletedOutputItemIdentity(event, snapshot);
+        // Item identity is validated at the shared replacement owner before any update.
         return;
     }
     if (rejectInvalidShellTargets &&
@@ -129551,7 +129629,7 @@ function sanitizeResponseEvent(event) {
                 const routingDescriptor = Object.getOwnPropertyDescriptor(event, field);
                 stableValues.set(field, routingDescriptor ? event[field] : undefined);
             }
-            if (type === 'response.output_item.done') {
+            if (type === 'response.output_item.added' || type === 'response.output_item.done') {
                 stableValues.set('item', structuredClone(event.item));
             }
             else if (type === 'response.content_part.added' || type === 'response.content_part.done') {
@@ -129570,12 +129648,35 @@ function sanitizeResponseEvent(event) {
         },
     });
 }
+/** Replace one existing native item, preserving its routing identity and aggregate-text index. */
+function replaceResponseOutputItem(context, snapshot, outputIndex, replacement, updateText = true) {
+    const output = getOutput(snapshot, outputIndex);
+    validateResponseOutputItemIdentity(output, replacement, 'response.output_item.done');
+    if (!values_hasOwn(output, 'id') && values_hasOwn(replacement, 'id')) {
+        const { identities } = getResponseOutputIdentityIndex(context, snapshot);
+        addOutputItemIdentities(identities, [`id:${replacement.id}`]);
+    }
+    if (!updateText) {
+        snapshot.output[outputIndex] = replacement;
+        return;
+    }
+    const previousText = getOutputText(context, output);
+    if (output.type === 'message' || replacement.type === 'message') {
+        ensureCanonicalOutputText(context, snapshot);
+    }
+    snapshot.output[outputIndex] = replacement;
+    const nextText = getOutputText(context, replacement);
+    if (context.canonicalSnapshot === snapshot) {
+        context.outputTextIndex.update(outputIndex, nextText.length);
+    }
+    updateOutputText(context, snapshot, outputIndex, previousText, nextText);
+}
 function accumulateOutputItemEvent(event, snapshot, context) {
     switch (event.type) {
         case 'response.output_item.added': {
             validateArrayAppend(snapshot.output, event.output_index, 'output');
             const identityIndex = getResponseOutputIdentityIndex(context, snapshot);
-            const output = structuredClone(event.item);
+            const output = event.item;
             const identities = getOutputItemIdentityKeys(output, event.type);
             assertOutputItemIdentitiesAvailable(identityIndex.identities, identities);
             if (output.type === 'message') {
@@ -129599,18 +129700,7 @@ function accumulateOutputItemEvent(event, snapshot, context) {
             return true;
         }
         case 'response.output_item.done': {
-            const output = getOutput(snapshot, event.output_index);
-            const previousText = getOutputText(context, output);
-            const replacement = event.item;
-            if (output.type === 'message' || replacement.type === 'message') {
-                ensureCanonicalOutputText(context, snapshot);
-            }
-            snapshot.output[event.output_index] = replacement;
-            const nextText = getOutputText(context, replacement);
-            if (context.canonicalSnapshot === snapshot) {
-                context.outputTextIndex.update(event.output_index, nextText.length);
-            }
-            updateOutputText(context, snapshot, event.output_index, previousText, nextText);
+            replaceResponseOutputItem(context, snapshot, event.output_index, event.item);
             return true;
         }
         default: {
@@ -129686,7 +129776,7 @@ function accumulateContentPartDoneEvent(event, snapshot, context) {
 // Streamed logprobs have a looser type than final output: bytes and even the
 // top token fields may be missing. Do not fabricate them in typed SSE snapshots.
 function isLogprobWithBytes(value) {
-    return (isObj(value) &&
+    return (values_isObj(value) &&
         typeof value['token'] === 'string' &&
         typeof value['logprob'] === 'number' &&
         Array.isArray(value['bytes']) &&
@@ -130194,10 +130284,17 @@ function accumulateWebSocketOutput(event, snapshot, context) {
         throw new OpenAIError('Unsupported WebSocket output event');
     }
 }
-function accumulateResponseWithContext(event, snapshot, context, rejectInvalidShellTargets = false, onSanitizedEvent) {
-    const dispatchEvent = sanitizeResponseEvent(event);
-    if (onSanitizedEvent && dispatchEvent.type !== 'keepalive') {
-        onSanitizedEvent(dispatchEvent);
+function accumulateResponseWithContext(event, snapshot, context, rejectInvalidShellTargets = false, prepareSanitizedEvent) {
+    let dispatchEvent = sanitizeResponseEvent(event);
+    if (prepareSanitizedEvent && dispatchEvent.type !== 'keepalive') {
+        const prepared = prepareSanitizedEvent(dispatchEvent);
+        if (prepared === null) {
+            if (!snapshot) {
+                throw new error_OpenAIError('Cannot ignore a response event before response.created.');
+            }
+            return snapshot;
+        }
+        dispatchEvent = prepared;
     }
     if (!snapshot) {
         if (dispatchEvent.type !== 'response.created') {
@@ -130215,13 +130312,49 @@ function accumulateResponseWithContext(event, snapshot, context, rejectInvalidSh
 }
 //# sourceMappingURL=response-accumulator.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/responses/ResponseStream.mjs
-var _ResponseStream_instances, _ResponseStream_params, _ResponseStream_currentResponseSnapshot, _ResponseStream_finalResponse, _ResponseStream_accumulatorContext, _ResponseStream_beginRequest, _ResponseStream_addEvent, _ResponseStream_endRequest;
+var _ResponseStream_instances, _ResponseStream_params, _ResponseStream_currentResponseSnapshot, _ResponseStream_finalResponse, _ResponseStream_accumulatorContext, _ResponseStream_outputPositions, _ResponseStream_wireByIdentity, _ResponseStream_interimOrderDirty, _ResponseStream_completedOutput, _ResponseStream_unfinishedOutput, _ResponseStream_beginRequest, _ResponseStream_prepareEvent, _ResponseStream_prepareOutputEvent, _ResponseStream_outputAtWireIndex, _ResponseStream_assertComplete, _ResponseStream_recordOutput, _ResponseStream_reorderInterimOutput, _ResponseStream_updateInterimResponse, _ResponseStream_addEvent, _ResponseStream_endRequest;
 
 
 
 
 
 
+
+
+// Require every generated native event field here. Unknown hidden transport members remain private.
+const nativeEventFields = {
+    annotation: true,
+    annotation_index: true,
+    arguments: true,
+    background: true,
+    code: true,
+    command: true,
+    command_index: true,
+    content_index: true,
+    delta: true,
+    input: true,
+    item: true,
+    item_id: true,
+    logprobs: true,
+    message: true,
+    obfuscation: true,
+    output: true,
+    output_format: true,
+    output_index: true,
+    param: true,
+    part: true,
+    partial_image_b64: true,
+    partial_image_index: true,
+    quality: true,
+    refusal: true,
+    response: true,
+    sequence_number: true,
+    size: true,
+    status: true,
+    summary_index: true,
+    text: true,
+    type: true,
+};
 /** Streams Responses API events while accumulating the latest response and parsed output. */
 class ResponseStream extends EventStream {
     /** Creates an unstarted stream, retaining request parameters for structured-output parsing. */
@@ -130232,7 +130365,18 @@ class ResponseStream extends EventStream {
         _ResponseStream_currentResponseSnapshot.set(this, void 0);
         _ResponseStream_finalResponse.set(this, void 0);
         _ResponseStream_accumulatorContext.set(this, createResponseContext());
+        _ResponseStream_outputPositions.set(this, new Map());
+        _ResponseStream_wireByIdentity.set(this, new Map());
+        _ResponseStream_interimOrderDirty.set(this, false);
+        _ResponseStream_completedOutput.set(this, new Map());
+        _ResponseStream_unfinishedOutput.set(this, new Map());
         __classPrivateFieldSet(this, _ResponseStream_params, params, "f");
+        this.once('end', () => {
+            __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").clear();
+            __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").clear();
+            __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").clear();
+            __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").clear();
+        });
     }
     /** Starts a new response stream or replays an existing response by its identifier. */
     static createResponse(client, params, options) {
@@ -130287,12 +130431,251 @@ class ResponseStream extends EventStream {
         return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_endRequest).call(this);
     }
     /** Iterates over response events; stopping iteration early aborts the underlying request. */
-    [(_ResponseStream_params = new WeakMap(), _ResponseStream_currentResponseSnapshot = new WeakMap(), _ResponseStream_finalResponse = new WeakMap(), _ResponseStream_accumulatorContext = new WeakMap(), _ResponseStream_instances = new WeakSet(), _ResponseStream_beginRequest = function _ResponseStream_beginRequest() {
+    [(_ResponseStream_params = new WeakMap(), _ResponseStream_currentResponseSnapshot = new WeakMap(), _ResponseStream_finalResponse = new WeakMap(), _ResponseStream_accumulatorContext = new WeakMap(), _ResponseStream_outputPositions = new WeakMap(), _ResponseStream_wireByIdentity = new WeakMap(), _ResponseStream_interimOrderDirty = new WeakMap(), _ResponseStream_completedOutput = new WeakMap(), _ResponseStream_unfinishedOutput = new WeakMap(), _ResponseStream_instances = new WeakSet(), _ResponseStream_beginRequest = function _ResponseStream_beginRequest() {
         if (this.ended) {
             return;
         }
         __classPrivateFieldSet(this, _ResponseStream_currentResponseSnapshot, undefined, "f");
         __classPrivateFieldSet(this, _ResponseStream_accumulatorContext, createResponseContext(), "f");
+        __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").clear();
+        __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").clear();
+        __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, false, "f");
+        __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").clear();
+        __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").clear();
+    }, _ResponseStream_prepareEvent = function _ResponseStream_prepareEvent(event) {
+        if (event.type === 'response.created' ||
+            event.type === 'response.queued' ||
+            event.type === 'response.in_progress' ||
+            event.type === 'response.completed' ||
+            event.type === 'response.failed' ||
+            event.type === 'response.incomplete') {
+            if (!values_hasOwn(event, 'response')) {
+                throw new error_OpenAIError('Lifecycle events require their own response field.');
+            }
+            const { response: wireResponse, ...fields } = event;
+            if (!values_isObj(wireResponse)) {
+                throw new error_OpenAIError('Lifecycle events require a response object.');
+            }
+            let response = structuredClone(wireResponse);
+            if (__classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f") && response.id !== __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f").id) {
+                throw new error_OpenAIError('Lifecycle response identity changed.');
+            }
+            if (!values_hasOwn(response, 'output') || response.output == null) {
+                let output;
+                if (event.type === 'response.completed') {
+                    output = [...__classPrivateFieldGet(this, _ResponseStream_completedOutput, "f")]
+                        // oxlint-disable-next-line unicorn/no-array-sort -- Sort a fresh array; ES2020 declarations do not include toSorted.
+                        .sort(([left], [right]) => left - right)
+                        .map(([, item]) => structuredClone(item));
+                }
+                else if (event.type === 'response.failed' || event.type === 'response.incomplete') {
+                    output = [...__classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").keys()]
+                        // oxlint-disable-next-line unicorn/no-array-sort -- Sort fresh wire indexes; retain partial and completed items.
+                        .sort((left, right) => left - right)
+                        .map((index) => structuredClone(__classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_outputAtWireIndex).call(this, index)));
+                }
+                else {
+                    output = [];
+                }
+                response = { ...response, output };
+                if (event.type === 'response.completed' ||
+                    event.type === 'response.failed' ||
+                    event.type === 'response.incomplete') {
+                    addOutputText(response);
+                }
+            }
+            if (event.type === 'response.completed') {
+                __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_assertComplete).call(this, response);
+            }
+            return { ...fields, type: event.type, sequence_number: event.sequence_number, response };
+        }
+        return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_prepareOutputEvent).call(this, event);
+    }, _ResponseStream_prepareOutputEvent = function _ResponseStream_prepareOutputEvent(event) {
+        if (!__classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f") || !values_hasOwn(event, 'output_index') || !('output_index' in event)) {
+            return event;
+        }
+        const index = event.output_index;
+        if (!Number.isSafeInteger(index) || index < 0) {
+            throw new error_OpenAIError('Invalid response output index.');
+        }
+        let position;
+        if (event.type === 'response.output_item.added') {
+            if (event.item == null) {
+                return null;
+            }
+            if (__classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").has(index) || __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").has(index)) {
+                throw new error_OpenAIError(`Duplicate response output index ${index}.`);
+            }
+            position = __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f").output.length;
+        }
+        else {
+            const existing = __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").get(index);
+            if (existing === undefined) {
+                throw new error_OpenAIError(`missing output at index ${index}`);
+            }
+            position = existing;
+        }
+        return new Proxy(event, {
+            get(target, property) {
+                // oxlint-disable-next-line anti-slop/no-reflect-get -- Preserve the sanitized event fields and their receiver while translating only the dispatch index.
+                return property === 'output_index' ? position : Reflect.get(target, property, target);
+            },
+        });
+    }, _ResponseStream_outputAtWireIndex = function _ResponseStream_outputAtWireIndex(wireIndex) {
+        const position = __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").get(wireIndex);
+        return (__classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").get(wireIndex) ??
+            (position === undefined ? undefined : __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f")?.output[position]));
+    }, _ResponseStream_assertComplete = function _ResponseStream_assertComplete(response) {
+        if (__classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").size === 0 && __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").size === 0) {
+            return;
+        }
+        const finalItems = new Map((response.output ?? []).map((item) => [outputIdentity(item), item]));
+        for (const item of __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").values()) {
+            const replacement = finalItems.get(outputIdentity(item));
+            if (replacement) {
+                validateResponseOutputItemIdentity(item, replacement, 'response.completed');
+            }
+        }
+        for (const [wireIndex, identity] of __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f")) {
+            const replacement = finalItems.get(identity);
+            if (!replacement) {
+                throw new error_OpenAIError('Cannot complete response with unfinished output items.');
+            }
+            const previous = __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_outputAtWireIndex).call(this, wireIndex);
+            if (!previous) {
+                throw new error_OpenAIError('Cannot complete response with a missing output identity.');
+            }
+            validateResponseOutputItemIdentity(previous, replacement, 'response.completed');
+        }
+    }, _ResponseStream_recordOutput = function _ResponseStream_recordOutput(event, response, position) {
+        if (event.type === 'response.completed') {
+            __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, false, "f");
+            return;
+        }
+        if (response !== __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f")) {
+            const previous = new Map();
+            for (const [wireIndex, item] of __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f")) {
+                previous.set(outputIdentity(item), wireIndex);
+            }
+            for (const [wireIndex, identity] of __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f")) {
+                previous.set(identity, wireIndex);
+            }
+            const positions = new Map();
+            __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").clear();
+            for (const [newPosition, item] of response.output.entries()) {
+                const identity = outputIdentity(item);
+                const oldWireIndex = previous.get(identity);
+                const wireIndex = oldWireIndex ?? newPosition;
+                const done = __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").get(wireIndex);
+                const unfinished = __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").get(wireIndex);
+                if (positions.has(wireIndex) ||
+                    (done && outputIdentity(done) !== identity) ||
+                    (unfinished !== undefined && unfinished !== identity)) {
+                    throw new error_OpenAIError('Response snapshot has conflicting output positions.');
+                }
+                const previousItem = __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_outputAtWireIndex).call(this, wireIndex);
+                if (previousItem) {
+                    validateResponseOutputItemIdentity(previousItem, item, event.type);
+                }
+                positions.set(wireIndex, newPosition);
+                __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").set(identity, wireIndex);
+                if (done) {
+                    __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").set(wireIndex, structuredClone(item));
+                }
+                else {
+                    __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").set(wireIndex, identity);
+                }
+            }
+            __classPrivateFieldSet(this, _ResponseStream_outputPositions, positions, "f");
+            __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, !['response.failed', 'response.incomplete'].includes(event.type), "f");
+            if (['response.created', 'response.queued', 'response.in_progress'].includes(event.type)) {
+                __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_reorderInterimOutput).call(this, response);
+            }
+            return;
+        }
+        if (position === undefined) {
+            return;
+        }
+        if (event.type === 'response.output_item.added' && event.item != null) {
+            __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").set(event.output_index, position);
+            const identity = outputIdentity(event.item);
+            __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").set(event.output_index, identity);
+            __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").set(identity, event.output_index);
+            __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, true, "f");
+        }
+        else if (event.type === 'response.output_item.done') {
+            const item = response.output[position];
+            if (!item) {
+                throw new error_OpenAIError(`missing output at index ${event.output_index}`);
+            }
+            __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").set(event.output_index, structuredClone(item));
+            __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").delete(event.output_index);
+        }
+    }, _ResponseStream_reorderInterimOutput = function _ResponseStream_reorderInterimOutput(response) {
+        if (!__classPrivateFieldGet(this, _ResponseStream_interimOrderDirty, "f")) {
+            return;
+        }
+        const ordered = [...__classPrivateFieldGet(this, _ResponseStream_outputPositions, "f")];
+        // oxlint-disable-next-line unicorn/no-array-sort -- Sort the fresh map entries; the source supports ES2020.
+        ordered.sort(([left], [right]) => left - right);
+        if (ordered.some(([, oldPosition], newPosition) => oldPosition !== newPosition)) {
+            const derivedText = __classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f").canonicalSnapshot === response;
+            response.output = ordered.map(([, oldPosition]) => response.output[oldPosition]);
+            __classPrivateFieldSet(this, _ResponseStream_outputPositions, new Map(ordered.map(([wireIndex], newPosition) => [wireIndex, newPosition])), "f");
+            __classPrivateFieldSet(this, _ResponseStream_accumulatorContext, createResponseContext(), "f");
+            if (derivedText) {
+                ensureCanonicalOutputText(__classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f"), response);
+            }
+        }
+        __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, false, "f");
+    }, _ResponseStream_updateInterimResponse = function _ResponseStream_updateInterimResponse(incoming, snapshot) {
+        if (!Array.isArray(incoming.output)) {
+            return false;
+        }
+        const suppliedText = values_hasOwn(incoming, 'output_text') ? incoming.output_text : undefined;
+        if (incoming.output.length !== 0) {
+            // The temporary response validates only the supplied items. Its derived
+            // output_text is not the aggregate for the retained full response.
+            const validated = cloneValidatedResponse(createResponseContext(), incoming);
+            const replacements = [];
+            for (const item of validated.output) {
+                const wire = __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").get(outputIdentity(item));
+                const position = wire === undefined ? undefined : __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").get(wire);
+                if (wire === undefined || position === undefined) {
+                    return false;
+                }
+                replacements.push({ wire, position, item });
+            }
+            const updateText = suppliedText == null;
+            if (!updateText) {
+                // Explicit interim text replaces the full aggregate after any required
+                // reorder; deriving text from retained messages here would be discarded.
+                __classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f").canonicalSnapshot = undefined;
+            }
+            for (const { wire, position, item } of replacements) {
+                replaceResponseOutputItem(__classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f"), snapshot, position, item, updateText);
+                if (__classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").has(wire)) {
+                    __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").set(wire, structuredClone(item));
+                }
+            }
+            __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_reorderInterimOutput).call(this, snapshot);
+        }
+        const { output } = snapshot;
+        let outputText = suppliedText;
+        if (outputText == null) {
+            ensureCanonicalOutputText(__classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f"), snapshot);
+            outputText = snapshot.output_text;
+        }
+        else {
+            __classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f").canonicalSnapshot = undefined;
+        }
+        for (const key of Object.keys(snapshot)) {
+            if (!values_hasOwn(incoming, key)) {
+                Reflect.deleteProperty(snapshot, key);
+            }
+        }
+        Object.defineProperties(snapshot, Object.getOwnPropertyDescriptors({ ...incoming, output, output_text: outputText }));
+        return true;
     }, _ResponseStream_addEvent = function _ResponseStream_addEvent(event, starting_after) {
         if (this.ended) {
             return;
@@ -130312,54 +130695,90 @@ class ResponseStream extends EventStream {
             throw new error_APIError(undefined, error, event.message, undefined);
         }
         let dispatchEvent = event;
+        let outputPosition;
         const response = accumulateResponseWithContext(event, __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f"), __classPrivateFieldGet(this, _ResponseStream_accumulatorContext, "f"), true, (sanitizedEvent) => {
             dispatchEvent = sanitizedEvent;
+            const prepared = __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_prepareEvent).call(this, sanitizedEvent);
+            if (prepared) {
+                if (values_hasOwn(prepared, 'output_index') && 'output_index' in prepared) {
+                    outputPosition = prepared.output_index;
+                }
+                else if (values_hasOwn(prepared, 'response') && 'response' in prepared) {
+                    dispatchEvent = prepared;
+                    if ((prepared.type === 'response.created' ||
+                        prepared.type === 'response.queued' ||
+                        prepared.type === 'response.in_progress') &&
+                        __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f")) {
+                        if (__classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_updateInterimResponse).call(this, prepared.response, __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f"))) {
+                            return null;
+                        }
+                        const identities = new Set(prepared.response.output.map(outputIdentity));
+                        const retained = __classPrivateFieldGet(this, _ResponseStream_currentResponseSnapshot, "f").output.filter((item) => !identities.has(outputIdentity(item)));
+                        if (retained.length) {
+                            return {
+                                ...prepared,
+                                response: { ...prepared.response, output: [...prepared.response.output, ...retained] },
+                            };
+                        }
+                    }
+                }
+            }
+            return prepared;
         });
+        __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_recordOutput).call(this, dispatchEvent, response, outputPosition);
         __classPrivateFieldSet(this, _ResponseStream_currentResponseSnapshot, response, "f");
-        maybeEmit('event', event);
-        switch (dispatchEvent.type) {
+        if (dispatchEvent.type === 'response.output_item.added' && dispatchEvent.item == null) {
+            return;
+        }
+        const wireSnapshot = { ...dispatchEvent };
+        for (const key of Object.keys(nativeEventFields)) {
+            const descriptor = Object.getOwnPropertyDescriptor(dispatchEvent, key);
+            if (descriptor && !descriptor.enumerable) {
+                Object.defineProperty(wireSnapshot, key, {
+                    // oxlint-disable-next-line anti-slop/no-reflect-get -- Read accepted non-enumerable fields from the sanitized Proxy, never the original transport.
+                    value: Reflect.get(dispatchEvent, key, dispatchEvent),
+                    enumerable: true,
+                });
+            }
+        }
+        const eventSnapshot = structuredClone(wireSnapshot);
+        maybeEmit('event', eventSnapshot);
+        switch (wireSnapshot.type) {
             case 'response.output_text.delta': {
-                const output = response.output[dispatchEvent.output_index];
+                const output = response.output[outputPosition ?? wireSnapshot.output_index];
                 if (!output) {
-                    throw new error_OpenAIError(`missing output at index ${dispatchEvent.output_index}`);
+                    throw new error_OpenAIError(`missing output at index ${wireSnapshot.output_index}`);
                 }
                 if (output.type === 'message') {
-                    const content = output.content[dispatchEvent.content_index];
+                    const content = output.content[wireSnapshot.content_index];
                     if (!content) {
-                        throw new error_OpenAIError(`missing content at index ${dispatchEvent.content_index}`);
+                        throw new error_OpenAIError(`missing content at index ${wireSnapshot.content_index}`);
                     }
                     if (content.type !== 'output_text') {
                         throw new error_OpenAIError(`expected content to be 'output_text', got ${content.type}`);
                     }
                     maybeEmit('response.output_text.delta', {
-                        ...dispatchEvent,
-                        type: dispatchEvent.type,
-                        item_id: dispatchEvent.item_id,
-                        output_index: dispatchEvent.output_index,
-                        content_index: dispatchEvent.content_index,
+                        ...structuredClone(wireSnapshot),
                         snapshot: content.text,
                     });
                 }
                 break;
             }
             case 'response.function_call_arguments.delta': {
-                const output = response.output[dispatchEvent.output_index];
+                const output = response.output[outputPosition ?? wireSnapshot.output_index];
                 if (!output) {
-                    throw new error_OpenAIError(`missing output at index ${dispatchEvent.output_index}`);
+                    throw new error_OpenAIError(`missing output at index ${wireSnapshot.output_index}`);
                 }
                 if (output.type === 'function_call') {
                     maybeEmit('response.function_call_arguments.delta', {
-                        ...dispatchEvent,
-                        type: dispatchEvent.type,
-                        item_id: dispatchEvent.item_id,
-                        output_index: dispatchEvent.output_index,
+                        ...structuredClone(wireSnapshot),
                         snapshot: output.arguments,
                     });
                 }
                 break;
             }
             default: {
-                maybeEmit(dispatchEvent.type, event);
+                maybeEmit(wireSnapshot.type, eventSnapshot);
                 break;
             }
         }
@@ -130371,8 +130790,14 @@ class ResponseStream extends EventStream {
         if (!snapshot) {
             throw new error_OpenAIError(`request ended without sending any events`);
         }
+        __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_reorderInterimOutput).call(this, snapshot);
         __classPrivateFieldSet(this, _ResponseStream_currentResponseSnapshot, undefined, "f");
         __classPrivateFieldSet(this, _ResponseStream_accumulatorContext, createResponseContext(), "f");
+        __classPrivateFieldGet(this, _ResponseStream_outputPositions, "f").clear();
+        __classPrivateFieldGet(this, _ResponseStream_wireByIdentity, "f").clear();
+        __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, false, "f");
+        __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").clear();
+        __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").clear();
         const parsedResponse = finalizeResponse(snapshot, __classPrivateFieldGet(this, _ResponseStream_params, "f"));
         __classPrivateFieldSet(this, _ResponseStream_finalResponse, parsedResponse, "f");
         return parsedResponse;
@@ -130397,6 +130822,13 @@ class ResponseStream extends EventStream {
         }
         return response;
     }
+}
+function outputIdentity(item) {
+    return JSON.stringify([
+        item.type,
+        !hasRoutedOutputCallIdentity(item) && values_hasOwn(item, 'id') ? item.id : null,
+        values_hasOwn(item, 'call_id') && 'call_id' in item ? item.call_id : null,
+    ]);
 }
 function finalizeResponse(snapshot, params) {
     return maybeParseResponse(snapshot, params);
@@ -130631,7 +131063,7 @@ class responses_Responses extends resource_APIResource {
     delete(responseID, options) {
         return this._client.delete(utils_path_path `/responses/${responseID}`, responses_responses_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: '*/*' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -130751,7 +131183,7 @@ class content_Content extends resource_APIResource {
     retrieve(skillID, options) {
         return this._client.get(utils_path_path `/skills/${skillID}/content`, skills_content_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -130774,7 +131206,7 @@ class versions_content_Content extends resource_APIResource {
         const { skill_id } = params;
         return this._client.get(utils_path_path `/skills/${skill_id}/versions/${version}/content`, versions_content_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -131223,7 +131655,7 @@ class FileBatches extends resource_APIResource {
         return this._client.post(utils_path_path `/vector_stores/${vectorStoreID}/file_batches`, file_batches_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131234,7 +131666,7 @@ class FileBatches extends resource_APIResource {
         const { vector_store_id } = params;
         return this._client.get(utils_path_path `/vector_stores/${vector_store_id}/file_batches/${batchID}`, file_batches_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131246,7 +131678,7 @@ class FileBatches extends resource_APIResource {
         const { vector_store_id } = params;
         return this._client.post(utils_path_path `/vector_stores/${vector_store_id}/file_batches/${batchID}/cancel`, file_batches_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131265,7 +131697,7 @@ class FileBatches extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/vector_stores/${vector_store_id}/file_batches/${batchID}/files`, (CursorPage), file_batches_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131360,7 +131792,7 @@ class vector_stores_files_Files extends resource_APIResource {
         return this._client.post(utils_path_path `/vector_stores/${vectorStoreID}/files`, vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131371,7 +131803,7 @@ class vector_stores_files_Files extends resource_APIResource {
         const { vector_store_id } = params;
         return this._client.get(utils_path_path `/vector_stores/${vector_store_id}/files/${fileID}`, vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131383,7 +131815,7 @@ class vector_stores_files_Files extends resource_APIResource {
         return this._client.post(utils_path_path `/vector_stores/${vector_store_id}/files/${fileID}`, vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131397,7 +131829,7 @@ class vector_stores_files_Files extends resource_APIResource {
         return this._client.getAPIList(utils_path_path `/vector_stores/${vectorStoreID}/files`, (CursorPage), vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131411,7 +131843,7 @@ class vector_stores_files_Files extends resource_APIResource {
         const { vector_store_id } = params;
         return this._client.delete(utils_path_path `/vector_stores/${vector_store_id}/files/${fileID}`, vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131455,7 +131887,7 @@ class vector_stores_files_Files extends resource_APIResource {
         const { vector_store_id } = params;
         return this._client.getAPIList(utils_path_path `/vector_stores/${vector_store_id}/files/${fileID}/content`, (pagination_Page), vector_stores_files_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131539,7 +131971,7 @@ class VectorStores extends resource_APIResource {
         return this._client.post('/vector_stores', vector_stores_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131549,7 +131981,7 @@ class VectorStores extends resource_APIResource {
     retrieve(vectorStoreID, options) {
         return this._client.get(utils_path_path `/vector_stores/${vectorStoreID}`, vector_stores_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131560,7 +131992,7 @@ class VectorStores extends resource_APIResource {
         return this._client.post(utils_path_path `/vector_stores/${vectorStoreID}`, vector_stores_resolveResourceRequestOptions(options, (options) => ({
             body,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131574,7 +132006,7 @@ class VectorStores extends resource_APIResource {
         return this._client.getAPIList('/vector_stores', (CursorPage), vector_stores_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131584,7 +132016,7 @@ class VectorStores extends resource_APIResource {
     delete(vectorStoreID, options) {
         return this._client.delete(utils_path_path `/vector_stores/${vectorStoreID}`, vector_stores_resolveResourceRequestOptions(options, (options) => ({
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131597,7 +132029,7 @@ class VectorStores extends resource_APIResource {
             body,
             method: 'post',
             ...options,
-            headers: headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'assistants=v2' }, options?.headers]),
             __security: { bearerAuth: true },
         })));
     }
@@ -131726,7 +132158,7 @@ class Videos extends resource_APIResource {
         return this._client.get(utils_path_path `/videos/${videoID}/content`, videos_resolveResourceRequestOptions(options, (options) => ({
             query,
             ...options,
-            headers: headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
+            headers: internal_headers_buildHeaders([{ Accept: 'application/binary' }, options?.headers]),
             __security: { bearerAuth: true },
             __binaryResponse: true,
         })));
@@ -132113,7 +132545,7 @@ class webhooks_Webhooks extends resource_APIResource {
             throw new Error('Webhook signature verification is only supported when the `crypto` global is defined');
         }
         __classPrivateFieldGet(this, _Webhooks_instances, "m", _Webhooks_validateSecret).call(this, secret);
-        const headersObj = headers_buildHeaders([headers]).values;
+        const headersObj = internal_headers_buildHeaders([headers]).values;
         const signatureHeader = __classPrivateFieldGet(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, 'webhook-signature');
         const timestamp = __classPrivateFieldGet(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, 'webhook-timestamp');
         const webhookId = __classPrivateFieldGet(this, _Webhooks_instances, "m", _Webhooks_getRequiredHeader).call(this, headersObj, 'webhook-id');
@@ -133349,7 +133781,7 @@ class OpenAI {
                     parsed[line.substring(0, colon).trim()] = line.substring(colon + 1).trim();
                 }
             }
-            options.defaultHeaders = headers_buildHeaders([parsed, options.defaultHeaders]);
+            options.defaultHeaders = internal_headers_buildHeaders([parsed, options.defaultHeaders]);
         }
         this._options = options;
         this._provider = providerRuntime;
@@ -133441,7 +133873,7 @@ class OpenAI {
         if (context?.baseHeaders) {
             return mergeWebSocketAuthHeaders({ headers: context.baseHeaders }, authHeaders, context.removedHeaders ?? new Set()).headers;
         }
-        const headers = headers_buildHeaders([
+        const headers = internal_headers_buildHeaders([
             {
                 'User-Agent': this.getUserAgent(),
                 'OpenAI-Organization': this.organization,
@@ -133482,7 +133914,7 @@ class OpenAI {
             this.adminAPIKey !== null) {
             return await this.adminAPIKeyAuth(opts);
         }
-        return headers_buildHeaders([
+        return internal_headers_buildHeaders([
             schemes.bearerAuth ? await this.bearerAuth(opts) : null,
             schemes.adminAPIKeyAuth ? await this.adminAPIKeyAuth(opts) : null,
         ]);
@@ -133510,19 +133942,19 @@ class OpenAI {
                     ...authentication.tenantSnapshot(),
                 })
                 : await authentication.getToken();
-            return headers_buildHeaders([{ Authorization: `Bearer ${token}` }]);
+            return internal_headers_buildHeaders([{ Authorization: `Bearer ${token}` }]);
         }
         const { apiKey } = await resolveRealtimeAPIKey(this);
         if (apiKey == null) {
             return undefined;
         }
-        return headers_buildHeaders([{ Authorization: `Bearer ${apiKey}` }]);
+        return internal_headers_buildHeaders([{ Authorization: `Bearer ${apiKey}` }]);
     }
     async adminAPIKeyAuth(opts) {
         if (this.adminAPIKey == null) {
             return undefined;
         }
-        return headers_buildHeaders([{ Authorization: `Bearer ${this.adminAPIKey}` }]);
+        return internal_headers_buildHeaders([{ Authorization: `Bearer ${this.adminAPIKey}` }]);
     }
     stringifyQuery(query) {
         return query_stringifyQuery(query);
@@ -133531,7 +133963,7 @@ class OpenAI {
         return `${this.constructor.name}/JS ${openai_version_VERSION}`;
     }
     defaultIdempotencyKey() {
-        return `stainless-node-retry-${uuid_uuid4()}`;
+        return `stainless-node-retry-${utils_uuid_uuid4()}`;
     }
     makeStatusError(status, error, message, headers) {
         const normalizedError = error && typeof error === 'object' && error.error == null ? { error } : error;
@@ -133879,13 +134311,13 @@ class OpenAI {
                 const security = options.__security ?? { bearerAuth: true };
                 const authenticationHeaders = await this.authHeaders(options, security);
                 const suppliedHeaders = x509Authentication.headerSnapshots();
-                const supplied = headers_buildHeaders([suppliedHeaders.defaultHeaders, suppliedHeaders.requestHeaders]);
+                const supplied = internal_headers_buildHeaders([suppliedHeaders.defaultHeaders, suppliedHeaders.requestHeaders]);
                 for (const [name, value] of authenticationHeaders?.values ?? []) {
                     if (!supplied.nulls.has(name) && !built.req.headers.has(name)) {
                         built.req.headers.set(name, value);
                     }
                 }
-                this.validateHeaders(headers_buildHeaders([supplied, built.req.headers]), security);
+                this.validateHeaders(internal_headers_buildHeaders([supplied, built.req.headers]), security);
             }
         }
         catch (error) {
@@ -134364,7 +134796,7 @@ class OpenAI {
         }
         const helperMethod = options.__metadata?.['helperMethod'];
         const timeout = x509Headers ? x509Timeout : options.timeout;
-        const headers = headers_buildHeaders([
+        const headers = internal_headers_buildHeaders([
             idempotencyHeaders,
             {
                 Accept: 'application/json',
@@ -134407,11 +134839,11 @@ class OpenAI {
             // content-type for those, and only elide it for operations with no body at
             // all (e.g. GET/DELETE).
             if (body === undefined && 'body' in options) {
-                return { ...__classPrivateFieldGet(this, _OpenAI_encoder, "f").call(this, { body, headers: headers_buildHeaders([rawHeaders]) }), isStreamingBody: false };
+                return { ...__classPrivateFieldGet(this, _OpenAI_encoder, "f").call(this, { body, headers: internal_headers_buildHeaders([rawHeaders]) }), isStreamingBody: false };
             }
             return { bodyHeaders: undefined, body: undefined, isStreamingBody: false };
         }
-        const headers = headers_buildHeaders([rawHeaders]);
+        const headers = internal_headers_buildHeaders([rawHeaders]);
         const isReadableStream = typeof globalThis.ReadableStream !== 'undefined' &&
             body instanceof globalThis.ReadableStream;
         const isRetryableBody = !isReadableStream &&
@@ -134854,6 +135286,1236 @@ function isUndiciDispatcherVersionMismatchError(error) {
     return false;
 }
 //# sourceMappingURL=client.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/runner-diagnostics.mjs
+const failureReasons = {
+    run: 'invalid_output',
+    request: 'api_failed',
+    arguments: 'invalid_input',
+    approval: 'policy_failed',
+    action: 'driver_failed',
+    output: 'invalid_output',
+    selection: 'invalid_output',
+    verification: 'invalid_output',
+};
+function diagnosticFailure(stage, signal) {
+    return signal?.aborted ? 'cancelled' : failureReasons[stage];
+}
+async function settleDiagnostic(result) {
+    try {
+        await result;
+    }
+    catch {
+        // Observer failures must not change the execution they describe.
+    }
+}
+function runner_diagnostics_reportDiagnostic(observer, event, started, nativeUsage) {
+    if (!observer) {
+        return;
+    }
+    try {
+        let usage = null;
+        if (nativeUsage) {
+            const { input_tokens, output_tokens, total_tokens } = nativeUsage;
+            if (Number.isSafeInteger(input_tokens) &&
+                input_tokens >= 0 &&
+                Number.isSafeInteger(output_tokens) &&
+                output_tokens >= 0 &&
+                Number.isSafeInteger(total_tokens) &&
+                total_tokens >= 0) {
+                usage = { input_tokens, output_tokens, total_tokens };
+            }
+        }
+        const result = observer({
+            ...event,
+            call_id: event.call_id ?? null,
+            member: event.member ?? null,
+            duration_ms: Math.max(0, performance.now() - started),
+            usage,
+        });
+        // Diagnostics never wait for a sink, and rejected observers cannot change dispatch.
+        void settleDiagnostic(result);
+    }
+    catch {
+        // Even a broken usage field or observer is outside execution policy.
+    }
+}
+//# sourceMappingURL=runner-diagnostics.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/runner-lifecycle.mjs
+
+
+
+function runner_lifecycle_overlayRequestOptions(original, changes) {
+    if (!original) {
+        return changes;
+    }
+    // Keep untouched caller fields live while dispatch wrappers own their local writes and deletions.
+    // SAFETY: The extensible target keeps the original prototype while traps expose current own fields.
+    const shadow = Object.create(Object.getPrototypeOf(original));
+    const deleted = new Set();
+    return new Proxy(shadow, {
+        ownKeys(target) {
+            if (!Reflect.isExtensible(target)) {
+                return Reflect.ownKeys(target);
+            }
+            const virtual = [...Reflect.ownKeys(original), ...Reflect.ownKeys(changes)].filter((key) => !deleted.has(key));
+            return [...new Set([...virtual, ...Reflect.ownKeys(target)])];
+        },
+        getOwnPropertyDescriptor(target, key) {
+            const local = Object.getOwnPropertyDescriptor(target, key);
+            if (local || deleted.has(key) || !Reflect.isExtensible(target)) {
+                return local;
+            }
+            const descriptor = Object.getOwnPropertyDescriptor(hasOwn(changes, key) ? changes : original, key);
+            return descriptor ? { ...descriptor, configurable: true } : undefined;
+        },
+        get(target, key, receiver) {
+            if (hasOwn(target, key)) {
+                // oxlint-disable-next-line anti-slop/no-reflect-get -- Wrapper-owned getters must see the complete request view.
+                return Reflect.get(target, key, receiver);
+            }
+            if (deleted.has(key) || !Reflect.isExtensible(target)) {
+                // oxlint-disable-next-line anti-slop/no-reflect-get -- A removed own field can still expose an inherited native getter.
+                return Reflect.get(target, key, original);
+            }
+            // oxlint-disable-next-line anti-slop/no-reflect-get -- Keep native getter receivers and defer their reads until native create.
+            return hasOwn(changes, key) ? Reflect.get(changes, key, changes) : Reflect.get(original, key, original);
+        },
+        set(target, key, value, receiver) {
+            if (hasOwn(target, key)) {
+                return Reflect.set(target, key, value, receiver);
+            }
+            return Reflect.defineProperty(target, key, {
+                value,
+                writable: true,
+                enumerable: true,
+                configurable: true,
+            });
+        },
+        deleteProperty(target, key) {
+            if (!Reflect.deleteProperty(target, key)) {
+                return false;
+            }
+            deleted.add(key);
+            return true;
+        },
+        has(target, key) {
+            return (Reflect.has(target, key) ||
+                (Reflect.isExtensible(target) &&
+                    !deleted.has(key) &&
+                    (hasOwn(changes, key) || Reflect.has(original, key))));
+        },
+        preventExtensions(target) {
+            if (!Reflect.isExtensible(target)) {
+                return true;
+            }
+            const keys = new Set([...Reflect.ownKeys(original), ...Reflect.ownKeys(changes)]);
+            for (const key of keys) {
+                if (deleted.has(key) || hasOwn(target, key)) {
+                    continue;
+                }
+                const source = hasOwn(changes, key) ? changes : original;
+                const descriptor = Object.getOwnPropertyDescriptor(source, key);
+                if (!descriptor) {
+                    continue;
+                }
+                if ('value' in descriptor) {
+                    Object.defineProperty(target, key, { ...descriptor, configurable: true });
+                }
+                else {
+                    const getter = descriptor.get;
+                    let replaced = false;
+                    let replacement;
+                    const bound = { ...descriptor, configurable: true };
+                    if (getter) {
+                        bound.get = () => (replaced ? replacement : getter.call(source));
+                    }
+                    // Wrapper writes remain local even when the source has an accessor setter.
+                    if (descriptor.set) {
+                        bound.set = (value) => {
+                            replaced = true;
+                            replacement = value;
+                        };
+                    }
+                    Object.defineProperty(target, key, bound);
+                }
+            }
+            return Reflect.preventExtensions(target);
+        },
+    });
+}
+/** One active owner per helper. Closing admission never waits on caller callbacks. */
+class runner_lifecycle_RunnerLifecycle {
+    constructor() {
+        this.state = 'open';
+    }
+    enter() {
+        if (this.state !== 'open') {
+            throw new TypeError(this.state === 'busy' ? 'Helper is busy.' : 'Helper is closed.');
+        }
+        this.state = 'busy';
+    }
+    leave() {
+        this.state = this.state === 'draining' ? 'closed' : 'open';
+    }
+    close() {
+        this.state = this.state === 'busy' || this.state === 'draining' ? 'draining' : 'closed';
+        return { status: this.state };
+    }
+}
+/** Recognize local Object.prototype and foreign bases with intact native constructor metadata. */
+// oxlint-disable-next-line anti-slop/no-object-parameters -- This boundary inspects arbitrary prototype owners before reading configured fields.
+function runner_lifecycle_isObjectPrototype(value) {
+    if (value === Object.prototype) {
+        return true;
+    }
+    if (Object.getPrototypeOf(value) !== null) {
+        return false;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, 'constructor');
+    if (!descriptor || !hasOwn(descriptor, 'value')) {
+        return false;
+    }
+    const constructor = descriptor.value;
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- A prototype descriptor is untrusted until its constructor is callable and matches the native Object contract.
+    if (typeof constructor !== 'function') {
+        return false;
+    }
+    const prototype = Object.getOwnPropertyDescriptor(constructor, 'prototype');
+    return (prototype !== undefined &&
+        hasOwn(prototype, 'value') &&
+        prototype.value === value &&
+        Function.prototype.toString.call(constructor) === Function.prototype.toString.call(Object));
+}
+/** Read configured fields before recognized native base prototypes; reuse captured own getters. */
+function runner_lifecycle_configuredOption(options, key, copied) {
+    let owner = options;
+    while (owner !== null && !runner_lifecycle_isObjectPrototype(owner)) {
+        const descriptor = Object.getOwnPropertyDescriptor(owner, key);
+        if (descriptor) {
+            return owner === options && descriptor.enumerable && copied ? copied[key] : options[key];
+        }
+        // SAFETY: Object.getPrototypeOf returns the object's prototype or null.
+        owner = Object.getPrototypeOf(owner);
+    }
+    return undefined;
+}
+function runner_lifecycle_continuationRequestOptions(client, options, signal) {
+    const headers = buildHeaders([
+        options && Object.getOwnPropertyDescriptor(options, 'headers')?.enumerable ? options.headers : undefined,
+    ]);
+    const effectiveHeaders = buildHeaders([client['_options'].defaultHeaders, headers]);
+    const idempotencyKey = options && Object.getOwnPropertyDescriptor(options, 'idempotencyKey')?.enumerable
+        ? options.idempotencyKey
+        : undefined;
+    if (!idempotencyKey && !effectiveHeaders.values.has('idempotency-key')) {
+        if (options === undefined && signal === undefined) {
+            return;
+        }
+        const captured = { signal };
+        // Preserve the fields that native create would omit when spreading the caller's options.
+        for (const [key, value] of [
+            ['headers', headers],
+            ['idempotencyKey', idempotencyKey],
+        ]) {
+            Object.defineProperty(captured, key, {
+                value,
+                writable: true,
+                configurable: true,
+                enumerable: options ? Boolean(Object.getOwnPropertyDescriptor(options, key)?.enumerable) : false,
+            });
+        }
+        return runner_lifecycle_overlayRequestOptions(options, captured);
+    }
+    const key = `stainless-node-retry-${uuid4()}`;
+    return runner_lifecycle_overlayRequestOptions(options, {
+        signal,
+        idempotencyKey: key,
+        headers: buildHeaders([
+            headers,
+            ...(effectiveHeaders.values.has('idempotency-key') ? [{ 'idempotency-key': key }] : []),
+        ]),
+    });
+}
+// Walk only captured or parsed helper-owned replay and projected continuation data.
+// oxlint-disable-next-line anti-slop/no-object-parameters -- Native JSON here contains heterogeneous helper-owned records and arrays.
+function runner_lifecycle_protectRunnerJSON(value) {
+    const pending = [value];
+    const seen = new WeakSet();
+    for (const record of pending) {
+        const prototype = Object.getPrototypeOf(record);
+        if (seen.has(record) ||
+            (!Array.isArray(record) && prototype !== Object.prototype && prototype !== null)) {
+            continue;
+        }
+        // Keep built-in JSON conversion (for example Date) and let the native encoder reject any cycle.
+        seen.add(record);
+        if (!hasOwn(record, 'toJSON')) {
+            Object.defineProperty(record, 'toJSON', { value: undefined, writable: true, configurable: true });
+        }
+        const entries = Object.values(record);
+        for (const entry of entries) {
+            // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Traverse only object-valued native JSON fields; the encoder validates the remaining values.
+            if (entry !== null && typeof entry === 'object') {
+                pending.push(entry);
+            }
+        }
+    }
+}
+//# sourceMappingURL=runner-lifecycle.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/native-response-message.mjs
+// oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof -- This validates captured provider data at the native replay boundary.
+
+// Native replay values have already been cloned from provider output.
+// oxlint-disable-next-line anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type -- The existing variant checks immediately validate this one captured, untrusted field.
+function emitted(value, key) {
+    return hasOwn(value, key) ? value[key] : undefined;
+}
+// Inspect every captured slot; sparse arrays serialize holes as null.
+function allEntries(value, accepts) {
+    if (!Array.isArray(value)) {
+        return false;
+    }
+    for (let index = 0; index < value.length; index += 1) {
+        const entry = Object.getOwnPropertyDescriptor(value, index);
+        if (!entry?.enumerable || !('value' in entry) || !accepts(entry.value)) {
+            return false;
+        }
+    }
+    return true;
+}
+function annotation(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    switch (emitted(value, 'type')) {
+        case 'file_citation': {
+            return (typeof emitted(value, 'file_id') === 'string' &&
+                typeof emitted(value, 'filename') === 'string' &&
+                Number.isInteger(emitted(value, 'index')));
+        }
+        case 'url_citation': {
+            return (typeof emitted(value, 'url') === 'string' &&
+                typeof emitted(value, 'title') === 'string' &&
+                Number.isInteger(emitted(value, 'start_index')) &&
+                Number.isInteger(emitted(value, 'end_index')));
+        }
+        case 'container_file_citation': {
+            return (typeof emitted(value, 'container_id') === 'string' &&
+                typeof emitted(value, 'file_id') === 'string' &&
+                typeof emitted(value, 'filename') === 'string' &&
+                Number.isInteger(emitted(value, 'start_index')) &&
+                Number.isInteger(emitted(value, 'end_index')));
+        }
+        case 'file_path': {
+            return typeof emitted(value, 'file_id') === 'string' && Number.isInteger(emitted(value, 'index'));
+        }
+        default: {
+            return false;
+        }
+    }
+}
+function topLogprob(value) {
+    return (isObj(value) &&
+        typeof emitted(value, 'token') === 'string' &&
+        typeof emitted(value, 'logprob') === 'number' &&
+        Number.isFinite(emitted(value, 'logprob')) &&
+        allEntries(emitted(value, 'bytes'), Number.isInteger));
+}
+function logprob(value) {
+    return isObj(value) && topLogprob(value) && allEntries(emitted(value, 'top_logprobs'), topLogprob);
+}
+function contentPart(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    if (emitted(value, 'type') === 'refusal') {
+        return typeof emitted(value, 'refusal') === 'string';
+    }
+    const logprobs = emitted(value, 'logprobs');
+    return (emitted(value, 'type') === 'output_text' &&
+        typeof emitted(value, 'text') === 'string' &&
+        allEntries(emitted(value, 'annotations'), annotation) &&
+        // Native Python output may serialize an absent optional logprobs list as null.
+        (logprobs === undefined || logprobs === null || allEntries(logprobs, logprob)));
+}
+function inputCacheBreakpoint(value) {
+    return value === undefined || (isObj(value) && emitted(value, 'mode') === 'explicit');
+}
+// Validate native replay fields without discarding provider extension fields.
+// Runners impose any stronger completion rule at their own execution boundary.
+function native_response_message_isNativeResponseMessage(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    const status = emitted(value, 'status');
+    const phase = emitted(value, 'phase');
+    return (emitted(value, 'type') === 'message' &&
+        typeof emitted(value, 'id') === 'string' &&
+        emitted(value, 'role') === 'assistant' &&
+        (status === 'completed' || status === 'incomplete' || status === 'in_progress') &&
+        (phase === undefined || phase === null || phase === 'commentary' || phase === 'final_answer') &&
+        allEntries(emitted(value, 'content'), contentPart));
+}
+// Message input also includes earlier assistant output, but assistant easy inputs remain valid.
+function isNativeResponseMessageInput(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    const role = emitted(value, 'role');
+    const content = emitted(value, 'content');
+    if (role !== 'user' && role !== 'assistant' && role !== 'system' && role !== 'developer') {
+        return false;
+    }
+    const phase = emitted(value, 'phase');
+    if ((typeof content === 'string' || role === 'assistant') &&
+        phase !== undefined &&
+        phase !== null &&
+        phase !== 'commentary' &&
+        phase !== 'final_answer') {
+        return false;
+    }
+    if (typeof content === 'string') {
+        return true;
+    }
+    if (Array.isArray(content) &&
+        content.some((part) => isObj(part) && (emitted(part, 'type') === 'output_text' || emitted(part, 'type') === 'refusal'))) {
+        return native_response_message_isNativeResponseMessage(value);
+    }
+    return allEntries(content, (part) => {
+        if (!isObj(part)) {
+            return false;
+        }
+        switch (emitted(part, 'type')) {
+            case 'input_text': {
+                return (typeof emitted(part, 'text') === 'string' &&
+                    inputCacheBreakpoint(emitted(part, 'prompt_cache_breakpoint')));
+            }
+            case 'input_image': {
+                const detail = emitted(part, 'detail');
+                return ((detail === 'auto' || detail === 'low' || detail === 'high' || detail === 'original') &&
+                    ['image_url', 'file_id'].every((name) => {
+                        const field = emitted(part, name);
+                        return field === undefined || field === null || typeof field === 'string';
+                    }) &&
+                    inputCacheBreakpoint(emitted(part, 'prompt_cache_breakpoint')));
+            }
+            case 'input_file': {
+                const detail = emitted(part, 'detail');
+                const fileId = emitted(part, 'file_id');
+                return ((detail === undefined || detail === 'auto' || detail === 'low' || detail === 'high') &&
+                    (fileId === undefined || fileId === null || typeof fileId === 'string') &&
+                    ['file_data', 'file_url', 'filename'].every((name) => {
+                        const field = emitted(part, name);
+                        return field === undefined || typeof field === 'string';
+                    }) &&
+                    inputCacheBreakpoint(emitted(part, 'prompt_cache_breakpoint')));
+            }
+            default: {
+                return false;
+            }
+        }
+    });
+}
+// Accept only native reasoning fields that can be replayed as Responses input.
+function native_response_message_isNativeResponseReasoning(value) {
+    if (!isObj(value)) {
+        return false;
+    }
+    const status = emitted(value, 'status');
+    const content = emitted(value, 'content');
+    const encrypted_content = emitted(value, 'encrypted_content');
+    return (emitted(value, 'type') === 'reasoning' &&
+        typeof emitted(value, 'id') === 'string' &&
+        allEntries(emitted(value, 'summary'), (part) => isObj(part) && emitted(part, 'type') === 'summary_text' && typeof emitted(part, 'text') === 'string') &&
+        (content === undefined ||
+            allEntries(content, (part) => isObj(part) &&
+                emitted(part, 'type') === 'reasoning_text' &&
+                typeof emitted(part, 'text') === 'string')) &&
+        (encrypted_content === undefined ||
+            encrypted_content === null ||
+            typeof encrypted_content === 'string') &&
+        (status === undefined || status === 'completed' || status === 'incomplete' || status === 'in_progress'));
+}
+//# sourceMappingURL=native-response-message.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/helpers/computer.mjs
+
+
+
+
+
+
+// Modern actions calls may omit the checklist. Legacy single actions still require it.
+function validateComputerSafetyChecks(call) {
+    const checks = configuredOption(call, 'pending_safety_checks');
+    if (!configuredOption(call, 'actions') || checks !== undefined) {
+        if (!Array.isArray(checks)) {
+            throw new OpenAIError('ComputerToolset requires valid pending safety checks before execution.');
+        }
+        // oxlint-disable-next-line typescript/prefer-for-of -- Validate each JSON slot, including holes that must become invalid nulls.
+        for (let index = 0; index < checks.length; index += 1) {
+            const check = hasOwn(checks, index) ? checks[index] : undefined;
+            const code = check ? configuredOption(check, 'code') : undefined;
+            const message = check ? configuredOption(check, 'message') : undefined;
+            if (!check ||
+                !hasOwn(check, 'id') ||
+                typeof check.id !== 'string' ||
+                (code !== undefined && code !== null && typeof code !== 'string') ||
+                (message !== undefined && message !== null && typeof message !== 'string')) {
+                throw new OpenAIError('ComputerToolset requires valid pending safety checks before execution.');
+            }
+        }
+    }
+}
+function validComputerPoint(point) {
+    return (isObj(point) &&
+        hasOwn(point, 'x') &&
+        hasOwn(point, 'y') &&
+        Number.isInteger(point.x) &&
+        Number.isInteger(point.y));
+}
+function isDenseArray(values) {
+    if (!Array.isArray(values)) {
+        return false;
+    }
+    // oxlint-disable-next-line typescript/prefer-for-of -- Iteration alone cannot distinguish an inherited entry from an owned slot.
+    for (let index = 0; index < values.length; index += 1) {
+        if (!hasOwn(values, index)) {
+            return false;
+        }
+    }
+    return true;
+}
+function validComputerKeys(keys) {
+    return isDenseArray(keys) && keys.every((key) => typeof key === 'string');
+}
+function validComputerAction(action) {
+    if (!action || !hasOwn(action, 'type')) {
+        return false;
+    }
+    const keys = 'keys' in action ? configuredOption(action, 'keys') : undefined;
+    if (keys !== null && keys !== undefined && !validComputerKeys(keys)) {
+        return false;
+    }
+    switch (action.type) {
+        case 'click': {
+            const button = configuredOption(action, 'button');
+            return (validComputerPoint(action) &&
+                ['left', 'right', 'wheel', 'back', 'forward'].some((value) => value === button));
+        }
+        case 'double_click':
+        case 'move': {
+            return validComputerPoint(action);
+        }
+        case 'scroll': {
+            return (validComputerPoint(action) &&
+                Number.isInteger(configuredOption(action, 'scroll_x')) &&
+                Number.isInteger(configuredOption(action, 'scroll_y')));
+        }
+        case 'drag': {
+            const path = configuredOption(action, 'path');
+            return isDenseArray(path) && path.every(validComputerPoint);
+        }
+        case 'keypress': {
+            return validComputerKeys(configuredOption(action, 'keys'));
+        }
+        case 'type': {
+            return typeof configuredOption(action, 'text') === 'string';
+        }
+        case 'screenshot':
+        case 'wait': {
+            return true;
+        }
+        default: {
+            return false;
+        }
+    }
+}
+function computerActions(call) {
+    const singleAction = configuredOption(call, 'action');
+    const batch = configuredOption(call, 'actions');
+    if (!hasOwn(call, 'type') ||
+        !hasOwn(call, 'status') ||
+        !hasOwn(call, 'id') ||
+        !hasOwn(call, 'call_id') ||
+        call.type !== 'computer_call' ||
+        call.status !== 'completed' ||
+        typeof call.id !== 'string' ||
+        typeof call.call_id !== 'string' ||
+        singleAction === null ||
+        batch === null ||
+        (singleAction !== undefined) === (batch !== undefined)) {
+        throw new OpenAIError('ComputerToolset requires a completed call with exactly one of action or actions.');
+    }
+    validateComputerSafetyChecks(call);
+    // SAFETY: The guard above established exactly one of action/actions is present.
+    const actions = batch ?? [singleAction];
+    if (!Array.isArray(actions) || actions.length === 0) {
+        throw new OpenAIError('ComputerToolset requires at least one computer action.');
+    }
+    if (!isDenseArray(actions)) {
+        throw new OpenAIError('ComputerToolset received an invalid computer action.');
+    }
+    for (const action of actions) {
+        if (Array.isArray(action) || !validComputerAction(action)) {
+            throw new OpenAIError('ComputerToolset received an invalid computer action.');
+        }
+    }
+    return actions;
+}
+function snapshotComputerPolicy(options) {
+    return {
+        signal: configuredOption(options, 'signal'),
+        approveSafetyChecks: configuredOption(options, 'approveSafetyChecks')?.bind(options),
+        beforeAction: configuredOption(options, 'beforeAction')?.bind(options),
+        onDiagnostic: configuredOption(options, 'onDiagnostic')?.bind(options),
+    };
+}
+function computerRunTools(params, maxSteps) {
+    if (!Number.isSafeInteger(maxSteps) || maxSteps < 1) {
+        throw new TypeError('ComputerToolset maxSteps must be a positive safe integer.');
+    }
+    const suppliedTools = configuredOption(params, 'tools');
+    const tools = suppliedTools === undefined ? [{ type: 'computer' }] : suppliedTools;
+    const conversation = configuredOption(params, 'conversation');
+    const previousResponse = configuredOption(params, 'previous_response_id');
+    if (configuredOption(params, 'stream') ||
+        configuredOption(params, 'background') ||
+        (conversation !== undefined && conversation !== null) ||
+        (previousResponse !== undefined && previousResponse !== null) ||
+        !Array.isArray(tools) ||
+        tools.length !== 1 ||
+        tools.some((tool) => {
+            const type = tool && configuredOption(tool, 'type');
+            return type !== 'computer' && type !== 'computer_use_preview';
+        })) {
+        throw new TypeError('ComputerToolset.run requires non-streaming, foreground, one computer tool and explicit input history.');
+    }
+    return tools;
+}
+function releaseForcedComputerChoice(choice) {
+    if (choice === 'required' ||
+        (typeof choice === 'object' &&
+            hasOwn(choice, 'type') &&
+            ['computer', 'computer_use_preview', 'computer_use'].includes(choice.type))) {
+        return 'auto';
+    }
+    if (typeof choice === 'object' &&
+        hasOwn(choice, 'type') &&
+        choice.type === 'allowed_tools' &&
+        hasOwn(choice, 'mode') &&
+        choice.mode === 'required') {
+        return { ...choice, mode: 'auto' };
+    }
+    return choice;
+}
+function validateComputerChecklistOwner(call) {
+    // Match configured options' owner boundary without invoking a checklist getter.
+    let owner = call;
+    while (owner !== null && !isObjectPrototype(owner)) {
+        const descriptor = Object.getOwnPropertyDescriptor(owner, 'pending_safety_checks');
+        if (descriptor) {
+            if (owner !== call || !descriptor.enumerable || !('value' in descriptor)) {
+                throw new OpenAIError('ComputerToolset requires own enumerable data for safety checks.');
+            }
+            break;
+        }
+        // SAFETY: Object.getPrototypeOf returns the object's prototype or null.
+        owner = Object.getPrototypeOf(owner);
+    }
+}
+function snapshotComputerCall(call) {
+    if (Array.isArray(call)) {
+        throw new OpenAIError('ComputerToolset requires a call object.');
+    }
+    validateComputerChecklistOwner(call);
+    const snapshot = structuredClone(call);
+    for (const action of computerActions(snapshot)) {
+        if (action.type === 'double_click' && configuredOption(action, 'keys') === undefined) {
+            action.keys = null;
+        }
+    }
+    return snapshot;
+}
+function actionApprovalCall(call) {
+    const checks = configuredOption(call, 'pending_safety_checks') ?? [];
+    const actions = configuredOption(call, 'actions');
+    if (!Array.isArray(actions)) {
+        const view = structuredClone({ ...call, pending_safety_checks: checks });
+        protectRunnerJSON(view);
+        return view;
+    }
+    const sources = { actions, pending_safety_checks: checks };
+    const view = structuredClone({
+        ...call,
+        actions: [],
+        pending_safety_checks: [],
+    });
+    // Protect the base before installing accessors so unused batch views stay lazy.
+    protectRunnerJSON(view);
+    for (const key of ['actions', 'pending_safety_checks']) {
+        const source = sources[key];
+        let materialized = false;
+        let value;
+        const save = (replacement) => {
+            value = replacement;
+            materialized = true;
+            if (Object.getOwnPropertyDescriptor(view, key)?.configurable) {
+                Object.defineProperty(view, key, {
+                    value,
+                    writable: true,
+                    enumerable: true,
+                    configurable: true,
+                });
+            }
+            return value;
+        };
+        Object.defineProperty(view, key, {
+            configurable: true,
+            enumerable: true,
+            get() {
+                if (materialized) {
+                    return value;
+                }
+                const captured = structuredClone(source);
+                protectRunnerJSON(captured);
+                return save(captured);
+            },
+            set(replacement) {
+                if (Object.isFrozen(view)) {
+                    throw new TypeError('Cannot assign to frozen computer approval call.');
+                }
+                save(replacement);
+            },
+        });
+    }
+    return view;
+}
+// oxlint-disable-next-line complexity -- Validate every supported native output before any computer effect.
+function computerCalls(response, earlierIdentities, earlierCallIds) {
+    if (configuredOption(response, 'status') !== 'completed') {
+        throw new OpenAIError('ComputerToolset.run received a response that is not completed.');
+    }
+    // Preflight the entire response before any effects, even when unsupported items follow a valid call.
+    const calls = [];
+    const output = [];
+    const source = configuredOption(response, 'output');
+    if (!Array.isArray(source)) {
+        throw new OpenAIError('ComputerToolset.run received an invalid output array.');
+    }
+    const { length } = source;
+    if (!Number.isSafeInteger(length) || length < 0) {
+        throw new OpenAIError('ComputerToolset.run received an invalid output array.');
+    }
+    let hasFinalMessage = false;
+    const identities = new Set();
+    const callIds = new Set();
+    for (let index = 0; index < length; index += 1) {
+        const raw = hasOwn(source, index) ? source[index] : undefined;
+        if (!raw) {
+            throw new OpenAIError('ComputerToolset.run received an absent output item.');
+        }
+        const descriptors = Object.getOwnPropertyDescriptors(raw);
+        for (const [name, descriptor] of Object.entries(descriptors)) {
+            if (descriptor.get) {
+                if (name === 'type') {
+                    descriptors.type = {
+                        value: descriptor.get.call(raw),
+                        enumerable: Boolean(descriptor.enumerable),
+                        configurable: Boolean(descriptor.configurable),
+                    };
+                }
+                else {
+                    descriptor.get = descriptor.get.bind(raw);
+                }
+            }
+        }
+        // SAFETY: This shadow has exactly the provider's own descriptors and prototype, with type captured once.
+        const captured = Object.create(Object.getPrototypeOf(raw), descriptors);
+        const item = hasOwn(captured, 'type') && captured.type === 'computer_call'
+            ? snapshotComputerCall(captured)
+            : structuredClone(captured);
+        if (!hasOwn(item, 'type') || !hasOwn(item, 'id') || typeof item.id !== 'string') {
+            throw new OpenAIError('ComputerToolset.run requires emitted output type and id fields.');
+        }
+        if (item.type === 'computer_call') {
+            if (callIds.has(item.call_id) || earlierCallIds.has(item.call_id)) {
+                throw new OpenAIError('ComputerToolset.run received a duplicate computer call identity.');
+            }
+            callIds.add(item.call_id);
+            calls.push(item);
+        }
+        else if (item.type === 'message') {
+            if (!isNativeResponseMessage(item)) {
+                throw new OpenAIError('ComputerToolset.run requires native assistant content before replay.');
+            }
+            hasFinalMessage || (hasFinalMessage = item.status === 'completed' && (!hasOwn(item, 'phase') || item.phase !== 'commentary'));
+        }
+        else if (item.type === 'reasoning') {
+            if (!isNativeResponseReasoning(item)) {
+                throw new OpenAIError('ComputerToolset.run requires native reasoning content before replay.');
+            }
+        }
+        else if (item.type === 'compaction') {
+            if (!hasOwn(item, 'encrypted_content') || typeof item.encrypted_content !== 'string') {
+                throw new OpenAIError('ComputerToolset.run requires native compaction content before replay.');
+            }
+        }
+        else {
+            throw new OpenAIError('ComputerToolset.run cannot handle a non-computer output item.');
+        }
+        output.push(item);
+        if (identities.has(item.id) || (item.id !== '' && earlierIdentities.has(item.id))) {
+            throw new OpenAIError('ComputerToolset.run received a duplicate output item identity.');
+        }
+        identities.add(item.id);
+    }
+    if (calls.length === 0 && !hasFinalMessage) {
+        throw new OpenAIError('ComputerToolset.run received no completed final message.');
+    }
+    for (const id of identities) {
+        if (id !== '') {
+            earlierIdentities.add(id);
+        }
+    }
+    for (const id of callIds) {
+        earlierCallIds.add(id);
+    }
+    return { calls, output };
+}
+function computerDriverMethod(driver, name) {
+    const method = configuredOption(driver, name);
+    if (typeof method !== 'function') {
+        throw new OpenAIError('ComputerToolset requires callable computer driver methods.');
+    }
+    return method;
+}
+/**
+ * Dispatches existing computer actions for a caller-owned browser or computer.
+ * run() handles computer-only conversations; execute() supports caller-managed loops.
+ */
+class ComputerToolset {
+    /** The environment remains owned by the caller and is never opened or closed by the helper. */
+    constructor(driver) {
+        this.lifecycle = new RunnerLifecycle();
+        const methods = {
+            click: computerDriverMethod(driver, 'click'),
+            double_click: computerDriverMethod(driver, 'double_click'),
+            drag: computerDriverMethod(driver, 'drag'),
+            keypress: computerDriverMethod(driver, 'keypress'),
+            move: computerDriverMethod(driver, 'move'),
+            screenshot: computerDriverMethod(driver, 'screenshot'),
+            scroll: computerDriverMethod(driver, 'scroll'),
+            type: computerDriverMethod(driver, 'type'),
+            wait: computerDriverMethod(driver, 'wait'),
+        };
+        this.driver = {
+            click: methods.click.bind(driver),
+            double_click: methods.double_click.bind(driver),
+            drag: methods.drag.bind(driver),
+            keypress: methods.keypress.bind(driver),
+            move: methods.move.bind(driver),
+            screenshot: methods.screenshot.bind(driver),
+            scroll: methods.scroll.bind(driver),
+            type: methods.type.bind(driver),
+            wait: methods.wait.bind(driver),
+        };
+    }
+    /** Stop new work. If draining, await the current operation before closing your driver. */
+    close() {
+        return this.lifecycle.close();
+    }
+    /** Snapshot and check a complete call before a runner dispatches any effects from its response.
+     * @internal
+     */
+    static validate(call) {
+        return snapshotComputerCall(call);
+    }
+    /**
+     * Run until a completed response contains no computer calls.
+     * Defaults to the computer tool when tools is omitted. Other tools, streams,
+     * background work, conversation, and previous_response_id are rejected.
+     * Replays history (including encrypted reasoning for store:false).
+     *
+     * @throws {OpenAIError} If a response is incomplete, unsupported, declined, or exceeds maxSteps.
+     */
+    async run(client, params, options = {}) {
+        this.lifecycle.enter();
+        try {
+            return await this.runOwned(client, params, options);
+        }
+        finally {
+            this.lifecycle.leave();
+        }
+    }
+    // oxlint-disable-next-line complexity -- Ordered requests share cancellation and continuation policy.
+    async runOwned(client, params, options) {
+        const suppliedMaxSteps = configuredOption(options, 'maxSteps');
+        const maxSteps = suppliedMaxSteps === undefined ? 20 : suppliedMaxSteps;
+        // Match the ordinary SDK JSON encoder once, then validate and reuse the resulting body.
+        const encoded = JSON.stringify(params);
+        const decoded = JSON.parse(encoded);
+        if (!isObj(decoded)) {
+            throw new TypeError('ComputerToolset request must be an object.');
+        }
+        // SAFETY: computerRunTools validates the serialized modes/tools before the request can reach the API.
+        const request = decoded;
+        const tools = computerRunTools(request, maxSteps);
+        const suppliedInput = configuredOption(request, 'input');
+        const input = typeof suppliedInput === 'string'
+            ? [{ role: 'user', content: suppliedInput }]
+            : [...(suppliedInput === undefined ? [] : suppliedInput)];
+        const include = [...(configuredOption(request, 'include') ?? [])];
+        if (!include.includes('reasoning.encrypted_content')) {
+            include.push('reasoning.encrypted_content');
+        }
+        const body = { ...request, tools, include, input };
+        protectRunnerJSON(body);
+        const policy = snapshotComputerPolicy(options);
+        let supplied = configuredOption(options, 'requestOptions');
+        const ownSignal = supplied && Object.getOwnPropertyDescriptor(supplied, 'signal');
+        const signal = policy.signal ?? (supplied && configuredOption(supplied, 'signal')) ?? undefined;
+        if (policy.signal || (ownSignal && !('value' in ownSignal)) || (signal && !ownSignal?.enumerable)) {
+            // Capture accessors once and expose hidden signals to the native request spread.
+            supplied = overlayRequestOptions(supplied, { signal });
+        }
+        const executionOptions = { ...policy, signal };
+        const earlierIdentities = new Set();
+        const earlierCallIds = new Set();
+        for (const item of input) {
+            if (!isObj(item)) {
+                continue;
+            }
+            const id = hasOwn(item, 'id') ? item['id'] : undefined;
+            const callId = hasOwn(item, 'call_id') ? item['call_id'] : undefined;
+            if (typeof id === 'string' && id !== '') {
+                earlierIdentities.add(id);
+            }
+            if (typeof callId === 'string') {
+                earlierCallIds.add(callId);
+            }
+        }
+        for (let step = 0;; step += 1) {
+            signal?.throwIfAborted();
+            const nextOptions = step === 0 ? supplied : continuationRequestOptions(client, supplied, signal);
+            if (nextOptions && Object.getOwnPropertyDescriptor(nextOptions, 'body')?.enumerable) {
+                throw new TypeError('ComputerToolset.run requestOptions.body is not supported.');
+            }
+            let response;
+            try {
+                // Each response depends on observations from the preceding one.
+                // oxlint-disable-next-line no-await-in-loop
+                response = await client.responses.create(body, nextOptions);
+            }
+            catch (error) {
+                signal?.throwIfAborted();
+                throw error;
+            }
+            signal?.throwIfAborted();
+            const { calls, output } = computerCalls(response, earlierIdentities, earlierCallIds);
+            if (calls.length === 0) {
+                return response;
+            }
+            if (step >= maxSteps - 1) {
+                throw new OpenAIError('ComputerToolset.run reached maxSteps before executing another computer call.');
+            }
+            // Capture the native replay as it will be sent, before an action can change the environment.
+            const projected = toResponseInputItems(output);
+            protectRunnerJSON(projected);
+            // SAFETY: computerCalls validated every supported item; toResponseInputItems strips output-only fields.
+            // oxlint-disable-next-line unicorn/prefer-structured-clone -- Replay must satisfy the native JSON encoder, not just be cloneable.
+            const replay = JSON.parse(JSON.stringify(projected));
+            protectRunnerJSON(replay);
+            for (const item of replay) {
+                body.input.push(item);
+            }
+            for (const call of calls) {
+                // Calls share one environment and must run in server order.
+                // oxlint-disable-next-line no-await-in-loop
+                const observation = await this.executeOwned(call, executionOptions);
+                body.input.push(observation);
+            }
+            const choice = configuredOption(body, 'tool_choice');
+            if (choice !== undefined && choice !== null) {
+                body.tool_choice = releaseForcedComputerChoice(choice);
+                if (typeof body.tool_choice === 'object') {
+                    protectRunnerJSON(body.tool_choice);
+                }
+            }
+        }
+    }
+    /**
+     * Execute one completed call for a caller-managed Responses loop.
+     * Returns exactly one observation captured after all actions in the call.
+     * Screenshot actions still pass through beforeAction; intermediate captures
+     * are omitted because Responses accepts only the final observation.
+     * Approval, policy rejection, abort, and driver failures stop immediately.
+     */
+    async execute(call, options = {}) {
+        this.lifecycle.enter();
+        try {
+            return await this.executeOwned(call, snapshotComputerPolicy(options));
+        }
+        finally {
+            this.lifecycle.leave();
+        }
+    }
+    // oxlint-disable-next-line eslint/complexity -- Keep the execution snapshot shared by safety approval, action approval and dispatch.
+    async executeOwned(call, policy) {
+        const snapshot = ComputerToolset.validate(call);
+        // Use the same native projection as run(), before any callback or effect.
+        // SAFETY: Validation permits modern calls to omit only the legacy checklist required by the output type.
+        const projected = toResponseInputItems([snapshot]);
+        protectRunnerJSON(projected);
+        // SAFETY: The validated single computer call retains its native fields after projection.
+        // oxlint-disable-next-line unicorn/prefer-structured-clone -- Direct replay must satisfy the native JSON encoder too.
+        const replay = JSON.parse(JSON.stringify(projected));
+        const actions = computerActions(snapshot);
+        for (const action of actions) {
+            if ((action.type === 'click' ||
+                action.type === 'drag' ||
+                action.type === 'move' ||
+                action.type === 'scroll') &&
+                configuredOption(action, 'keys') === undefined) {
+                // Shadow omitted modifiers only in execution copies; wire snapshots must remain JSON values.
+                Object.defineProperty(action, 'keys', {
+                    value: undefined,
+                    enumerable: true,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+        }
+        // The final capture still requires approval when a driver mutates its action.
+        // The SDK compiles against ES2020, which does not include Array.at.
+        // oxlint-disable-next-line prefer-at
+        const needsScreenshot = actions[actions.length - 1]?.type !== 'screenshot';
+        policy.signal?.throwIfAborted();
+        const checks = configuredOption(snapshot, 'pending_safety_checks') ?? [];
+        const nativeChecks = checks.map((check) => ({
+            id: check.id,
+            code: hasOwn(check, 'code') ? check.code : undefined,
+            message: hasOwn(check, 'message') ? check.message : undefined,
+        }));
+        // Native fields in the captured replay must still describe the same checks.
+        const captured = replay[0]?.pending_safety_checks ?? [];
+        if (!Array.isArray(captured) ||
+            captured.length !== nativeChecks.length ||
+            !captured.every((value, index) => isObj(value) &&
+                hasOwn(value, 'id') &&
+                value['id'] === nativeChecks[index]?.id &&
+                (hasOwn(value, 'code') ? value['code'] : undefined) === nativeChecks[index]?.code &&
+                (hasOwn(value, 'message') ? value['message'] : undefined) === nativeChecks[index]?.message)) {
+            throw new OpenAIError('ComputerToolset serialization changed the pending safety checks.');
+        }
+        // SAFETY: Every captured native field matches its already validated check; optional extensions are JSON values.
+        const acknowledged = captured;
+        if (checks.length > 0) {
+            // Preserve omissions in replay/acknowledgement; callbacks own absent fields in execution copies.
+            for (const check of checks) {
+                for (const key of ['code', 'message']) {
+                    if (!hasOwn(check, key)) {
+                        Object.defineProperty(check, key, {
+                            value: undefined,
+                            enumerable: true,
+                            writable: true,
+                            configurable: true,
+                        });
+                    }
+                }
+            }
+            const started = performance.now();
+            try {
+                const view = structuredClone({ ...snapshot, pending_safety_checks: checks });
+                protectRunnerJSON(view);
+                const approved = await policy.approveSafetyChecks?.(view, { signal: policy.signal });
+                policy.signal?.throwIfAborted();
+                if (approved !== true) {
+                    throw new OpenAIError('ComputerToolset requires explicit approval of pending safety checks.');
+                }
+                reportDiagnostic(policy.onDiagnostic, { api: 'computer', stage: 'approval', reason: 'completed', call_id: snapshot.call_id }, started);
+            }
+            catch (error) {
+                reportDiagnostic(policy.onDiagnostic, {
+                    api: 'computer',
+                    stage: 'approval',
+                    reason: policy.signal?.aborted ? 'cancelled' : 'policy_failed',
+                    call_id: snapshot.call_id,
+                }, started);
+                policy.signal?.throwIfAborted();
+                throw error;
+            }
+        }
+        for (const action of actions) {
+            // Computer effects are ordered and must never execute concurrently.
+            // oxlint-disable-next-line no-await-in-loop
+            await this.perform(action, snapshot, policy);
+        }
+        if (needsScreenshot) {
+            await this.perform({ type: 'screenshot' }, snapshot, policy);
+        }
+        policy.signal?.throwIfAborted();
+        const output = await this.captureScreenshot(snapshot, policy);
+        const observation = {
+            type: 'computer_call_output',
+            call_id: snapshot.call_id,
+            output,
+            ...(checks.length > 0 ? { acknowledged_safety_checks: acknowledged } : {}),
+        };
+        protectRunnerJSON(observation);
+        return observation;
+    }
+    async captureScreenshot(snapshot, policy) {
+        const started = performance.now();
+        let output;
+        try {
+            const supplied = await this.driver.screenshot({ signal: policy.signal });
+            policy.signal?.throwIfAborted();
+            if (!isObj(supplied)) {
+                throw new OpenAIError('ComputerToolset screenshot must return a computer_screenshot with image_url or file_id.');
+            }
+            const type = configuredOption(supplied, 'type');
+            const image_url = configuredOption(supplied, 'image_url');
+            const file_id = configuredOption(supplied, 'file_id');
+            if (type !== 'computer_screenshot' ||
+                (image_url !== undefined && (typeof image_url !== 'string' || !image_url.trim())) ||
+                (file_id !== undefined && (typeof file_id !== 'string' || !file_id.trim())) ||
+                (image_url === undefined && file_id === undefined)) {
+                throw new OpenAIError('ComputerToolset screenshot must return a computer_screenshot with image_url or file_id.');
+            }
+            output = {
+                type,
+                ...(image_url === undefined ? {} : { image_url }),
+                ...(file_id === undefined ? {} : { file_id }),
+            };
+            reportDiagnostic(policy.onDiagnostic, {
+                api: 'computer',
+                stage: 'action',
+                reason: 'completed',
+                call_id: snapshot.call_id,
+                member: 'screenshot',
+            }, started);
+        }
+        catch (error) {
+            reportDiagnostic(policy.onDiagnostic, {
+                api: 'computer',
+                stage: 'action',
+                reason: policy.signal?.aborted ? 'cancelled' : 'driver_failed',
+                call_id: snapshot.call_id,
+                member: 'screenshot',
+            }, started);
+            policy.signal?.throwIfAborted();
+            throw error;
+        }
+        policy.signal?.throwIfAborted();
+        return output;
+    }
+    async perform(action, call, options) {
+        options.signal?.throwIfAborted();
+        if (options.beforeAction) {
+            await ComputerToolset.approveAction(action, call, options.beforeAction, options);
+        }
+        options.signal?.throwIfAborted();
+        const started = performance.now();
+        try {
+            const dispatched = structuredClone(action);
+            switch (dispatched.type) {
+                case 'click': {
+                    await this.driver.click(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'double_click': {
+                    await this.driver.double_click(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'drag': {
+                    await this.driver.drag(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'keypress': {
+                    await this.driver.keypress(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'move': {
+                    await this.driver.move(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'screenshot': {
+                    break;
+                }
+                case 'scroll': {
+                    await this.driver.scroll(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'type': {
+                    await this.driver.type(dispatched, { signal: options.signal });
+                    break;
+                }
+                case 'wait': {
+                    await this.driver.wait(dispatched, { signal: options.signal });
+                    break;
+                }
+                default: {
+                    throw new OpenAIError('ComputerToolset received an unsupported computer action.');
+                }
+            }
+            options.signal?.throwIfAborted();
+            if (action.type !== 'screenshot') {
+                reportDiagnostic(options.onDiagnostic, {
+                    api: 'computer',
+                    stage: 'action',
+                    reason: 'completed',
+                    call_id: call.call_id,
+                    member: action.type,
+                }, started);
+            }
+        }
+        catch (error) {
+            reportDiagnostic(options.onDiagnostic, {
+                api: 'computer',
+                stage: 'action',
+                reason: options.signal?.aborted ? 'cancelled' : 'driver_failed',
+                call_id: call.call_id,
+                member: action.type,
+            }, started);
+            options.signal?.throwIfAborted();
+            throw error;
+        }
+        options.signal?.throwIfAborted();
+    }
+    static async approveAction(action, call, beforeAction, options) {
+        const started = performance.now();
+        try {
+            const view = structuredClone(action);
+            protectRunnerJSON(view);
+            const approved = await beforeAction(view, actionApprovalCall(call), {
+                signal: options.signal,
+            });
+            options.signal?.throwIfAborted();
+            if (approved !== true) {
+                throw new OpenAIError('ComputerToolset action declined by beforeAction.');
+            }
+            reportDiagnostic(options.onDiagnostic, {
+                api: 'computer',
+                stage: 'approval',
+                reason: 'completed',
+                call_id: call.call_id,
+                member: action.type,
+            }, started);
+        }
+        catch (error) {
+            reportDiagnostic(options.onDiagnostic, {
+                api: 'computer',
+                stage: 'approval',
+                reason: options.signal?.aborted ? 'cancelled' : 'policy_failed',
+                call_id: call.call_id,
+                member: action.type,
+            }, started);
+            options.signal?.throwIfAborted();
+            throw error;
+        }
+    }
+}
+//# sourceMappingURL=computer.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/azure.mjs
 
 
@@ -134945,7 +136607,7 @@ class AzureOpenAI extends OpenAI {
     /** Builds an Azure request and inserts its deployment into model-scoped endpoint paths. */
     async buildRequest(options, props = {}) {
         if (_deployments_endpoints.has(options.path) && options.method === 'post' && options.body !== undefined) {
-            if (!isObj(options.body)) {
+            if (!values_isObj(options.body)) {
                 throw new Error('Expected request body to be an object');
             }
             const model = this.deploymentName || options.body['model'] || options.__metadata?.['model'];
@@ -134969,7 +136631,7 @@ class AzureOpenAI extends OpenAI {
         const security = schemes ?? { bearerAuth: true, adminAPIKeyAuth: true };
         // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Azure accepts JavaScript credential configuration; distinguish static keys from callable token providers.
         if (security.bearerAuth && typeof this._options.apiKey === 'string') {
-            return headers_buildHeaders([{ 'api-key': this.apiKey }]);
+            return internal_headers_buildHeaders([{ 'api-key': this.apiKey }]);
         }
         return super.authHeaders(opts, security);
     }
@@ -135146,7 +136808,7 @@ class BedrockOpenAI extends OpenAI {
             }
             assertValidBedrockBearerCredential(credential);
             try {
-                return headers_buildHeaders([{ Authorization: `Bearer ${credential}` }]);
+                return internal_headers_buildHeaders([{ Authorization: `Bearer ${credential}` }]);
             }
             catch (error) {
                 if (error instanceof TypeError) {
@@ -135172,6 +136834,7 @@ class BedrockOpenAI extends OpenAI {
 bedrock_a = brand_privateBedrockClient;
 //# sourceMappingURL=bedrock.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/index.mjs
+
 
 
 
