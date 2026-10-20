@@ -115624,7 +115624,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.35.0'; // x-release-please-version
+const openai_version_VERSION = '7.37.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -134977,13 +134977,19 @@ class Images extends resource_APIResource {
         return this._client.post('/images/variations', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions({ body, ...options, __security: { bearerAuth: true } }, this._client)));
     }
     edit(body, options) {
-        return this._client.post('/images/edits', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions({
+        return this._client.post('/images/edits', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions(((requestOptions) => ({
+            ...requestOptions,
+            body: Object.fromEntries(Object.entries(requestOptions.body ?? {}).map(([key, value]) => [
+                key,
+                key === 'safety_identifier' && value === null ? undefined : value,
+            ])),
+        }))({
             body,
             ...options,
             stream: body.stream ?? false,
             __metadata: { ...options?.__metadata, ...(body.model == null ? {} : { model: body.model }) },
             __security: { bearerAuth: true },
-        }, this._client)));
+        }), this._client)));
     }
     generate(body, options) {
         return this._client.post('/images/generations', images_resolveResourceRequestOptions(options, (options) => ({
