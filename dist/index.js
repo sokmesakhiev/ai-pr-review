@@ -116153,7 +116153,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.38.0'; // x-release-please-version
+const openai_version_VERSION = '7.39.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -140497,9 +140497,10 @@ function rawByteLength(data) {
  */
 class SendQueue {
     /** Creates a queue with a one-mebibyte default byte budget. */
-    constructor(maxBytes = 1048576) {
+    constructor(maxBytes = 1048576, allowOversizedFirstMessage = true) {
         this._queue = [];
         this._bytes = 0;
+        this.allowOversizedFirstMessage = allowOversizedFirstMessage;
         this._maxBytes = maxBytes;
     }
     /**
@@ -140510,8 +140511,12 @@ class SendQueue {
      */
     enqueue(event) {
         const data = JSON.stringify(event);
+        if (data === undefined) {
+            throw new TypeError('WebSocket event could not be serialized as JSON');
+        }
         const byteLength = encodeUTF8(data).byteLength;
-        if (this._bytes + byteLength > this._maxBytes && this._queue.length > 0) {
+        if (this._bytes + byteLength > this._maxBytes &&
+            (!this.allowOversizedFirstMessage || this._queue.length > 0)) {
             return false;
         }
         this._queue.push({ kind: 'json', data, byteLength });
@@ -140528,7 +140533,8 @@ class SendQueue {
     enqueueRaw(data) {
         const snapshot = snapshotRawData(data);
         const byteLength = rawByteLength(snapshot);
-        if (this._bytes + byteLength > this._maxBytes && this._queue.length > 0) {
+        if (this._bytes + byteLength > this._maxBytes &&
+            (!this.allowOversizedFirstMessage || this._queue.length > 0)) {
             return false;
         }
         this._queue.push({ kind: 'raw', data: snapshot, byteLength });
