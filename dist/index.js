@@ -86791,55 +86791,55 @@ var ApiSpec;
 var SafetyPolicy;
 (function (SafetyPolicy) {
     /**
-     * Unspecified safety policy. This value should not be used.
+     * The safety policy is unspecified.
      */
     SafetyPolicy["SAFETY_POLICY_UNSPECIFIED"] = "SAFETY_POLICY_UNSPECIFIED";
     /**
-     * Financial transactions safety policy.
+     * Policy that restricts financial transactions.
      */
     SafetyPolicy["FINANCIAL_TRANSACTIONS"] = "FINANCIAL_TRANSACTIONS";
     /**
-     * Sensitive data modification safety policy.
+     * Policy that restricts modification of sensitive data.
      */
     SafetyPolicy["SENSITIVE_DATA_MODIFICATION"] = "SENSITIVE_DATA_MODIFICATION";
     /**
-     * Communication tool safety policy.
+     * Policy that restricts the use of communication tools.
      */
     SafetyPolicy["COMMUNICATION_TOOL"] = "COMMUNICATION_TOOL";
     /**
-     * Account creation safety policy.
+     * Policy that restricts the creation of accounts.
      */
     SafetyPolicy["ACCOUNT_CREATION"] = "ACCOUNT_CREATION";
     /**
-     * Data modification safety policy.
+     * Policy that restricts general data modification.
      */
     SafetyPolicy["DATA_MODIFICATION"] = "DATA_MODIFICATION";
     /**
-     * User consent management safety policy.
+     * Policy that restricts user consent management.
      */
     SafetyPolicy["USER_CONSENT_MANAGEMENT"] = "USER_CONSENT_MANAGEMENT";
     /**
-     * Legal terms and agreements safety policy.
+     * Policy that restricts interaction with legal terms and agreements.
      */
     SafetyPolicy["LEGAL_TERMS_AND_AGREEMENTS"] = "LEGAL_TERMS_AND_AGREEMENTS";
 })(SafetyPolicy || (SafetyPolicy = {}));
-/** The environment being operated. */
+/** The target environment where the computer use tool operates. */
 var Environment;
 (function (Environment) {
     /**
-     * Defaults to browser.
+     * The environment is unspecified.
      */
     Environment["ENVIRONMENT_UNSPECIFIED"] = "ENVIRONMENT_UNSPECIFIED";
     /**
-     * Operates in a web browser.
+     * The tool operates in a web browser.
      */
     Environment["ENVIRONMENT_BROWSER"] = "ENVIRONMENT_BROWSER";
     /**
-     * Operates in a mobile environment.
+     * The tool operates in a mobile environment.
      */
     Environment["ENVIRONMENT_MOBILE"] = "ENVIRONMENT_MOBILE";
     /**
-     * Operates in a desktop environment.
+     * The tool operates in a desktop environment.
      */
     Environment["ENVIRONMENT_DESKTOP"] = "ENVIRONMENT_DESKTOP";
 })(Environment || (Environment = {}));
@@ -90977,6 +90977,13 @@ function generateContentConfigToMldev$1(apiClient, fromObject, parentObject) {
     if (parentObject !== undefined && fromContinuationToken != null) {
         setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
     }
+    if (getValueByPath(fromObject, ['generationOutputConfig']) !== undefined) {
+        throw new Error('generationOutputConfig parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    }
+    const fromStore = getValueByPath(fromObject, ['store']);
+    if (parentObject !== undefined && fromStore != null) {
+        setValueByPath(parentObject, ['store'], fromStore);
+    }
     return toObject;
 }
 function generateContentResponseFromMldev$1(fromObject) {
@@ -94518,6 +94525,62 @@ function googleSearchToMldev$2(fromObject) {
     }
     return toObject;
 }
+function liveClientContextUpdateToMldev(fromObject) {
+    const toObject = {};
+    const fromSystemInstruction = getValueByPath(fromObject, [
+        'systemInstruction',
+    ]);
+    if (fromSystemInstruction != null) {
+        setValueByPath(toObject, ['systemInstruction'], contentToMldev$2(tContent(fromSystemInstruction)));
+    }
+    const fromTools = getValueByPath(fromObject, ['tools']);
+    if (fromTools != null) {
+        setValueByPath(toObject, ['tools'], liveClientContextUpdateToolsToMldev(fromTools));
+    }
+    return toObject;
+}
+function liveClientContextUpdateToVertex(fromObject) {
+    const toObject = {};
+    const fromSystemInstruction = getValueByPath(fromObject, [
+        'systemInstruction',
+    ]);
+    if (fromSystemInstruction != null) {
+        setValueByPath(toObject, ['systemInstruction'], contentToVertex$2(tContent(fromSystemInstruction)));
+    }
+    const fromTools = getValueByPath(fromObject, ['tools']);
+    if (fromTools != null) {
+        setValueByPath(toObject, ['tools'], liveClientContextUpdateToolsToVertex(fromTools));
+    }
+    return toObject;
+}
+function liveClientContextUpdateToolsToMldev(fromObject) {
+    const toObject = {};
+    const fromTools = getValueByPath(fromObject, ['tools']);
+    if (fromTools != null) {
+        let transformedList = tTools(fromTools);
+        if (Array.isArray(transformedList)) {
+            transformedList = transformedList.map((item) => {
+                return toolToMldev$2(tTool(item));
+            });
+        }
+        setValueByPath(toObject, ['tools'], transformedList);
+    }
+    return toObject;
+}
+function liveClientContextUpdateToolsToVertex(fromObject) {
+    const toObject = {};
+    const fromTools = getValueByPath(fromObject, ['tools']);
+    if (fromTools != null) {
+        let transformedList = tTools(fromTools);
+        if (Array.isArray(transformedList)) {
+            transformedList = transformedList.map((item) => {
+                return toolToVertex$2(tTool(item));
+            });
+        }
+        setValueByPath(toObject, ['tools'], transformedList);
+    }
+    return toObject;
+}
 function liveConnectConfigToMldev$1(fromObject, parentObject) {
     const toObject = {};
     const fromGenerationConfig = getValueByPath(fromObject, [
@@ -94650,6 +94713,10 @@ function liveConnectConfigToMldev$1(fromObject, parentObject) {
     ]);
     if (parentObject !== undefined && fromTranslationConfig != null) {
         setValueByPath(parentObject, ['setup', 'generationConfig', 'translationConfig'], fromTranslationConfig);
+    }
+    const fromLabels = getValueByPath(fromObject, ['labels']);
+    if (parentObject !== undefined && fromLabels != null) {
+        setValueByPath(parentObject, ['setup', 'labels'], fromLabels);
     }
     return toObject;
 }
@@ -94788,6 +94855,10 @@ function liveConnectConfigToVertex(fromObject, parentObject) {
     ]);
     if (parentObject !== undefined && fromTranslationConfig != null) {
         setValueByPath(parentObject, ['setup', 'generationConfig', 'translationConfig'], fromTranslationConfig);
+    }
+    const fromLabels = getValueByPath(fromObject, ['labels']);
+    if (parentObject !== undefined && fromLabels != null) {
+        setValueByPath(parentObject, ['setup', 'labels'], fromLabels);
     }
     return toObject;
 }
@@ -96588,6 +96659,13 @@ function generateContentConfigToMldev(apiClient, fromObject, parentObject, rootO
     if (parentObject !== undefined && fromContinuationToken != null) {
         setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
     }
+    if (getValueByPath(fromObject, ['generationOutputConfig']) !== undefined) {
+        throw new Error('generationOutputConfig parameter is only supported in Gemini Enterprise Agent Platform mode, not in Gemini Developer API mode.');
+    }
+    const fromStore = getValueByPath(fromObject, ['store']);
+    if (parentObject !== undefined && fromStore != null) {
+        setValueByPath(parentObject, ['store'], fromStore);
+    }
     return toObject;
 }
 function generateContentConfigToVertex(apiClient, fromObject, parentObject, rootObject) {
@@ -96777,6 +96855,15 @@ function generateContentConfigToVertex(apiClient, fromObject, parentObject, root
     ]);
     if (parentObject !== undefined && fromContinuationToken != null) {
         setValueByPath(parentObject, ['continuationToken'], fromContinuationToken);
+    }
+    const fromGenerationOutputConfig = getValueByPath(fromObject, [
+        'generationOutputConfig',
+    ]);
+    if (parentObject !== undefined && fromGenerationOutputConfig != null) {
+        setValueByPath(parentObject, ['outputConfig'], fromGenerationOutputConfig);
+    }
+    if (getValueByPath(fromObject, ['store']) !== undefined) {
+        throw new Error('store parameter is only supported in Gemini Developer API mode, not in Gemini Enterprise Agent Platform mode.');
     }
     return toObject;
 }
@@ -99369,7 +99456,7 @@ const CONTENT_TYPE_HEADER = 'Content-Type';
 const SERVER_TIMEOUT_HEADER = 'X-Server-Timeout';
 const USER_AGENT_HEADER = 'User-Agent';
 const GOOGLE_API_CLIENT_HEADER = 'x-goog-api-client';
-const SDK_VERSION = '2.30.0'; // x-release-please-version
+const SDK_VERSION = '2.31.0'; // x-release-please-version
 const LIBRARY_LABEL = `google-genai-sdk/${SDK_VERSION}`;
 const VERTEX_AI_API_DEFAULT_VERSION = 'v1beta1';
 const GOOGLE_AI_API_DEFAULT_VERSION = 'v1beta';
@@ -99777,28 +99864,7 @@ class ApiClient {
                     }
                     const chunkString = decoder.decode(value, { stream: true });
                     // Parse and throw an error if the chunk contains an error.
-                    try {
-                        const chunkJson = JSON.parse(chunkString);
-                        if ('error' in chunkJson) {
-                            const errorJson = JSON.parse(JSON.stringify(chunkJson['error']));
-                            const status = errorJson['status'];
-                            const code = errorJson['code'];
-                            const errorMessage = `got status: ${status}. ${JSON.stringify(chunkJson)}`;
-                            if (code >= 400 && code < 600) {
-                                const apiError = new ApiError({
-                                    message: errorMessage,
-                                    status: code,
-                                });
-                                throw apiError;
-                            }
-                        }
-                    }
-                    catch (e) {
-                        const error = e;
-                        if (error.name === 'ApiError') {
-                            throw e;
-                        }
-                    }
+                    throwIfStreamErrorChunk(chunkString);
                     buffer += chunkString;
                     let delimiterIndex = -1;
                     let delimiterLength = 0;
@@ -99823,6 +99889,7 @@ class ApiClient {
                             const processedChunkString = trimmedEvent
                                 .substring(dataPrefix.length)
                                 .trim();
+                            throwIfStreamErrorChunk(processedChunkString);
                             try {
                                 const partialResponse = new Response(processedChunkString, {
                                     headers: response === null || response === void 0 ? void 0 : response.headers,
@@ -100042,6 +100109,33 @@ class ApiClient {
             throw new Error('Failed to get upload url. Server did not return the x-google-upload-url in the headers');
         }
         return uploadUrl;
+    }
+}
+function throwIfStreamErrorChunk(chunkString) {
+    try {
+        const chunkJson = JSON.parse(chunkString);
+        if (chunkJson !== null &&
+            typeof chunkJson === 'object' &&
+            'error' in chunkJson &&
+            chunkJson['error'] !== null &&
+            typeof chunkJson['error'] === 'object') {
+            const errorJson = chunkJson['error'];
+            const status = errorJson['status'];
+            const code = errorJson['code'];
+            const errorMessage = `got status: ${status}. ${JSON.stringify(chunkJson)}`;
+            if (typeof code === 'number' && code >= 400 && code < 600) {
+                throw new ApiError({
+                    message: errorMessage,
+                    status: code,
+                });
+            }
+        }
+    }
+    catch (e) {
+        const error = e;
+        if ((error === null || error === void 0 ? void 0 : error.name) === 'ApiError') {
+            throw e;
+        }
     }
 }
 async function throwErrorIfNotOK(response) {
@@ -100980,6 +101074,32 @@ class Session {
             throw new Error('Tool response parameters are required.');
         }
         const clientMessage = this.tLiveClienttToolResponse(this.apiClient, params);
+        this.conn.send(JSON.stringify(clientMessage));
+    }
+    /**
+      Send a context update message over the established connection.
+  
+      @param params - Contains properties `systemInstruction` and/or `tools`.
+  
+      @remarks
+      Updates to the context of the current session. Only fields that are set will
+      be updated. Updates are guaranteed to be processed in order with the rest of
+      the inputs.
+  
+      @experimental
+     */
+    sendContextUpdate(params) {
+        let clientMessage = {};
+        if (this.apiClient.isVertexAI()) {
+            clientMessage = {
+                'contextUpdate': liveClientContextUpdateToVertex(params),
+            };
+        }
+        else {
+            clientMessage = {
+                'contextUpdate': liveClientContextUpdateToMldev(params),
+            };
+        }
         this.conn.send(JSON.stringify(clientMessage));
     }
     /**
@@ -103735,6 +103855,10 @@ function liveConnectConfigToMldev(fromObject, parentObject) {
     if (parentObject !== undefined && fromTranslationConfig != null) {
         setValueByPath(parentObject, ['setup', 'generationConfig', 'translationConfig'], fromTranslationConfig);
     }
+    const fromLabels = getValueByPath(fromObject, ['labels']);
+    if (parentObject !== undefined && fromLabels != null) {
+        setValueByPath(parentObject, ['setup', 'labels'], fromLabels);
+    }
     return toObject;
 }
 function liveConnectConstraintsToMldev(apiClient, fromObject) {
@@ -105081,6 +105205,7 @@ class GoogleGenAiError extends Error {
         this.contentType = ((_d = httpMeta === null || httpMeta === void 0 ? void 0 : httpMeta.response) === null || _d === void 0 ? void 0 : _d.headers.get("content-type")) || "";
         this.rawResponse = httpMeta === null || httpMeta === void 0 ? void 0 : httpMeta.response;
         this.name = "GoogleGenAiError";
+        Object.setPrototypeOf(this, new.target.prototype);
     }
 }
 
@@ -105091,7 +105216,13 @@ class GoogleGenAiError extends Error {
  *
  * g3-prettier-ignore-file
  */
+/** Base error class for Gemini NextGen API client errors. */
 class GeminiNextGenAPIClientError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = this.constructor.name;
+        Object.setPrototypeOf(this, new.target.prototype);
+    }
 }
 /** General errors raised by the GenAI API. */
 class APIError extends GeminiNextGenAPIClientError {
@@ -105191,13 +105322,21 @@ function wrapSDKError(error) {
     if (isCompatAPIErrorInstance(error)) {
         return error;
     }
-    if (error instanceof GoogleGenAiError) {
+    if (isGoogleGenAiErrorInstance(error)) {
         return wrapAPIError(error);
     }
     if (error instanceof HTTPClientError) {
         return wrapHTTPClientError(error);
     }
     return error;
+}
+function isGoogleGenAiErrorInstance(value) {
+    if (value instanceof GoogleGenAiError) {
+        return true;
+    }
+    return (value instanceof Error &&
+        typeof value.statusCode === "number" &&
+        typeof value.body === "string");
 }
 function wrapAPIError(error) {
     const errorPayload = getErrorPayload(error);
@@ -106515,6 +106654,7 @@ class GoogleGenAiDefaultError extends GoogleGenAiError {
         message = message.trim();
         super(message, httpMeta);
         this.name = "GoogleGenAiDefaultError";
+        Object.setPrototypeOf(this, new.target.prototype);
     }
 }
 
