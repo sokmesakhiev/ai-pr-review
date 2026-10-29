@@ -116293,7 +116293,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.43.0'; // x-release-please-version
+const openai_version_VERSION = '7.45.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -129015,6 +129015,332 @@ class Assistants extends resource_APIResource {
     }
 }
 //# sourceMappingURL=assistants.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/automations/invocations.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+function invocations_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const invocations_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function invocations_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => invocations_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !invocations_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class Invocations extends resource_APIResource {
+    /**
+     * Queues a manual delivery without changing the saved schedule.
+     *
+     * @example
+     * ```ts
+     * const automationInvocation =
+     *   await client.beta.agents.automations.invocations.create(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    create(automationID, options) {
+        return this._client.post(utils_path_path `/agents/automations/${automationID}/invocations`, invocations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Retrieves a delivery record for a project-owned automation.
+     *
+     * @example
+     * ```ts
+     * const automationInvocation =
+     *   await client.beta.agents.automations.invocations.retrieve(
+     *     'invocation_id',
+     *     { automation_id: 'automation_id' },
+     *   );
+     * ```
+     */
+    retrieve(invocationID, params, options) {
+        const { automation_id } = params;
+        return this._client.get(utils_path_path `/agents/automations/${automation_id}/invocations/${invocationID}`, invocations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    list(automationID, query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = invocations_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList(utils_path_path `/agents/automations/${automationID}/invocations`, (CursorPage), invocations_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=invocations.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/beta/agents/automations/automations.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+
+
+function automations_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const automations_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function automations_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => automations_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !automations_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class Automations extends resource_APIResource {
+    constructor() {
+        super(...arguments);
+        this.invocations = new Invocations(this._client);
+    }
+    /**
+     * Saves an active automation without invoking it immediately.
+     *
+     * @example
+     * ```ts
+     * const automation =
+     *   await client.beta.agents.automations.create({
+     *     expression: 'x',
+     *     name: 'x',
+     *     target: {
+     *       environment: { type: 'none' },
+     *       input: [
+     *         {
+     *           content: [{ text: 'text', type: 'input_text' }],
+     *           role: 'user',
+     *         },
+     *       ],
+     *       type: 'new_session',
+     *     },
+     *     timezone: 'x',
+     *     type: 'periodic',
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/agents/automations', automations_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Retrieves a project-owned automation.
+     *
+     * @example
+     * ```ts
+     * const automation =
+     *   await client.beta.agents.automations.retrieve(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    retrieve(automationID, options) {
+        return this._client.get(utils_path_path `/agents/automations/${automationID}`, automations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Updates supplied fields; target and metadata replace the whole field.
+     *
+     * @example
+     * ```ts
+     * const automation =
+     *   await client.beta.agents.automations.update(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    update(automationID, body, options) {
+        return this._client.post(utils_path_path `/agents/automations/${automationID}`, automations_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    list(query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = automations_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'session_id'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList('/agents/automations', (CursorPage), automations_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Deletes the automation and prevents future invocations without deleting its
+     * target session.
+     *
+     * @example
+     * ```ts
+     * const automationDeleted =
+     *   await client.beta.agents.automations.delete(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    delete(automationID, options) {
+        return this._client.delete(utils_path_path `/agents/automations/${automationID}`, automations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Pauses future scheduled delivery without stopping an active session.
+     *
+     * @example
+     * ```ts
+     * const automation =
+     *   await client.beta.agents.automations.pause(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    pause(automationID, options) {
+        return this._client.post(utils_path_path `/agents/automations/${automationID}/pause`, automations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+    /**
+     * Resumes scheduled delivery; one-time automations without a pending invocation
+     * require a future run_at.
+     *
+     * @example
+     * ```ts
+     * const automation =
+     *   await client.beta.agents.automations.resume(
+     *     'automation_id',
+     *   );
+     * ```
+     */
+    resume(automationID, options) {
+        return this._client.post(utils_path_path `/agents/automations/${automationID}/resume`, automations_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
+            __security: { bearerAuth: true },
+        })));
+    }
+}
+Automations.Invocations = Invocations;
+//# sourceMappingURL=automations.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/files.mjs
 
 
@@ -129136,11 +129462,7 @@ class environments_files_Files extends resource_APIResource {
      * const environmentFile =
      *   await client.beta.agents.environments.files.create(
      *     'environment_id',
-     *     {
-     *       type: 'inline',
-     *       path: '/workspace/example.txt',
-     *       data: 'SGVsbG8K',
-     *     },
+     *     { file_id: 'x', path: 'x', type: 'file_id' },
      *   );
      * ```
      */
@@ -130822,7 +131144,7 @@ class AgentTurnResultError extends error_OpenAIError {
 }
 //# sourceMappingURL=agent-turn-result-error.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/beta/agents/agent-turn-result-collector.mjs
-var _AgentTurnResultCollector_instances, _AgentTurnResultCollector_sessionID, _AgentTurnResultCollector_turn, _AgentTurnResultCollector_messages, _AgentTurnResultCollector_requiredActions, _AgentTurnResultCollector_sessionFailed, _AgentTurnResultCollector_terminal, _AgentTurnResultCollector_idle, _AgentTurnResultCollector_acceptTurn, _AgentTurnResultCollector_acceptOutput, _AgentTurnResultCollector_finalMessages;
+var _AgentTurnResultCollector_instances, _AgentTurnResultCollector_sessionID, _AgentTurnResultCollector_turn, _AgentTurnResultCollector_messages, _AgentTurnResultCollector_requiredActions, _AgentTurnResultCollector_checkedActionsFor, _AgentTurnResultCollector_sessionFailed, _AgentTurnResultCollector_terminal, _AgentTurnResultCollector_idle, _AgentTurnResultCollector_acceptTurn, _AgentTurnResultCollector_acceptOutput, _AgentTurnResultCollector_finalMessages;
 
 
 
@@ -130836,6 +131158,7 @@ class AgentTurnResultCollector {
         _AgentTurnResultCollector_turn.set(this, void 0);
         _AgentTurnResultCollector_messages.set(this, new Map());
         _AgentTurnResultCollector_requiredActions.set(this, []);
+        _AgentTurnResultCollector_checkedActionsFor.set(this, void 0);
         _AgentTurnResultCollector_sessionFailed.set(this, false);
         _AgentTurnResultCollector_terminal.set(this, false);
         _AgentTurnResultCollector_idle.set(this, false);
@@ -130848,6 +131171,7 @@ class AgentTurnResultCollector {
         if ('session' in event) {
             __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionID, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionID, "f") ?? event.session.id, "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_requiredActions, structuredClone(event.session.required_actions ?? []), "f");
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_checkedActionsFor, undefined, "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionFailed, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionFailed, "f") || event.type === 'agent.session.failed', "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_idle, __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f") || event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f"), "f");
         }
@@ -130874,9 +131198,14 @@ class AgentTurnResultCollector {
         if (__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")?.status === 'cancelled') {
             throw this.error('cancelled');
         }
+        // Handler registries are fixed for a stream; recheck only when the snapshot or predicate changes.
+        if (__classPrivateFieldGet(this, _AgentTurnResultCollector_checkedActionsFor, "f") === canHandle) {
+            return;
+        }
         if (__classPrivateFieldGet(this, _AgentTurnResultCollector_requiredActions, "f").some((action) => action.type !== 'function_call' || !canHandle(action.name))) {
             throw this.error('requires_action');
         }
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_checkedActionsFor, canHandle, "f");
     }
     get ready() {
         return __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") && __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f");
@@ -130884,6 +131213,7 @@ class AgentTurnResultCollector {
     release() {
         __classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").clear();
         __classPrivateFieldSet(this, _AgentTurnResultCollector_requiredActions, [], "f");
+        __classPrivateFieldSet(this, _AgentTurnResultCollector_checkedActionsFor, undefined, "f");
     }
     finish() {
         this.checkAction(() => this.ready);
@@ -130893,7 +131223,7 @@ class AgentTurnResultCollector {
         return new AgentTurnResult(__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f"), __classPrivateFieldGet(this, _AgentTurnResultCollector_instances, "m", _AgentTurnResultCollector_finalMessages).call(this));
     }
 }
-_AgentTurnResultCollector_sessionID = new WeakMap(), _AgentTurnResultCollector_turn = new WeakMap(), _AgentTurnResultCollector_messages = new WeakMap(), _AgentTurnResultCollector_requiredActions = new WeakMap(), _AgentTurnResultCollector_sessionFailed = new WeakMap(), _AgentTurnResultCollector_terminal = new WeakMap(), _AgentTurnResultCollector_idle = new WeakMap(), _AgentTurnResultCollector_instances = new WeakSet(), _AgentTurnResultCollector_acceptTurn = function _AgentTurnResultCollector_acceptTurn(event) {
+_AgentTurnResultCollector_sessionID = new WeakMap(), _AgentTurnResultCollector_turn = new WeakMap(), _AgentTurnResultCollector_messages = new WeakMap(), _AgentTurnResultCollector_requiredActions = new WeakMap(), _AgentTurnResultCollector_checkedActionsFor = new WeakMap(), _AgentTurnResultCollector_sessionFailed = new WeakMap(), _AgentTurnResultCollector_terminal = new WeakMap(), _AgentTurnResultCollector_idle = new WeakMap(), _AgentTurnResultCollector_instances = new WeakSet(), _AgentTurnResultCollector_acceptTurn = function _AgentTurnResultCollector_acceptTurn(event) {
     if ('turn' in event) {
         __classPrivateFieldSet(this, _AgentTurnResultCollector_turn, structuredClone(event.turn), "f");
         __classPrivateFieldSet(this, _AgentTurnResultCollector_terminal, __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") || (event.type === 'agent.session.turn.completed' ||
@@ -131817,6 +132147,8 @@ vaults_Vaults.Credentials = credentials_Credentials;
 
 
 
+
+
 function agents_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
@@ -131875,6 +132207,7 @@ function agents_normalizeRequestOptionsForQuery(value, queryKeys, options) {
 class agents_Agents extends resource_APIResource {
     constructor() {
         super(...arguments);
+        this.automations = new Automations(this._client);
         this.environments = new environments_Environments(this._client);
         this.vaults = new vaults_Vaults(this._client);
         this.sessions = new sessions_Sessions(this._client);
@@ -131964,6 +132297,7 @@ class agents_Agents extends resource_APIResource {
         })));
     }
 }
+agents_Agents.Automations = Automations;
 agents_Agents.Environments = environments_Environments;
 agents_Agents.Vaults = vaults_Vaults;
 agents_Agents.Sessions = sessions_Sessions;
@@ -134004,6 +134338,21 @@ class Runs extends resource_APIResource {
         }, { streamFromBody: true })));
     }
     /**
+     * A helper to create a run and poll until it reaches a terminal state.
+     */
+    async createAndPoll(threadId, body, options) {
+        const created = await this.create(threadId, body, options);
+        return await this.poll(created.id, { thread_id: threadId }, options);
+    }
+    /**
+     * Create a Run stream
+     *
+     * @deprecated use `stream` instead
+     */
+    createAndStream(threadId, body, options) {
+        return AssistantStream.createAssistantStream(threadId, this._client.beta.threads.runs, body, options);
+    }
+    /**
      * Retrieves a run.
      *
      * @deprecated The Assistants API is deprecated in favor of the Responses API
@@ -134058,23 +134407,6 @@ class Runs extends resource_APIResource {
         })));
     }
     /**
-     * A helper to create a run an poll for a terminal state. More information on Run
-     * lifecycles can be found here:
-     * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
-     */
-    async createAndPoll(threadId, body, options) {
-        const created = await this.create(threadId, body, options);
-        return await this.poll(created.id, { thread_id: threadId }, options);
-    }
-    /**
-     * Create a Run stream
-     *
-     * @deprecated use `stream` instead
-     */
-    createAndStream(threadId, body, options) {
-        return AssistantStream.createAssistantStream(threadId, this._client.beta.threads.runs, body, options);
-    }
-    /**
      * A helper to poll a run status until it reaches a terminal state. More
      * information on Run lifecycles can be found here:
      * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
@@ -134100,9 +134432,7 @@ class Runs extends resource_APIResource {
         }, { streamFromBody: true })));
     }
     /**
-     * A helper to submit a tool output to a run and poll for a terminal run state.
-     * More information on Run lifecycles can be found here:
-     * https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps
+     * A helper to submit tool outputs and poll the run to a terminal state.
      */
     async submitToolOutputsAndPoll(runId, params, options) {
         const completed = await this.submitToolOutputs(runId, params, options);
