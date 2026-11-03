@@ -116293,7 +116293,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.45.1'; // x-release-please-version
+const openai_version_VERSION = '7.47.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -125039,6 +125039,155 @@ class DataRetention extends resource_APIResource {
     }
 }
 //# sourceMappingURL=data-retention.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/external-keys.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+function external_keys_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const external_keys_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function external_keys_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => external_keys_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !external_keys_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class organization_external_keys_ExternalKeys extends resource_APIResource {
+    /**
+     * Add an external key config for an organization
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.admin.organization.externalKeys.create({
+     *     external_id: 'external_id',
+     *     kms_arn: 'kms_arn',
+     *     name: 'name',
+     *     role_arn: 'arn:aws:iam::123456789012:role/example-role',
+     *     type: 'aws',
+     *   });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/organization/external_keys', external_keys_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Retrieve a stored external key registration for the user's organization.
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.admin.organization.externalKeys.retrieve(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    retrieve(externalKeyID, options) {
+        return this._client.get(utils_path_path `/organization/external_keys/${externalKeyID}`, external_keys_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    list(query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = external_keys_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'purpose'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList('/organization/external_keys', (CursorPage), external_keys_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Delete an external key config for the user's organization
+     *
+     * @example
+     * ```ts
+     * const externalKey =
+     *   await client.admin.organization.externalKeys.delete(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    delete(externalKeyID, options) {
+        return this._client.delete(utils_path_path `/organization/external_keys/${externalKeyID}`, external_keys_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Validate an external key config for the user's organization
+     *
+     * @example
+     * ```ts
+     * const response =
+     *   await client.admin.organization.externalKeys.validate(
+     *     'external_key_id',
+     *   );
+     * ```
+     */
+    validate(externalKeyID, options) {
+        return this._client.post(utils_path_path `/organization/external_keys/${externalKeyID}/validate`, external_keys_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=external-keys.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/external-storage.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 
@@ -128426,6 +128575,8 @@ organization_users_users_Users.Roles = organization_users_roles_Roles;
 
 
 
+
+
 class organization_organization_Organization extends resource_APIResource {
     constructor() {
         super(...arguments);
@@ -128437,6 +128588,7 @@ class organization_organization_Organization extends resource_APIResource {
         this.groups = new Groups(this._client);
         this.roles = new Roles(this._client);
         this.dataRetention = new DataRetention(this._client);
+        this.externalKeys = new organization_external_keys_ExternalKeys(this._client);
         this.externalStorage = new ExternalStorage(this._client);
         this.spendLimit = new SpendLimit(this._client);
         this.spendAlerts = new SpendAlerts(this._client);
@@ -128452,6 +128604,7 @@ organization_organization_Organization.Users = organization_users_users_Users;
 organization_organization_Organization.Groups = Groups;
 organization_organization_Organization.Roles = Roles;
 organization_organization_Organization.DataRetention = DataRetention;
+organization_organization_Organization.ExternalKeys = organization_external_keys_ExternalKeys;
 organization_organization_Organization.ExternalStorage = ExternalStorage;
 organization_organization_Organization.SpendLimit = SpendLimit;
 organization_organization_Organization.SpendAlerts = SpendAlerts;
@@ -128486,6 +128639,14 @@ class Speech extends resource_APIResource {
      * Generates audio from the input text.
      *
      * Returns the audio file content, or a stream of audio events.
+     *
+     * The `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, `gpt-4o-mini-tts-2025-03-20`, and
+     * `gpt-4o-mini-tts-2025-12-15` models are deprecated and scheduled to shut down on
+     * January 6, 2027. These examples use the existing Speech API; for new
+     * integrations, migrate to `gpt-realtime-2.1-mini` through the
+     * [Realtime API](https://developers.openai.com/api/docs/guides/realtime). See the
+     * [deprecation schedule](https://developers.openai.com/api/docs/deprecations) for
+     * migration details.
      *
      * @example
      * ```ts
@@ -131741,7 +131902,7 @@ class sessions_Sessions extends resource_APIResource {
         })));
     }
     /**
-     * Updates session metadata, model, reasoning effort, or service tier. Model
+     * Updates session tools, metadata, model, reasoning effort, or service tier. Model
      * settings apply to subsequent turns. Omitted fields are unchanged. See
      * [managing sessions](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage).
      *
@@ -131760,7 +131921,7 @@ class sessions_Sessions extends resource_APIResource {
         })));
     }
     list(query = {}, options) {
-        const normalizeRequestOptionsForQueryOptions = sessions_normalizeRequestOptionsForQuery(query, ['after', 'agent_id', 'limit', 'order'], options);
+        const normalizeRequestOptionsForQueryOptions = sessions_normalizeRequestOptionsForQuery(query, ['after', 'agent_id', 'limit', 'metadata', 'order'], options);
         if (normalizeRequestOptionsForQueryOptions !== undefined) {
             options = normalizeRequestOptionsForQueryOptions;
             query = {};
@@ -136843,12 +137004,77 @@ class input_tokens_InputTokens extends resource_APIResource {
 ;// CONCATENATED MODULE: ./node_modules/openai/lib/ResponsesParser.mjs
 
 
+
+function isTextFormat(value) {
+    return values_isObj(value) && typeof value['type'] === 'string';
+}
+/** Select the last visible update to the text format, independently of reasoning updates. */
+function effectiveTextFormat({ body }, parseAs) {
+    if (parseAs === null || !values_isObj(body)) {
+        return parseAs ?? null;
+    }
+    const { input } = body;
+    if (Array.isArray(input)) {
+        for (let index = input.length - 1; index >= 0; index -= 1) {
+            const item = input[index];
+            if (!values_isObj(item) || item['type'] !== 'configuration_update') {
+                continue;
+            }
+            const { text } = item;
+            if (!values_isObj(text)) {
+                continue;
+            }
+            const { format } = text;
+            if (!isTextFormat(format)) {
+                continue;
+            }
+            if (format.type === 'text' && parseAs !== undefined) {
+                throw new error_OpenAIError('Cannot use parseAs with a plain-text format update.');
+            }
+            return parseAs ?? format;
+        }
+    }
+    const { text } = body;
+    const format = values_isObj(text) ? text['format'] : null;
+    return parseAs ?? (isTextFormat(format) ? format : null);
+}
+/** Strip local options before sending and resolve the format against the prepared request body. */
+function resolveResponseParseOptions(params, options) {
+    const parseAs = options && values_hasOwn(options, 'parseAs') ? options.parseAs : undefined;
+    // Reject a visible plain-text reset before making the request.
+    if (parseAs != null) {
+        effectiveTextFormat({ body: params }, parseAs);
+    }
+    const requestOptions = { ...options };
+    delete requestOptions.parseAs;
+    // Undefined means no body was serialized (e.g. a custom stream transport).
+    // Null means this particular request intentionally has no text parser.
+    let captured;
+    requestOptions.__metadata = {
+        ...options?.__metadata,
+        captureResponseParser(prepared) {
+            const format = effectiveTextFormat(prepared, parseAs);
+            const selector = format === null
+                ? null
+                : {
+                    type: format.type,
+                    $brand: '$brand' in format ? format.$brand : undefined,
+                    $parseRaw: '$parseRaw' in format ? format.$parseRaw : undefined,
+                };
+            captured = selector;
+        },
+    };
+    return {
+        getTextFormat: (prepared) => captured === undefined ? effectiveTextFormat(prepared, parseAs) : captured,
+        requestOptions,
+    };
+}
 /**
  * Adds parsed-output fields to a response, invoking parsers only when its request
  * includes an auto-parseable text format or strict function tool.
  */
-function maybeParseResponse(response, params) {
-    if (!params || !ResponsesParser_hasAutoParseableInput(params)) {
+function maybeParseResponse(response, params, format = params && effectiveTextFormat({ body: params })) {
+    if (!params || !ResponsesParser_hasAutoParseableInput(params, format)) {
         const parsed = {
             ...response,
             output_parsed: null,
@@ -136877,7 +137103,7 @@ function maybeParseResponse(response, params) {
         }
         return parsed;
     }
-    return parseResponse(response, params);
+    return parseResponse(response, params, format);
 }
 /**
  * Parses completed response text and strict function-tool arguments, matching
@@ -136886,7 +137112,7 @@ function maybeParseResponse(response, params) {
  * Incomplete responses and messages with an explicit non-final phase stay unparsed.
  * `output_parsed` returns the first successfully parsed output-text item.
  */
-function parseResponse(response, params) {
+function parseResponse(response, params, format = effectiveTextFormat({ body: params })) {
     const shouldParse = !response.status || response.status === 'completed';
     const output = response.output.map((item) => {
         if (item.type === 'function_call') {
@@ -136898,7 +137124,7 @@ function parseResponse(response, params) {
                     return {
                         ...content,
                         parsed: shouldParse && (item.phase == null || item.phase === 'final_answer')
-                            ? parseTextFormat(params, content.text)
+                            ? parseResponseFormatContent(format, content.text)
                             : null,
                     };
                 }
@@ -136934,12 +137160,9 @@ function parseResponse(response, params) {
     // SAFETY: The output_parsed getter was installed immediately above and returns the first parsed content or null.
     return parsed;
 }
-function parseTextFormat(params, content) {
-    return parseResponseFormatContent(params.text?.format, content);
-}
 /** Returns whether the request includes an auto-parseable text format or strict function tool. */
-function ResponsesParser_hasAutoParseableInput(params) {
-    if (isParseableResponseFormat(params.text?.format)) {
+function ResponsesParser_hasAutoParseableInput(params, format = effectiveTextFormat({ body: params })) {
+    if (isParseableResponseFormat(format)) {
         return true;
     }
     return (Array.isArray(params.tools) &&
@@ -138288,6 +138511,8 @@ var _ResponseStream_instances, _ResponseStream_params, _ResponseStream_currentRe
 
 
 
+
+
 // Require every generated native event field here. Unknown hidden transport members remain private.
 const nativeEventFields = {
     annotation: true,
@@ -138347,12 +138572,12 @@ class ResponseStream extends EventStream {
     }
     /** Starts a new response stream or replays an existing response by its identifier. */
     static createResponse(client, params, options) {
-        // SAFETY: The runner's request path forces stream: true; the constructor retains the same caller parameters for parsing metadata.
-        const runner = new ResponseStream(params);
+        const { getTextFormat, requestOptions } = resolveResponseParseOptions(params, options);
+        const runner = new ResponseStream(Array.isArray(params.tools) ? { tools: params.tools } : {});
         runner._run(() => runner._createOrRetrieveResponse(client, params, {
-            ...options,
-            __metadata: { ...options?.__metadata, helperMethod: 'stream' },
-        }));
+            ...requestOptions,
+            __metadata: { ...requestOptions?.__metadata, helperMethod: 'stream' },
+        }, getTextFormat));
         return runner;
     }
     /** Consumes serialized response events from a readable stream in another runtime. */
@@ -138361,19 +138586,43 @@ class ResponseStream extends EventStream {
         runner._run(() => runner._fromReadableStream(stream));
         return runner;
     }
-    async _createOrRetrieveResponse(client, params, options) {
+    async _createOrRetrieveResponse(client, params, options, getTextFormat = resolveResponseParseOptions(params).getTextFormat) {
         this._listenForAbort(options?.signal);
         __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_beginRequest).call(this);
         let stream;
+        let format;
         let starting_after = null;
         if ('response_id' in params) {
+            format = getTextFormat({ body: params });
             // Keep the full replay so that `accumulateResponse()` sees `response.created` and can build
             // complete snapshots before locally filtering events at `starting_after`.
             stream = await client.responses.retrieve(params.response_id, { stream: true }, { ...options, signal: this.controller.signal, stream: true });
             starting_after = params.starting_after ?? null;
         }
         else {
-            stream = await client.responses.create({ ...params, stream: true }, { ...options, signal: this.controller.signal });
+            const body = { ...params, stream: true };
+            let prepared = { body };
+            let responseBody = null;
+            let request = client.responses.create(body, { ...options, signal: this.controller.signal });
+            // Custom transports can return a plain promise without the prepared request metadata.
+            if (request instanceof api_promise_APIPromise) {
+                request = request._thenUnwrap((events, props) => {
+                    prepared = props.options;
+                    responseBody = props.response.body;
+                    return events;
+                });
+            }
+            stream = await request;
+            try {
+                format = getTextFormat(prepared);
+            }
+            catch (error) {
+                // Validation precedes iteration, so close the open response here.
+                this.abort();
+                stream.controller.abort();
+                void cancelUnconsumedBody(responseBody);
+                throw error;
+            }
         }
         this._connected();
         for await (const event of stream) {
@@ -138382,7 +138631,7 @@ class ResponseStream extends EventStream {
         if (stream.controller.signal?.aborted) {
             throw this._userAbortError();
         }
-        return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_endRequest).call(this);
+        return __classPrivateFieldGet(this, _ResponseStream_instances, "m", _ResponseStream_endRequest).call(this, format);
     }
     async _fromReadableStream(readableStream, options) {
         this._listenForAbort(options?.signal);
@@ -138749,7 +138998,7 @@ class ResponseStream extends EventStream {
                 break;
             }
         }
-    }, _ResponseStream_endRequest = function _ResponseStream_endRequest() {
+    }, _ResponseStream_endRequest = function _ResponseStream_endRequest(format) {
         if (this.ended) {
             throw new error_OpenAIError(`stream has ended, this shouldn't happen`);
         }
@@ -138765,7 +139014,7 @@ class ResponseStream extends EventStream {
         __classPrivateFieldSet(this, _ResponseStream_interimOrderDirty, false, "f");
         __classPrivateFieldGet(this, _ResponseStream_completedOutput, "f").clear();
         __classPrivateFieldGet(this, _ResponseStream_unfinishedOutput, "f").clear();
-        const parsedResponse = finalizeResponse(snapshot, __classPrivateFieldGet(this, _ResponseStream_params, "f"));
+        const parsedResponse = finalizeResponse(snapshot, __classPrivateFieldGet(this, _ResponseStream_params, "f"), format);
         __classPrivateFieldSet(this, _ResponseStream_finalResponse, parsedResponse, "f");
         return parsedResponse;
     }, Symbol.asyncIterator)]() {
@@ -138790,6 +139039,14 @@ class ResponseStream extends EventStream {
         return response;
     }
 }
+async function cancelUnconsumedBody(body) {
+    try {
+        await shims_CancelReadableStream(body);
+    }
+    catch {
+        // The fetch abort may already have closed the response body.
+    }
+}
 function outputIdentity(item) {
     return JSON.stringify([
         item.type,
@@ -138797,8 +139054,8 @@ function outputIdentity(item) {
         values_hasOwn(item, 'call_id') && 'call_id' in item ? item.call_id : null,
     ]);
 }
-function finalizeResponse(snapshot, params) {
-    return maybeParseResponse(snapshot, params);
+function finalizeResponse(snapshot, params, format) {
+    return maybeParseResponse(snapshot, params, format);
 }
 //# sourceMappingURL=ResponseStream.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/responses/responses.mjs
@@ -138960,14 +139217,14 @@ class responses_Responses extends resource_APIResource {
             __security: { bearerAuth: true },
         })));
     }
+    /** Parses completed text using the last format update or the local `parseAs` option. */
     parse(body, options) {
+        const { getTextFormat, requestOptions } = resolveResponseParseOptions(body, options);
         return this._client.responses
-            .create(body, options)
-            ._thenUnwrap((response) => parseResponse(response, body));
+            .create(body, requestOptions)
+            ._thenUnwrap((response, { options: prepared }) => parseResponse(response, body, getTextFormat(prepared)));
     }
-    /**
-     * Creates a model response stream
-     */
+    /** Creates a response stream with the same local parsing options as `parse()`. */
     stream(body, options) {
         return ResponseStream.createResponse(this._client, body, options);
     }
@@ -140888,67 +141145,6 @@ function resolveBedrockBearerAuth(options, { allowEnvironment = true, } = {}) {
     return { factory: undefined, explicit: false };
 }
 //# sourceMappingURL=bedrock.mjs.map
-;// CONCATENATED MODULE: ./node_modules/openai/internal/realtime-credentials.mjs
-
-// Only the key crosses module formats: the context belongs to each participating client.
-const realtimeCacheContext = Symbol.for('openai.realtimeAPIKeyCacheContext');
-let cacheContext;
-/** Installs the Node transport's invocation context without loading Node in the base client. @internal */
-function setRealtimeAPIKeyCacheContext(context) {
-    cacheContext = context;
-}
-/** Reserves a deferred commit when the base hook is entered for this invocation. @internal */
-function getDeferredRealtimeAPIKeyCache(client) {
-    const deferred = client[realtimeCacheContext]?.getStore();
-    return deferred?.client === client ? deferred : undefined;
-}
-/** Applies the Bedrock getter's validation when a captured credential does not enter the cache. @internal */
-function validateCapturedAPIKey(client, credential) {
-    if (credential !== null && brand_privateBedrockClient in client) {
-        assertValidBedrockBearerCredential(credential);
-    }
-    return credential;
-}
-/** Selects a captured credential without treating an explicit null as absent. @internal */
-function getRealtimeAPIKey(client, captured) {
-    return captured === undefined ? client?.apiKey : captured;
-}
-/**
- * Captures the key belonging to this request or factory invocation while retaining the
- * existing boolean credential-hook contract. Legacy overrides that do not
- * capture a key keep their shared-property behavior and remain responsible for
- * synchronizing concurrent credential updates.
- * @internal
- */
-async function resolveRealtimeAPIKey(client, deferCache = false) {
-    let apiKey;
-    const current = {
-        client,
-        commit: () => (apiKey === undefined ? client.apiKey : apiKey),
-    };
-    const capture = (resolved) => {
-        apiKey = resolved;
-    };
-    const invoke = () => client._callApiKey(capture);
-    const context = client[realtimeCacheContext] ?? cacheContext;
-    if (deferCache && context && !client[realtimeCacheContext]) {
-        Object.defineProperty(client, realtimeCacheContext, { value: context });
-    }
-    // An HTTP or ordinary Realtime request nested inside a WebSocket hook owns its own cache writes.
-    const isProvider = await (context ? context.run(deferCache ? current : undefined, invoke) : invoke());
-    return {
-        apiKey: apiKey === undefined ? client.apiKey : apiKey,
-        isProvider,
-        commit: () => {
-            const hookKey = current.providerKey !== undefined && apiKey !== undefined && apiKey !== current.providerKey
-                ? validateCapturedAPIKey(client, apiKey)
-                : undefined;
-            const cached = current.commit();
-            return hookKey === undefined ? validateCapturedAPIKey(client, cached) : hookKey;
-        },
-    };
-}
-//# sourceMappingURL=realtime-credentials.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/ws.mjs
 
 
@@ -141071,7 +141267,7 @@ function mergeWebSocketAuthHeaders(options, authHeaders, removedHeaders) {
 const webSocketHeaderRemovals = new WeakMap();
 const preparedWebSocketHeaders = new WeakMap();
 /** Build a WebSocket handshake with explicit caller headers applied after the client defaults. */
-function buildWebSocketOptions(client, authHeaders, options, removedHeaders, usePreparedHeaders = false) {
+function ws_buildWebSocketOptions(client, authHeaders, options, removedHeaders, usePreparedHeaders = false) {
     // Capture the base result even through older overrides that forward only one argument.
     const previous = webSocketHeaderRemovals.get(client);
     const prepared = usePreparedHeaders && options ? preparedWebSocketHeaders.get(options) : undefined;
@@ -141204,9 +141400,18 @@ class SendQueue {
     /** Creates a queue with a one-mebibyte default byte budget. */
     constructor(maxBytes = 1048576, allowOversizedFirstMessage = true) {
         this._queue = [];
+        this._cursor = 0;
+        this._flushing = false;
         this._bytes = 0;
         this.allowOversizedFirstMessage = allowOversizedFirstMessage;
         this._maxBytes = maxBytes;
+    }
+    /** New open-socket writes must queue behind an active flush. */
+    get isFlushing() {
+        return this._flushing;
+    }
+    get hasPending() {
+        return this._queue.length > this._cursor;
     }
     /**
      * Serializes and snapshots a JSON message before queueing it.
@@ -141215,13 +141420,17 @@ class SendQueue {
      * when adding it to a nonempty queue would exceed the byte budget.
      */
     enqueue(event) {
+        const pending = this._queue;
         const data = JSON.stringify(event);
         if (data === undefined) {
             throw new TypeError('WebSocket event could not be serialized as JSON');
         }
+        if (this._queue !== pending) {
+            throw new Error('WebSocket send queue was drained during serialization');
+        }
         const byteLength = encodeUTF8(data).byteLength;
         if (this._bytes + byteLength > this._maxBytes &&
-            (!this.allowOversizedFirstMessage || this._queue.length > 0)) {
+            (!this.allowOversizedFirstMessage || this._queue.length > this._cursor)) {
             return false;
         }
         this._queue.push({ kind: 'json', data, byteLength });
@@ -141236,10 +141445,14 @@ class SendQueue {
      * when adding it to a nonempty queue would exceed the byte budget.
      */
     enqueueRaw(data) {
+        const pending = this._queue;
         const snapshot = snapshotRawData(data);
+        if (this._queue !== pending) {
+            throw new Error('WebSocket send queue was drained during raw snapshot');
+        }
         const byteLength = rawByteLength(snapshot);
         if (this._bytes + byteLength > this._maxBytes &&
-            (!this.allowOversizedFirstMessage || this._queue.length > 0)) {
+            (!this.allowOversizedFirstMessage || this._queue.length > this._cursor)) {
             return false;
         }
         this._queue.push({ kind: 'raw', data: snapshot, byteLength });
@@ -141254,18 +141467,36 @@ class SendQueue {
      * remain queued, including messages enqueued during the failed send.
      */
     flush(send, options) {
-        const pending = this._queue.splice(0);
-        this._bytes = 0;
-        for (let i = 0; i < pending.length; i++) {
-            try {
-                send(pending[i].data);
+        if (this._flushing) {
+            return;
+        }
+        this._flushing = true;
+        const pending = this._queue;
+        try {
+            // Reentrant enqueue appends to this queue. Drain detaches it, canceling this flush.
+            while (this._queue === pending && this._cursor < pending.length && (options?.canSend?.() ?? true)) {
+                const entry = pending[this._cursor];
+                // Release sent payloads as we go, including during long reentrant append chains.
+                pending[this._cursor++] = undefined;
+                this._bytes -= entry.byteLength;
+                try {
+                    send(entry.data);
+                }
+                catch (err) {
+                    if (this._queue === pending && options?.requeueFailed !== false) {
+                        pending[--this._cursor] = entry;
+                        this._bytes += entry.byteLength;
+                    }
+                    throw err;
+                }
             }
-            catch (err) {
-                const remaining = pending.slice(options?.requeueFailed === false ? i + 1 : i);
-                this._queue = [...remaining, ...this._queue];
-                this._bytes = this._queue.reduce((sum, item) => sum + item.byteLength, 0);
-                throw err;
+        }
+        finally {
+            if (this._queue === pending) {
+                pending.splice(0, this._cursor);
             }
+            this._cursor = 0;
+            this._flushing = false;
         }
     }
     /**
@@ -141273,7 +141504,9 @@ class SendQueue {
      * deserialized back to their original form. Resets byte tracking to zero.
      */
     drain() {
-        const unsent = this._queue.map((entry) => {
+        const unsent = this._queue.slice(this._cursor).map((item) => {
+            // Only entries before the cursor have been consumed.
+            const entry = item;
             if (entry.kind === 'raw') {
                 return { type: 'raw', data: entry.data };
             }
@@ -141281,6 +141514,8 @@ class SendQueue {
             return { type: 'message', message: JSON.parse(entry.data) };
         });
         this._queue = [];
+        this._cursor = 0;
+        this._flushing = false;
         this._bytes = 0;
         return unsent;
     }
@@ -141342,6 +141577,93 @@ function isRecoverableClose(code) {
     }
 }
 //# sourceMappingURL=ws.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/internal/realtime-credentials.mjs
+
+
+/** Native Realtime accepts routing metadata through these two server-supported subprotocols. */
+function realtimeRoutingProtocols(client, apiKey) {
+    const protocols = [];
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Structural partial clients may omit the callable header hook; check it before using the client's header contract.
+    if ('_buildWebSocketHeaders' in client && typeof client._buildWebSocketHeaders === 'function') {
+        // SAFETY: The checked client hook owns header precedence; no other OpenAI members are used.
+        const { headers } = buildWebSocketOptions(client, { Authorization: `Bearer ${apiKey}` }, null);
+        for (const field of ['organization', 'project']) {
+            const value = headers[`openai-${field}`];
+            if (value !== undefined) {
+                protocols.push(`openai-${field}.${value}`);
+            }
+        }
+        return protocols;
+    }
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Realtime accepts structural partial clients; optional routing fields enter from that untyped client boundary.
+    if ('organization' in client && typeof client.organization === 'string') {
+        protocols.push(`openai-organization.${client.organization}`);
+    }
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof -- Only the supported string field can be emitted to the native protocol boundary.
+    if ('project' in client && typeof client.project === 'string') {
+        protocols.push(`openai-project.${client.project}`);
+    }
+    return protocols;
+}
+// Only the key crosses module formats: the context belongs to each participating client.
+const realtimeCacheContext = Symbol.for('openai.realtimeAPIKeyCacheContext');
+let cacheContext;
+/** Installs the Node transport's invocation context without loading Node in the base client. @internal */
+function setRealtimeAPIKeyCacheContext(context) {
+    cacheContext = context;
+}
+/** Reserves a deferred commit when the base hook is entered for this invocation. @internal */
+function getDeferredRealtimeAPIKeyCache(client) {
+    const deferred = client[realtimeCacheContext]?.getStore();
+    return deferred?.client === client ? deferred : undefined;
+}
+/** Applies the Bedrock getter's validation when a captured credential does not enter the cache. @internal */
+function validateCapturedAPIKey(client, credential) {
+    if (credential !== null && brand_privateBedrockClient in client) {
+        assertValidBedrockBearerCredential(credential);
+    }
+    return credential;
+}
+/** Selects a captured credential without treating an explicit null as absent. @internal */
+function getRealtimeAPIKey(client, captured) {
+    return captured === undefined ? client?.apiKey : captured;
+}
+/**
+ * Captures the key belonging to this request or factory invocation while retaining the
+ * existing boolean credential-hook contract. Legacy overrides that do not
+ * capture a key keep their shared-property behavior and remain responsible for
+ * synchronizing concurrent credential updates.
+ * @internal
+ */
+async function resolveRealtimeAPIKey(client, deferCache = false) {
+    let apiKey;
+    const current = {
+        client,
+        commit: () => (apiKey === undefined ? client.apiKey : apiKey),
+    };
+    const capture = (resolved) => {
+        apiKey = resolved;
+    };
+    const invoke = () => client._callApiKey(capture);
+    const context = client[realtimeCacheContext] ?? cacheContext;
+    if (deferCache && context && !client[realtimeCacheContext]) {
+        Object.defineProperty(client, realtimeCacheContext, { value: context });
+    }
+    // An HTTP or ordinary Realtime request nested inside a WebSocket hook owns its own cache writes.
+    const isProvider = await (context ? context.run(deferCache ? current : undefined, invoke) : invoke());
+    return {
+        apiKey: apiKey === undefined ? client.apiKey : apiKey,
+        isProvider,
+        commit: () => {
+            const hookKey = current.providerKey !== undefined && apiKey !== undefined && apiKey !== current.providerKey
+                ? validateCapturedAPIKey(client, apiKey)
+                : undefined;
+            const cached = current.commit();
+            return hookKey === undefined ? validateCapturedAPIKey(client, cached) : hookKey;
+        },
+    };
+}
+//# sourceMappingURL=realtime-credentials.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/provider.mjs
 
 const providerTimeoutKey = Symbol.for('openai.node.providerTimeout.v1');
@@ -142721,6 +143043,11 @@ class OpenAI {
             stopObserving?.();
         }
         const { bodyHeaders, body, isStreamingBody } = encodedBody;
+        // Capture the local response parser after serialization and before dispatch.
+        const captureResponseParser = options.__metadata?.['captureResponseParser'];
+        if (typeof captureResponseParser === 'function') {
+            captureResponseParser(options);
+        }
         // Choose the parser from the encoded payload. Opaque bodies retain the
         // caller's parser choice; JSON and multipart fields reflect serialization.
         if (options.__metadata?.['streamFromBody'] === true) {
