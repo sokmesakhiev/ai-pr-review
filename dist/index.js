@@ -117406,7 +117406,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.47.0'; // x-release-please-version
+const openai_version_VERSION = '7.49.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -129659,8 +129659,325 @@ class organization_users_users_Users extends resource_APIResource {
 }
 organization_users_users_Users.Roles = organization_users_roles_Roles;
 //# sourceMappingURL=users.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/workload-identity-providers/federation-rules.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+function federation_rules_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const federation_rules_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function federation_rules_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => federation_rules_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !federation_rules_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class FederationRules extends resource_APIResource {
+    /**
+     * Bind verified token attributes to an existing project service account.
+     *
+     * @example
+     * ```ts
+     * const federationRule =
+     *   await client.admin.organization.workloadIdentityProviders.federationRules.create(
+     *     'x',
+     *     {
+     *       attribute_matchers: { foo: 'string' },
+     *       project_id: 'x',
+     *       service_account_id: 'x',
+     *     },
+     *   );
+     * ```
+     */
+    create(workloadIdentityProviderID, body, options) {
+        return this._client.post(utils_path_path `/organization/workload_identity_providers/${workloadIdentityProviderID}/federation_rules`, federation_rules_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Retrieve a federation rule owned by the authenticated organization and provider.
+     *
+     * @example
+     * ```ts
+     * const federationRule =
+     *   await client.admin.organization.workloadIdentityProviders.federationRules.retrieve(
+     *     'x',
+     *     { workload_identity_provider_id: 'x' },
+     *   );
+     * ```
+     */
+    retrieve(workloadIdentityFederationRuleID, params, options) {
+        const { workload_identity_provider_id } = params;
+        return this._client.get(utils_path_path `/organization/workload_identity_providers/${workload_identity_provider_id}/federation_rules/${workloadIdentityFederationRuleID}`, federation_rules_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Update supplied matcher, permission, metadata, or enabled fields.
+     *
+     * @example
+     * ```ts
+     * const federationRule =
+     *   await client.admin.organization.workloadIdentityProviders.federationRules.update(
+     *     'x',
+     *     { workload_identity_provider_id: 'x' },
+     *   );
+     * ```
+     */
+    update(workloadIdentityFederationRuleID, params, options) {
+        const { workload_identity_provider_id, ...body } = params;
+        return this._client.post(utils_path_path `/organization/workload_identity_providers/${workload_identity_provider_id}/federation_rules/${workloadIdentityFederationRuleID}`, federation_rules_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    list(workloadIdentityProviderID, query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = federation_rules_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order', 'service_account_id'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList(utils_path_path `/organization/workload_identity_providers/${workloadIdentityProviderID}/federation_rules`, (CursorPage), federation_rules_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Delete a federation rule to a project service account.
+     *
+     * @example
+     * ```ts
+     * const federationRuleDeleted =
+     *   await client.admin.organization.workloadIdentityProviders.federationRules.delete(
+     *     'x',
+     *     { workload_identity_provider_id: 'x' },
+     *   );
+     * ```
+     */
+    delete(workloadIdentityFederationRuleID, params, options) {
+        const { workload_identity_provider_id } = params;
+        return this._client.delete(utils_path_path `/organization/workload_identity_providers/${workload_identity_provider_id}/federation_rules/${workloadIdentityFederationRuleID}`, federation_rules_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=federation-rules.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/workload-identity-providers/workload-identity-providers.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+
+
+
+function workload_identity_providers_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+// Recognizable options across SDK runtime versions. Keep this independent of
+// private RequestOptions fields so older handwritten runtimes still compile.
+const workload_identity_providers_normalizeRequestOptionsForQueryKeys = new Set([
+    'method',
+    'path',
+    'query',
+    'body',
+    'headers',
+    'maxRetries',
+    'stream',
+    'timeout',
+    'httpAgent',
+    'fetchOptions',
+    'signal',
+    'idempotencyKey',
+    'defaultBaseURL',
+    '__metadata',
+    '__binaryRequest',
+    '__binaryResponse',
+    '__streamClass',
+    '__security',
+    '__synthesizeEventData',
+]);
+function workload_identity_providers_normalizeRequestOptionsForQuery(value, queryKeys, options) {
+    if (typeof value !== 'object' || value === null)
+        return undefined;
+    // Optional never fields can still be explicitly undefined unless consumers
+    // enable exactOptionalPropertyTypes. Snapshot data without invoking getters.
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value)).filter(([, descriptor]) => descriptor.enumerable && (!('value' in descriptor) || descriptor.value !== undefined));
+    const keys = entries.map(([key]) => key);
+    const requestOnly = keys.some((key) => workload_identity_providers_normalizeRequestOptionsForQueryKeys.has(key) && !queryKeys.includes(key));
+    if (!requestOnly)
+        return undefined;
+    // Declared query fields, including stream, must use the query argument.
+    // Mixing them with request-only options is ambiguous and could change the return type.
+    if (options !== undefined ||
+        keys.some((key) => !workload_identity_providers_normalizeRequestOptionsForQueryKeys.has(key) || queryKeys.includes(key))) {
+        throw new TypeError('Query parameters and request options must be passed as separate arguments.');
+    }
+    // The query position must not gain authority to change the request destination
+    // or transport. Those overrides require the explicit request options argument.
+    if (keys.some((key) => !['headers', 'maxRetries', 'timeout', 'signal', 'idempotencyKey', 'query'].includes(key))) {
+        throw new TypeError('Pass transport overrides in the explicit request options argument.');
+    }
+    // Copy only the validated fields. Spreading value would reintroduce undefined
+    // transport overrides, and deleting them would mutate the caller's object.
+    return Object.fromEntries(entries.map(([key, descriptor]) => {
+        if ('value' in descriptor)
+            return [key, descriptor.value];
+        return [key, descriptor.get ? Reflect.apply(descriptor.get, value, []) : undefined];
+    }));
+}
+class WorkloadIdentityProviders extends resource_APIResource {
+    constructor() {
+        super(...arguments);
+        this.federationRules = new FederationRules(this._client);
+    }
+    /**
+     * Register an OIDC provider for keyless project service-account authentication.
+     *
+     * @example
+     * ```ts
+     * const workloadIdentityProvider =
+     *   await client.admin.organization.workloadIdentityProviders.create(
+     *     {
+     *       audience: 'x',
+     *       issuer: 'x',
+     *       name: 'x',
+     *       type: 'oidc',
+     *     },
+     *   );
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/organization/workload_identity_providers', workload_identity_providers_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Retrieve an OIDC provider in the authenticated organization.
+     *
+     * @example
+     * ```ts
+     * const workloadIdentityProvider =
+     *   await client.admin.organization.workloadIdentityProviders.retrieve(
+     *     'x',
+     *   );
+     * ```
+     */
+    retrieve(workloadIdentityProviderID, options) {
+        return this._client.get(utils_path_path `/organization/workload_identity_providers/${workloadIdentityProviderID}`, workload_identity_providers_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Update supplied provider fields, preserving omitted fields.
+     *
+     * @example
+     * ```ts
+     * const workloadIdentityProvider =
+     *   await client.admin.organization.workloadIdentityProviders.update(
+     *     'x',
+     *   );
+     * ```
+     */
+    update(workloadIdentityProviderID, body = {}, options) {
+        return this._client.post(utils_path_path `/organization/workload_identity_providers/${workloadIdentityProviderID}`, workload_identity_providers_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    list(query = {}, options) {
+        const normalizeRequestOptionsForQueryOptions = workload_identity_providers_normalizeRequestOptionsForQuery(query, ['after', 'limit', 'order'], options);
+        if (normalizeRequestOptionsForQueryOptions !== undefined) {
+            options = normalizeRequestOptionsForQueryOptions;
+            query = {};
+        }
+        query = query;
+        return this._client.getAPIList('/organization/workload_identity_providers', (CursorPage), workload_identity_providers_resolveResourceRequestOptions(options, (options) => ({
+            query,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Delete a provider after deleting all its federation rules.
+     *
+     * @example
+     * ```ts
+     * const workloadIdentityProviderDeleted =
+     *   await client.admin.organization.workloadIdentityProviders.delete(
+     *     'x',
+     *   );
+     * ```
+     */
+    delete(workloadIdentityProviderID, options) {
+        return this._client.delete(utils_path_path `/organization/workload_identity_providers/${workloadIdentityProviderID}`, workload_identity_providers_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+}
+WorkloadIdentityProviders.FederationRules = FederationRules;
+//# sourceMappingURL=workload-identity-providers.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/organization.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
 
 
 
@@ -129707,6 +130024,7 @@ class organization_organization_Organization extends resource_APIResource {
         this.spendAlerts = new SpendAlerts(this._client);
         this.certificates = new certificates_Certificates(this._client);
         this.projects = new projects_Projects(this._client);
+        this.workloadIdentityProviders = new WorkloadIdentityProviders(this._client);
     }
 }
 organization_organization_Organization.AuditLogs = AuditLogs;
@@ -129723,6 +130041,7 @@ organization_organization_Organization.SpendLimit = SpendLimit;
 organization_organization_Organization.SpendAlerts = SpendAlerts;
 organization_organization_Organization.Certificates = certificates_Certificates;
 organization_organization_Organization.Projects = projects_Projects;
+organization_organization_Organization.WorkloadIdentityProviders = WorkloadIdentityProviders;
 //# sourceMappingURL=organization.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/admin.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
