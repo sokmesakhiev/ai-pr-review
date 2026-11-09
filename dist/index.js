@@ -116736,10 +116736,13 @@ class streaming_Stream {
      * Decodes an SSE response into parsed JSON events.
      *
      * The resulting stream can be consumed only once, ignores events after `[DONE]`, and
-     * surfaces API error payloads as `APIError` instances. When
+     * surfaces API error payloads as `APIError` instances in the default `legacy` mode.
+     * In `events` mode, every parsed JSON payload remains a stream item. When
      * `synthesizeEventData` is enabled, each item also includes its SSE event name.
+     * Custom factories that wrap this method should forward the optional fifth
+     * argument to preserve the selected delivery mode.
      */
-    static fromSSEResponse(response, controller, client, synthesizeEventData) {
+    static fromSSEResponse(response, controller, client, synthesizeEventData, streamMode = 'legacy') {
         let consumed = false;
         const logger = client ? loggerFor(client) : console;
         async function* iterator() {
@@ -116764,15 +116767,20 @@ class streaming_Stream {
                         receivedCompletionSentinel = true;
                         break;
                     }
-                    if (sse.event === null || !sse.event.startsWith('thread.')) {
-                        let data;
-                        try {
-                            data = JSON.parse(sse.data);
-                        }
-                        catch {
-                            logger.error(`Could not parse message into JSON:`);
-                            logger.error(`From chunk:`);
-                            throw new SyntaxError('Error reading response: malformed server-sent event JSON.');
+                    let data;
+                    try {
+                        data = JSON.parse(sse.data);
+                    }
+                    catch {
+                        logger.error(`Could not parse message into JSON:`);
+                        logger.error(`From chunk:`);
+                        throw new SyntaxError('Error reading response: malformed server-sent event JSON.');
+                    }
+                    if (streamMode === 'legacy') {
+                        if (sse.event?.startsWith('thread.')) {
+                            // SAFETY: Named SSE events use the public stream's event/data envelope; Item is the caller-selected API event contract.
+                            yield { event: sse.event, data };
+                            continue;
                         }
                         if (sse.event === 'error') {
                             throw new error_APIError(undefined, data?.error ?? data, undefined, response.headers);
@@ -116780,21 +116788,8 @@ class streaming_Stream {
                         if (data && data.error) {
                             throw new error_APIError(undefined, data.error, undefined, response.headers);
                         }
-                        yield synthesizeEventData ? { event: sse.event, data } : data;
                     }
-                    else {
-                        let data;
-                        try {
-                            data = JSON.parse(sse.data);
-                        }
-                        catch {
-                            logger.error(`Could not parse message into JSON:`);
-                            logger.error(`From chunk:`);
-                            throw new SyntaxError('Error reading response: malformed server-sent event JSON.');
-                        }
-                        // SAFETY: Named SSE events use the public stream's event/data envelope; Item is the caller-selected API event contract.
-                        yield { event: sse.event, data };
-                    }
+                    yield synthesizeEventData ? { event: sse.event, data } : data;
                 }
                 done = true;
             }
@@ -117336,9 +117331,9 @@ async function parse_defaultParseResponse(client, props) {
             // Note: there is an invariant here that isn't represented in the type system
             // that if you set `stream: true` the response type must also be `Stream<T>`
             if (props.options.__streamClass) {
-                return props.options.__streamClass.fromSSEResponse(response, props.controller, client, props.options.__synthesizeEventData);
+                return props.options.__streamClass.fromSSEResponse(response, props.controller, client, props.options.__synthesizeEventData, props.options.__streamMode);
             }
-            return streaming_Stream.fromSSEResponse(response, props.controller, client, props.options.__synthesizeEventData);
+            return streaming_Stream.fromSSEResponse(response, props.controller, client, props.options.__synthesizeEventData, props.options.__streamMode);
         }
         // fetch refuses to read the body when the status code is 204.
         if (response.status === 204) {
@@ -117406,7 +117401,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.49.0'; // x-release-please-version
+const openai_version_VERSION = '7.53.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -118174,9 +118169,7 @@ const stringify_array_prefix_generators = {
     indices(prefix, key) {
         return String(prefix) + '[' + key + ']';
     },
-    repeat(prefix) {
-        return String(prefix);
-    },
+    repeat: String,
 };
 const stringify_push_to_array = function push_to_array(arr, value_or_array) {
     Array.prototype.push.apply(arr, values_isArray(value_or_array) ? value_or_array : [value_or_array]);
@@ -118461,6 +118454,9 @@ const endpoints = new Map([
     ['us', 'https://us.api.openai.com/v1'],
     ['eu', 'https://eu.api.openai.com/v1'],
     ['ae', 'https://ae.api.openai.com/v1'],
+    ['au', 'https://au.api.openai.com/v1'],
+    ['in', 'https://in.api.openai.com/v1'],
+    ['jp', 'https://jp.api.openai.com/v1'],
 ]);
 /** Resolves an explicit residency selection before client options are inherited. */
 function resolveDataResidency(options) {
@@ -118472,7 +118468,7 @@ function resolveDataResidency(options) {
     }
     const endpoint = endpoints.get(options.dataResidency);
     if (endpoint === undefined) {
-        throw new error_OpenAIError('Invalid `dataResidency`; expected one of: global, us, eu, ae.');
+        throw new error_OpenAIError('Invalid `dataResidency`; expected one of: global, us, eu, ae, au, in, jp.');
     }
     return endpoint;
 }
@@ -120892,6 +120888,7 @@ const normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -122297,6 +122294,7 @@ class EventStream {
         // references to `this` before the `super()` constructor call returns.
         setTimeout(() => {
             let failed = false;
+            // oxlint-disable-next-line promise/catch-or-return -- Executor errors go through #handleError; exceptions thrown by user listeners must remain observable.
             Promise.resolve()
                 .then(executor)
                 .catch((error) => {
@@ -122856,6 +122854,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
         const error = args[0];
         __classPrivateFieldSet(this, _EventStream_terminalFailure, __classPrivateFieldGet(this, _EventStream_terminalFailure, "f") ?? { kind: 'abort', error }, "f");
         if (!__classPrivateFieldGet(this, _EventStream_catchingPromiseCreated, "f") && !hasListeners) {
+            // oxlint-disable-next-line promise/catch-or-return -- Surface an unobserved stream error as an unhandled rejection.
             Promise.reject(error);
         }
         __classPrivateFieldGet(this, _EventStream_rejectConnectedPromise, "f").call(this, error);
@@ -122875,6 +122874,7 @@ _EventStream_connectedPromise = new WeakMap(), _EventStream_resolveConnectedProm
             // - await runner.done()
             // - await runner.finalChatCompletion()
             // - etc.
+            // oxlint-disable-next-line promise/catch-or-return -- Surface an unobserved stream error as an unhandled rejection.
             Promise.reject(error);
         }
         __classPrivateFieldGet(this, _EventStream_rejectConnectedPromise, "f").call(this, error);
@@ -125543,6 +125543,7 @@ const completions_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -125728,6 +125729,7 @@ const admin_api_keys_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -125855,6 +125857,7 @@ const audit_logs_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -125945,6 +125948,7 @@ const certificates_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -126180,6 +126184,7 @@ const external_keys_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -126329,6 +126334,7 @@ const external_storage_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -126482,6 +126488,7 @@ const invites_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -126612,6 +126619,7 @@ const roles_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -126755,6 +126763,7 @@ const spend_alerts_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -127200,6 +127209,7 @@ const groups_roles_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -127333,6 +127343,7 @@ const users_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -127470,6 +127481,7 @@ const groups_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -127621,6 +127633,7 @@ const api_keys_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -127781,6 +127794,7 @@ const projects_certificates_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -128058,6 +128072,7 @@ const rate_limits_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -128154,6 +128169,7 @@ const projects_roles_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -128279,6 +128295,53 @@ class projects_roles_Roles extends resource_APIResource {
     }
 }
 //# sourceMappingURL=roles.mjs.map
+;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/projects/service-tier-settings.mjs
+// File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
+
+
+function service_tier_settings_resolveResourceRequestOptions(options, buildOptions) {
+    return Promise.resolve(options).then(buildOptions);
+}
+class ServiceTierSettings extends resource_APIResource {
+    /**
+     * Retrieve the configured default and enabled service tiers for a project.
+     *
+     * @example
+     * ```ts
+     * const projectServiceTierSettings =
+     *   await client.admin.organization.projects.serviceTierSettings.retrieve(
+     *     'project_id',
+     *   );
+     * ```
+     */
+    retrieve(projectID, options) {
+        return this._client.get(utils_path_path `/organization/projects/${projectID}/service_tier_settings`, service_tier_settings_resolveResourceRequestOptions(options, (options) => ({
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+    /**
+     * Update the default or enabled service tiers atomically. Supply at least one
+     * field. Omitted fields keep their current values.
+     *
+     * @example
+     * ```ts
+     * const projectServiceTierSettings =
+     *   await client.admin.organization.projects.serviceTierSettings.update(
+     *     'project_id',
+     *     { default: 'standard' },
+     *   );
+     * ```
+     */
+    update(projectID, body, options) {
+        return this._client.post(utils_path_path `/organization/projects/${projectID}/service_tier_settings`, service_tier_settings_resolveResourceRequestOptions(options, (options) => ({
+            body,
+            ...options,
+            __security: { adminAPIKeyAuth: true },
+        })));
+    }
+}
+//# sourceMappingURL=service-tier-settings.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/organization/projects/spend-alerts.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
 
@@ -128307,6 +128370,7 @@ const projects_spend_alerts_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -128637,6 +128701,7 @@ const groups_groups_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -128808,6 +128873,7 @@ const service_accounts_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129063,6 +129129,7 @@ const users_users_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129226,6 +129293,8 @@ users_users_Users.Roles = users_roles_Roles;
 
 
 
+
+
 function projects_resolveResourceRequestOptions(options, buildOptions) {
     return Promise.resolve(options).then(buildOptions);
 }
@@ -129249,6 +129318,7 @@ const projects_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129289,6 +129359,7 @@ class projects_Projects extends resource_APIResource {
         this.apiKeys = new projects_api_keys_APIKeys(this._client);
         this.rateLimits = new projects_rate_limits_RateLimits(this._client);
         this.modelPermissions = new ModelPermissions(this._client);
+        this.serviceTierSettings = new ServiceTierSettings(this._client);
         this.hostedToolPermissions = new HostedToolPermissions(this._client);
         this.groups = new groups_Groups(this._client);
         this.roles = new projects_roles_Roles(this._client);
@@ -129388,6 +129459,7 @@ projects_Projects.ServiceAccounts = projects_service_accounts_service_accounts_S
 projects_Projects.APIKeys = projects_api_keys_APIKeys;
 projects_Projects.RateLimits = projects_rate_limits_RateLimits;
 projects_Projects.ModelPermissions = ModelPermissions;
+projects_Projects.ServiceTierSettings = ServiceTierSettings;
 projects_Projects.HostedToolPermissions = HostedToolPermissions;
 projects_Projects.Groups = groups_Groups;
 projects_Projects.Roles = projects_roles_Roles;
@@ -129424,6 +129496,7 @@ const users_roles_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129559,6 +129632,7 @@ const organization_users_users_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129687,6 +129761,7 @@ const federation_rules_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -129846,6 +129921,7 @@ const workload_identity_providers_normalizeRequestOptionsForQueryKeys = new Set(
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -130019,12 +130095,12 @@ class organization_organization_Organization extends resource_APIResource {
         this.roles = new Roles(this._client);
         this.dataRetention = new DataRetention(this._client);
         this.externalKeys = new organization_external_keys_ExternalKeys(this._client);
+        this.workloadIdentityProviders = new WorkloadIdentityProviders(this._client);
         this.externalStorage = new ExternalStorage(this._client);
         this.spendLimit = new SpendLimit(this._client);
         this.spendAlerts = new SpendAlerts(this._client);
         this.certificates = new certificates_Certificates(this._client);
         this.projects = new projects_Projects(this._client);
-        this.workloadIdentityProviders = new WorkloadIdentityProviders(this._client);
     }
 }
 organization_organization_Organization.AuditLogs = AuditLogs;
@@ -130036,12 +130112,12 @@ organization_organization_Organization.Groups = Groups;
 organization_organization_Organization.Roles = Roles;
 organization_organization_Organization.DataRetention = DataRetention;
 organization_organization_Organization.ExternalKeys = organization_external_keys_ExternalKeys;
+organization_organization_Organization.WorkloadIdentityProviders = WorkloadIdentityProviders;
 organization_organization_Organization.ExternalStorage = ExternalStorage;
 organization_organization_Organization.SpendLimit = SpendLimit;
 organization_organization_Organization.SpendAlerts = SpendAlerts;
 organization_organization_Organization.Certificates = certificates_Certificates;
 organization_organization_Organization.Projects = projects_Projects;
-organization_organization_Organization.WorkloadIdentityProviders = WorkloadIdentityProviders;
 //# sourceMappingURL=organization.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/resources/admin/admin.mjs
 // File generated from our OpenAPI spec by Castiron. See CONTRIBUTING.md for details.
@@ -130176,6 +130252,7 @@ const voice_consents_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -130402,6 +130479,7 @@ const batches_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -130506,6 +130584,7 @@ const assistants_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -130637,6 +130716,7 @@ const invocations_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -130755,6 +130835,7 @@ const automations_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -131129,6 +131210,7 @@ const templates_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -131291,6 +131373,7 @@ const environments_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -131526,6 +131609,7 @@ const artifacts_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -131728,6 +131812,7 @@ class sessions_events_Events extends resource_APIResource {
                 options?.headers,
             ]),
             stream: true,
+            __streamMode: 'events',
             __security: { bearerAuth: true },
         })));
     }
@@ -131762,6 +131847,7 @@ const items_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -131840,6 +131926,7 @@ const traces_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -132061,6 +132148,7 @@ const subagents_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -132206,6 +132294,7 @@ const turns_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -133256,6 +133345,7 @@ const sessions_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -133306,6 +133396,7 @@ class sessions_Sessions extends resource_APIResource {
             ...options,
             headers: internal_headers_buildHeaders([{ 'OpenAI-Beta': 'agents=v1' }, options?.headers]),
             stream: body.stream ?? false,
+            __streamMode: 'events',
             __security: { bearerAuth: true },
         }, { streamFromBody: true })));
         return request(output.body, output.options)._thenUnwrap((data, { options }) => 
@@ -133427,6 +133518,7 @@ const credentials_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -133600,6 +133692,7 @@ const vaults_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -133765,6 +133858,7 @@ const agents_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -133973,6 +134067,7 @@ const threads_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -134115,6 +134210,7 @@ const input_items_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -134243,6 +134339,7 @@ const responses_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -134424,6 +134521,7 @@ const messages_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -135876,6 +135974,7 @@ const runs_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -136335,6 +136434,7 @@ const files_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -136446,6 +136546,7 @@ const containers_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -136577,6 +136678,7 @@ const conversations_items_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -136861,6 +136963,7 @@ const runs_runs_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -136980,6 +137083,7 @@ const evals_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -137133,6 +137237,7 @@ const resources_files_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -137352,6 +137457,7 @@ const permissions_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -137509,6 +137615,7 @@ const checkpoints_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -137590,6 +137697,7 @@ const jobs_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -138352,6 +138460,7 @@ const responses_input_items_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -140527,6 +140636,7 @@ const responses_responses_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -140792,6 +140902,7 @@ const versions_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -140901,6 +141012,7 @@ const skills_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -141297,6 +141409,7 @@ const vector_stores_files_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -141473,6 +141586,7 @@ const vector_stores_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -141617,6 +141731,7 @@ const videos_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
@@ -141925,6 +142040,7 @@ const webhooks_normalizeRequestOptionsForQueryKeys = new Set([
     '__binaryRequest',
     '__binaryResponse',
     '__streamClass',
+    '__streamMode',
     '__security',
     '__synthesizeEventData',
 ]);
