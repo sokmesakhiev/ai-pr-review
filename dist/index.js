@@ -117401,7 +117401,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.55.0'; // x-release-please-version
+const openai_version_VERSION = '7.57.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -131762,14 +131762,11 @@ class sessions_events_Events extends resource_APIResource {
      *       {
      *         request_id: 'request_id',
      *         response: {
-     *           action: 'submit',
-     *           fields: [
-     *             { field_id: 'field_id', value: 'value' },
-     *           ],
-     *           type: 'browser_authentication',
+     *           decision: 'approve',
+     *           type: 'mcp_tool_call',
      *         },
      *         type:
-     *           'agent.session.input.computer_use_approval_request_result',
+     *           'agent.session.input.mcp_approval_request_result',
      *       },
      *     ],
      *   },
@@ -131792,20 +131789,14 @@ class sessions_events_Events extends resource_APIResource {
             __security: { bearerAuth: true },
         })));
     }
-    /**
-     * Streams live events for an agent session. See
-     * [session events](https://developers.openai.com/api/docs/guides/agents-api/sessions/events).
-     *
-     * @example
-     * ```ts
-     * const agentSessionEvent =
-     *   await client.beta.agents.sessions.events.stream(
-     *     'session_id',
-     *   );
-     * ```
-     */
-    stream(sessionID, options) {
+    stream(sessionID, query = {}, options) {
+        if (arguments.length < 3) {
+            options = query;
+            query = {};
+        }
+        query = query;
         return this._client.get(utils_path_path `/agents/sessions/${sessionID}/events`, events_resolveResourceRequestOptions(options, (options) => ({
+            query,
             ...options,
             headers: internal_headers_buildHeaders([
                 { 'OpenAI-Beta': 'agents=v1', Accept: 'text/event-stream' },
@@ -133155,7 +133146,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
         if (session.status !== 'idle') {
             throw new error_OpenAIError('sessions.stream requires an idle session; use sessions.events.stream for active sessions');
         }
-        const subscription = await __classPrivateFieldGet(this, _AgentSessionStream_sessions, "f").events.stream(__classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"), options).withResponse();
+        const subscription = await __classPrivateFieldGet(this, _AgentSessionStream_sessions, "f").events.stream(__classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"), {}, options).withResponse();
         __classPrivateFieldSet(this, _AgentSessionStream_stream, subscription.data, "f");
         __classPrivateFieldSet(this, _AgentSessionStream_response, subscription.response, "f");
         __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
@@ -133425,8 +133416,9 @@ class sessions_Sessions extends resource_APIResource {
         })));
     }
     /**
-     * Updates session tools, metadata, model, reasoning effort, or service tier. Model
-     * settings apply to subsequent turns. Omitted fields are unchanged. See
+     * Updates session tools, metadata, model, reasoning effort, service tier, or the
+     * default prompt cache lifetime. Model settings apply to subsequent turns. Omitted
+     * fields are unchanged. See
      * [managing sessions](https://developers.openai.com/api/docs/guides/agents-api/sessions/manage).
      *
      * @example
@@ -137914,13 +137906,30 @@ class Images extends resource_APIResource {
         return this._client.post('/images/variations', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions({ body, ...options, __security: { bearerAuth: true } }, this._client)));
     }
     edit(body, options) {
-        return this._client.post('/images/edits', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions(images_withBodyFinalization(((requestOptions) => ({
-            ...requestOptions,
-            body: Object.fromEntries(Object.entries(requestOptions.body ?? {}).map(([key, value]) => [
-                key,
-                key === 'safety_identifier' && value === null ? undefined : value,
-            ])),
-        }))({
+        return this._client.post('/images/edits', images_resolveResourceRequestOptions(options, (options) => uploads_multipartFormRequestOptions(images_withBodyFinalization(((requestOptions) => {
+            const omitNulls = (value, paths) => {
+                if (value === null || typeof value !== 'object' || Array.isArray(value))
+                    return value;
+                return Object.fromEntries(Object.entries(value).map(([key, field]) => {
+                    const selected = paths.filter((path) => path[0] === key);
+                    if (field === null && selected.some((path) => path.length === 1))
+                        return [key, undefined];
+                    const children = selected.filter((path) => path.length > 1).map((path) => path.slice(1));
+                    return [key, children.length === 0 ? field : omitNulls(field, children)];
+                }));
+            };
+            return {
+                ...requestOptions,
+                body: omitNulls(requestOptions.body ?? {}, [
+                    ['safety_identifier'],
+                    ['complexity'],
+                    ['frame_count'],
+                    ['frame_duration_ms'],
+                    ['svg'],
+                    ['svg', 'reasoning'],
+                ]),
+            };
+        })({
             body,
             ...options,
             stream: body.stream ?? false,
