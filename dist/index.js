@@ -117401,7 +117401,7 @@ function addRequestID(value, response) {
 //# sourceMappingURL=parse.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/version.mjs
 /** Version of the installed OpenAI SDK package. */
-const openai_version_VERSION = '7.58.0'; // x-release-please-version
+const openai_version_VERSION = '7.63.0'; // x-release-please-version
 //# sourceMappingURL=version.mjs.map
 ;// CONCATENATED MODULE: ./node_modules/openai/internal/detect-platform.mjs
 
@@ -132402,8 +132402,14 @@ class TurnState {
         return true;
     }
     /** Checks session termination after updating the selected turn state. */
-    terminal(event) {
-        return event.type === 'agent.session.failed' || (event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _TurnState_turnEnded, "f"));
+    terminal(event, sessionID) {
+        const type = event.type;
+        return (event.type === 'agent.session.failed' ||
+            (type === 'agent.session.budget_reached' &&
+                'session' in event &&
+                event.session?.id === sessionID &&
+                (__classPrivateFieldGet(this, _TurnState_turnID, "f") === undefined || __classPrivateFieldGet(this, _TurnState_turnEnded, "f"))) ||
+            (event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _TurnState_turnEnded, "f")));
     }
     /** Returns each tool call once for the full invocation, including subagent turns. */
     call(event) {
@@ -132841,12 +132847,16 @@ class AgentTurnResultCollector {
         if (this.ready) {
             return;
         }
-        if ('session' in event) {
+        if ('session' in event && event.session) {
             __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionID, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionID, "f") ?? event.session.id, "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_requiredActions, structuredClone(event.session.required_actions ?? []), "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_checkedActionsFor, undefined, "f");
             __classPrivateFieldSet(this, _AgentTurnResultCollector_sessionFailed, __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionFailed, "f") || event.type === 'agent.session.failed', "f");
-            __classPrivateFieldSet(this, _AgentTurnResultCollector_idle, __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f") || event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f"), "f");
+            const type = event.type;
+            __classPrivateFieldSet(this, _AgentTurnResultCollector_idle, __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f") || ((event.type === 'agent.session.idle' && __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f")) ||
+                (type === 'agent.session.budget_reached' &&
+                    event.session.id === __classPrivateFieldGet(this, _AgentTurnResultCollector_sessionID, "f") &&
+                    (!__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f") || __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f")))), "f");
         }
         if (event.type === 'agent.session.turn.created' && event.turn.subagent_id === null && !__classPrivateFieldGet(this, _AgentTurnResultCollector_turn, "f")) {
             __classPrivateFieldSet(this, _AgentTurnResultCollector_turn, structuredClone(event.turn), "f");
@@ -132881,7 +132891,7 @@ class AgentTurnResultCollector {
         __classPrivateFieldSet(this, _AgentTurnResultCollector_checkedActionsFor, canHandle, "f");
     }
     get ready() {
-        return __classPrivateFieldGet(this, _AgentTurnResultCollector_terminal, "f") && __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f");
+        return __classPrivateFieldGet(this, _AgentTurnResultCollector_idle, "f");
     }
     release() {
         __classPrivateFieldGet(this, _AgentTurnResultCollector_messages, "f").clear();
@@ -133165,7 +133175,7 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate() {
             if (!state.accept(event)) {
                 continue;
             }
-            const terminal = state.terminal(event);
+            const terminal = state.terminal(event, __classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"));
             const dispatch = __classPrivateFieldGet(this, _AgentSessionStream_dispatcher, "f").prepare(state.call(event), __classPrivateFieldGet(this, _AgentSessionStream_sessionID, "f"));
             if (terminal) {
                 __classPrivateFieldGet(this, _AgentSessionStream_stream, "f").controller.abort();
@@ -137961,7 +137971,7 @@ class live_sessions_Sessions extends resource_APIResource {
      * @example
      * ```ts
      * await client.live.sessions.accept('session_id', {
-     *   session: { model: 'gpt-live-1', type: 'live' },
+     *   session: { model: 'gpt-live-1.1', type: 'live' },
      * });
      * ```
      */
@@ -138104,7 +138114,7 @@ class live_Live extends resource_APIResource {
      * @example
      * ```ts
      * const live = await client.live.create({
-     *   session: { model: 'gpt-live-1' },
+     *   session: { model: 'gpt-live-1.1' },
      *   transport: { sdp: 'x', type: 'webrtc' },
      * });
      * ```
